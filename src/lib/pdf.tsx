@@ -658,11 +658,25 @@ export async function generateCollectionPDF(
 ): Promise<Buffer> {
   const html = buildPdfHtml(data, qrDataUrl, logoDataUrl);
 
-  const puppeteer = await import("puppeteer");
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-  });
+  let browser;
+
+  if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+    const puppeteer = await import("puppeteer-core");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const chromium = (await import("@sparticuz/chromium")).default as any;
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
+  } else {
+    const puppeteer = await import("puppeteer");
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    });
+  }
 
   try {
     const page = await browser.newPage();
@@ -674,6 +688,8 @@ export async function generateCollectionPDF(
     });
     return Buffer.from(pdf);
   } finally {
-    await browser.close();
+    if (browser) {
+      await browser.close();
+    }
   }
 }
