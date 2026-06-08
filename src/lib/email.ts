@@ -1,6 +1,13 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendInstance: Resend | null = null;
+
+function getResendClient(): Resend {
+  if (!resendInstance) {
+    resendInstance = new Resend(process.env.RESEND_API_KEY || "re_dummy_key_for_build");
+  }
+  return resendInstance;
+}
 
 interface SendCollectionEmailParams {
   to: string;
@@ -76,7 +83,7 @@ export async function sendCollectionEmail(params: SendCollectionEmailParams) {
     </html>
   `;
 
-  return resend.emails.send({
+  return getResendClient().emails.send({
     from: `${process.env.EMAIL_FROM_NAME || "YASAI Logistics"} <${process.env.EMAIL_FROM || "noreply@yasailogistics.com"}>`,
     to: [to],
     subject: `Goods Collection Note – ${collectionNumber}`,
