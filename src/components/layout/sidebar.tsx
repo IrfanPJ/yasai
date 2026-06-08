@@ -63,10 +63,10 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex flex-col w-64 min-h-screen bg-[#071A3A] text-white">
+    <aside className="flex flex-col w-64 min-h-screen bg-white border-r border-gray-200 shadow-sm">
       {/* Logo */}
-      <div className="flex items-center px-6 py-6 border-b border-white/10">
-        <YasaiLogo variant="light" />
+      <div className="flex items-center justify-center px-4 py-5 border-b border-gray-100">
+        <YasaiLogo variant="dark" />
       </div>
 
       {/* Navigation */}
@@ -84,10 +84,10 @@ export function Sidebar() {
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
                 item.highlight && !isActive
-                  ? "bg-[#E67A32] hover:bg-[#f08d4e] text-white"
+                  ? "bg-[#E67A32] hover:bg-[#d46d28] text-white shadow-sm"
                   : isActive
-                  ? "bg-white/15 text-white"
-                  : "text-white/70 hover:bg-white/10 hover:text-white"
+                  ? "bg-[#071A3A] text-white shadow-sm"
+                  : "text-[#4A5568] hover:bg-[#F7F0EA] hover:text-[#071A3A]"
               )}
             >
               <item.icon className="h-4.5 w-4.5 shrink-0" size={18} />
@@ -98,10 +98,10 @@ export function Sidebar() {
       </nav>
 
       {/* Footer: Sign Out */}
-      <div className="px-3 py-4 border-t border-white/10">
+      <div className="px-3 py-4 border-t border-gray-100">
         <button
           onClick={handleSignOut}
-          className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-all"
+          className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm font-medium text-[#4A5568] hover:bg-red-50 hover:text-red-600 transition-all"
         >
           <LogOut size={18} />
           Sign Out
@@ -131,7 +131,7 @@ export function MobileNav({ onClose }: { onClose: () => void }) {
                 ? "bg-[#E67A32] text-white"
                 : isActive
                 ? "bg-[#071A3A] text-white"
-                : "text-gray-700 hover:bg-gray-100"
+                : "text-[#4A5568] hover:bg-[#F7F0EA]"
             )}
           >
             <item.icon size={18} />

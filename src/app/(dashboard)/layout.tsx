@@ -17,7 +17,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-[#F5F5F5] dark:bg-[#071A3A]">
+    <div className="flex min-h-screen bg-[#F8F6F3] dark:bg-[#071A3A]">
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0">
         <Sidebar />

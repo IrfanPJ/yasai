@@ -64,8 +64,8 @@ export async function DELETE(_: NextRequest, { params }: RouteParams) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Check user role
-  const { data: profile } = await supabase
+  // Check user role — use serviceClient to bypass RLS on user_profiles
+  const { data: profile } = await serviceClient
     .from("user_profiles")
     .select("role")
     .eq("id", user.id)

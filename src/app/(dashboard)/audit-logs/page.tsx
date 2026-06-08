@@ -1,12 +1,10 @@
 import { Header } from "@/components/layout/header";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { formatDateTime } from "@/lib/utils";
-import type { ActivityLog } from "@/types";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Audit Logs" };
@@ -20,13 +18,27 @@ const ACTION_COLORS: Record<string, string> = {
 };
 
 export default async function AuditLogsPage() {
-  const supabase = await createClient();
+  const serviceClient = createServiceClient();
 
-  const { data } = await supabase
+  // Fetch logs via service role to bypass RLS, then separately fetch user names
+  const { data: logs } = await serviceClient
     .from("activity_logs")
-    .select("*, user:user_profiles(full_name, email)")
+    .select("*")
     .order("created_at", { ascending: false })
     .limit(200);
+
+  // Collect unique user ids and look up their profiles
+  const userIds = [...new Set((logs ?? []).map((l) => l.user_id).filter(Boolean))];
+  const profileMap: Record<string, { full_name?: string; email?: string }> = {};
+  if (userIds.length > 0) {
+    const { data: profiles } = await serviceClient
+      .from("user_profiles")
+      .select("id, full_name, email")
+      .in("id", userIds);
+    for (const p of profiles ?? []) profileMap[p.id] = p;
+  }
+
+  const data = (logs ?? []).map((l) => ({ ...l, user: profileMap[l.user_id] ?? null }));
 
   return (
     <>

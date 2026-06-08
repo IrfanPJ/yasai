@@ -29,7 +29,6 @@ import { StatusBadge } from "./status-badge";
 import { formatDate, formatWeight, generateWhatsAppMessage, openWhatsApp } from "@/lib/utils";
 import type { GoodsCollectionNote, CargoType } from "@/types";
 import { STATUS_LABELS, CARGO_TYPE_LABELS } from "@/types";
-import * as XLSX from "xlsx";
 
 interface CollectionsTableProps {
   data: GoodsCollectionNote[];
@@ -125,26 +124,41 @@ export function CollectionsTable({
   }
 
   function exportToExcel() {
-    const rows = filtered.map((item) => ({
-      "Collection #": item.collection_number,
-      "Shipper": item.shipper_name,
-      "Consignee": item.consignee_name,
-      "Destination": item.destination,
-      "Commodity": item.commodity,
-      "Cargo Type": CARGO_TYPE_LABELS[item.cargo_type],
-      "Weight (KG)": item.weight_kg,
-      "Volume (CBM)": item.volume_cbm,
-      "Packages": item.num_packages,
-      "Status": STATUS_LABELS[item.status],
-      "Doc Ref": item.doc_ref_number,
-      "Date": formatDate(item.created_at),
-    }));
+    const headers = [
+      "Collection #", "Shipper", "Consignee", "Destination", "Commodity",
+      "Cargo Type", "Weight (KG)", "Volume (CBM)", "Packages", "Status",
+      "Doc Ref", "Date",
+    ];
+    const rows = filtered.map((item) => [
+      item.collection_number,
+      item.shipper_name,
+      item.consignee_name,
+      item.destination,
+      item.commodity,
+      CARGO_TYPE_LABELS[item.cargo_type],
+      item.weight_kg,
+      item.volume_cbm,
+      item.num_packages,
+      STATUS_LABELS[item.status],
+      item.doc_ref_number,
+      formatDate(item.created_at),
+    ]);
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Collections");
-    XLSX.writeFile(wb, `YASAI-Collections-${new Date().toISOString().split("T")[0]}.xlsx`);
-    toast.success("Excel file exported");
+    const escape = (v: unknown) => {
+      const s = v == null ? "" : String(v);
+      return s.includes(",") || s.includes('"') || s.includes("\n")
+        ? `"${s.replace(/"/g, '""')}"`
+        : s;
+    };
+    const csv = [headers, ...rows].map((r) => r.map(escape).join(",")).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `YASAI-Collections-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("CSV file exported");
   }
 
   const clearFilters = () => {

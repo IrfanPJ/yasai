@@ -2,29 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateCollectionPDF } from "@/lib/pdf";
 import { generateQRCode } from "@/lib/qr";
+import { getLogoDataUrl } from "@/lib/logo";
 import type { GoodsCollectionNote } from "@/types";
-import fs from "fs";
-import path from "path";
 
 export const dynamic = "force-dynamic";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
-}
-
-/**
- * Read the official Yasai logo from disk and return as a base64 data URL.
- * @react-pdf/renderer cannot fetch images from http://localhost during SSR,
- * so we embed the file directly via the filesystem.
- */
-function getLogoDataUrl(): string {
-  try {
-    const logoPath = path.join(process.cwd(), "public", "yasai-logo-logistics.jpeg");
-    const buffer = fs.readFileSync(logoPath);
-    return `data:image/jpeg;base64,${buffer.toString("base64")}`;
-  } catch {
-    return "";
-  }
 }
 
 export async function GET(req: NextRequest, { params }: RouteParams) {
@@ -63,7 +47,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     ? `attachment; filename="${data.collection_number}.pdf"`
     : `inline; filename="${data.collection_number}.pdf"`;
 
-  return new NextResponse(pdfBuffer as unknown as Uint8Array, {
+  return new NextResponse(new Uint8Array(pdfBuffer), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",

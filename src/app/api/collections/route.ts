@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient, createClient } from "@/lib/supabase/server";
 import { generateQRCode } from "@/lib/qr";
 import { generateCollectionPDF } from "@/lib/pdf";
+import { getLogoDataUrl } from "@/lib/logo";
 
 export const dynamic = "force-dynamic";
 
@@ -113,7 +114,8 @@ export async function POST(request: NextRequest) {
   try {
     const fullGcn = { ...gcn, qr_url: qrUrl };
     const qrDataUrl = qrUrl ? await generateQRCode(trackingUrl) : undefined;
-    const pdfBuffer = await generateCollectionPDF(fullGcn as any, qrDataUrl);
+    const logoDataUrl = getLogoDataUrl();
+    const pdfBuffer = await generateCollectionPDF(fullGcn as any, qrDataUrl, logoDataUrl);
 
     const pdfPath = `pdf/${gcn.id}.pdf`;
     const { error: pdfUploadError } = await serviceClient.storage

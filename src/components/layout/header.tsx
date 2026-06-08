@@ -62,9 +62,9 @@ export function Header({ title, subtitle }: HeaderProps) {
       {/* Mobile Sheet */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-72 p-0">
-          <SheetHeader className="px-6 py-5 border-b bg-[#071A3A]">
+          <SheetHeader className="px-6 py-5 border-b border-gray-100 bg-white">
             <SheetTitle asChild>
-              <YasaiLogo variant="light" />
+              <YasaiLogo variant="dark" />
             </SheetTitle>
           </SheetHeader>
           <div className="px-3">
