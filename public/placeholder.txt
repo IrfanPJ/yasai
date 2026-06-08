@@ -1,0 +1,6 @@
+Place your YASAI logo files here:
+- logo.png         (light background version - 200x70px recommended)
+- logo-dark.png    (dark background version - 200x70px recommended)
+- favicon.ico      (32x32px icon)
+
+These are referenced in src/components/layout/logo.tsx and src/app/layout.tsx
