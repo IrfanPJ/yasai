@@ -1,12 +1,12 @@
 import type { GoodsCollectionNote } from "@/types";
 import { format } from "date-fns";
 
-const NAVY   = "#0B1F3F";
-const ORANGE = "#E67A32";
-const BORDER = "#D1D5DB";
-const HDR_BG = "#F3F4F6";
+const NAVY         = "#0B1F3F";
+const ORANGE       = "#E67A32";
+const BORDER       = "#D1D5DB";
+const HDR_BG       = "#F3F4F6";
 const LIGHT_ORANGE = "#FFF7ED";
-const ORANGE_BG = "#F97316";
+const ORANGE_BG    = "#F97316";
 
 function esc(v: unknown): string {
   const s = v == null ? "" : String(v);
@@ -17,7 +17,8 @@ function esc(v: unknown): string {
     .replace(/"/g, "&quot;");
 }
 
-/* Transport mode pill */
+/* ── Receipt helper components ── */
+
 function modePill(label: string, icon: string, isActive: boolean): string {
   if (isActive) {
     return `<div style="display:inline-flex;align-items:center;gap:4px;background:${NAVY};color:white;
@@ -31,13 +32,12 @@ function modePill(label: string, icon: string, isActive: boolean): string {
   </div>`;
 }
 
-/* Billing pill */
 function billingPill(label: string, isActive: boolean): string {
   if (isActive) {
     return `<div style="display:inline-flex;align-items:center;gap:3px;background:white;color:${NAVY};
       padding:2px 8px;border-radius:4px;font-size:6.5pt;font-weight:bold;border:1.5px solid ${NAVY};">
       ${label} <span style="display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;
-      background:${ORANGE};border-radius:2px;color:white;font-size:8px;">✓</span>
+      background:${ORANGE};border-radius:2px;color:white;font-size:8px;">&#10003;</span>
     </div>`;
   }
   return `<div style="display:inline-flex;align-items:center;gap:3px;background:white;color:#666;
@@ -46,13 +46,103 @@ function billingPill(label: string, isActive: boolean): string {
   </div>`;
 }
 
-/* Section header icon */
 function headerIcon(icon: string): string {
   return `<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;
     background:${LIGHT_ORANGE};border-radius:50%;flex-shrink:0;margin-right:4px;">
     <span style="font-size:8px;color:${ORANGE};">${icon}</span>
   </span>`;
 }
+
+/* ── Terms & Conditions helper components ── */
+
+function tcPara(text: string): string {
+  return `<p class="tc-p">${text}</p>`;
+}
+
+function tcBullet(text: string): string {
+  return `<div class="tc-bullet">&#8226;&#160;${text}</div>`;
+}
+
+function tcLettered(letter: string, text: string): string {
+  return `<div class="tc-lettered">(${letter})&#160;${text}</div>`;
+}
+
+function tcSection(num: string, title: string, body: string): string {
+  return `<div class="tc-sec"><div class="tc-sec-title">${num}. ${title}</div>${body}</div>`;
+}
+
+function buildTCContent(): string {
+  return [
+    tcSection("1", "Packaging", [
+      tcPara("The Sender is solely liable for ensuring all shipments are packed to survive transit and arrive at the destination in good condition. YASAI logistics bears no liability for any loss or damage caused by poor or weak packaging."),
+      tcPara("Packaging can be arranged on request and charged at the rate in force at the time."),
+      tcPara("Each package must be clearly marked with the full address, consignee name, and a valid phone number. YASAI logistics will not be held liable for delays or non-delivery due to missing or unclear labels on packages."),
+    ].join("")),
+
+    tcSection("2", "Shipment Insurance", [
+      tcPara("On written request and payment of the applicable premium, YASAI logistics will arrange insurance on behalf of the Shipper or Consignee to cover the full value of the shipment or consignment."),
+      tcPara("YASAI urges all clients to insure their cargo. No claims will be accepted for cargo that is not insured."),
+    ].join("")),
+
+    tcSection("3", "Liability for Loss &amp; Damage", [
+      tcPara("YASAI&#39;s liability for any loss or damage in transit is subject to the insurance terms in Section 2. No claims will be processed for cargo that is not insured."),
+      tcPara("YASAI shall not be held liable for any loss or damage arising from:"),
+      tcBullet("Fire"),
+      tcBullet("Any cause not due to the wilful neglect or fault of YASAI or its employees"),
+      tcPara("The Customer grants YASAI the right to arrange carriage by any route or mode of transport and to sign contracts on the Customer&#39;s behalf. The Customer shall be bound by all terms in such contracts under law and trade customs in force."),
+      tcPara("YASAI may join goods with those of other clients and is not bound to store or ship goods apart from others unless otherwise agreed in writing."),
+    ].join("")),
+
+    tcSection("4", "Prohibited &amp; Restricted Shipments", [
+      tcPara("YASAI does not accept the following for shipment:"),
+      tcBullet("Hazardous or dangerous goods"),
+      tcBullet("Currency or monetary instruments"),
+      tcBullet("Jewellery and precious items"),
+      tcBullet("Goods banned or restricted under law or customs rules of the origin, transit, or destination country"),
+      tcPara("All packages must hold only items that have been declared. Undeclared goods are the sole liability of the Consignor, who must cover YASAI for all costs or penalties arising from such items."),
+      tcPara("Each item must show its country of origin clearly. Failure to do so may lead to delays, fines, or seizure of goods, for which the Customer, Consignor, and Consignee are jointly and fully liable."),
+    ].join("")),
+
+    tcSection("5", "Claims Procedure", [
+      tcPara("All claims must be filed with YASAI in writing within the time limits set below:"),
+      tcLettered("a", "Damage or shortage claims must be lodged within 3 days of delivery at the destination."),
+      tcLettered("b", "All other claims must be filed within 7 days from the date of delivery at the origin."),
+      tcLettered("c", "YASAI will not be liable for missing or short contents found within sealed or pre-packed cargo."),
+    ].join("")),
+
+    tcSection("6", "Lien &amp; Detention of Goods", [
+      tcPara("All goods held by YASAI are subject to a lien for any sums owed by the Sender, Owner, or Consignee to the Company for those goods."),
+      tcPara("If any sum stays unpaid within 15 days of a written notice to the party&#39;s last known address, YASAI may sell the goods by auction or otherwise at its sole discretion and at the full cost of the defaulting party."),
+    ].join("")),
+
+    tcSection("7", "Customer Declaration", [
+      tcPara("By using the services of YASAI, the Customer accepts and agrees to the terms set out below:"),
+      tcPara("YASAI and its affiliates will carry all shipments, whether LCL or FTL, in good faith and based solely on the goods description in the Customer&#39;s invoice or documents."),
+      tcPara("If cargo is found to hold contraband or banned items, by intent or error, YASAI is entitled to full compensation for all losses, fines, and penalties and may take legal action against the Customer to protect its interests."),
+    ].join("")),
+
+    tcSection("8", "Required Documentation", [
+      tcPara("All consignments must be sent with the following documents:"),
+      tcBullet("A Delivery Order listing the full contents of each package"),
+      tcBullet("An Original Commercial Invoice"),
+      tcBullet("The Consignee&#39;s full name, delivery address, and a valid phone number"),
+      tcPara("Customers must ensure all packages hold only the declared items. Any gap between the declared and actual contents is the sole liability of the Consignor, who must cover YASAI for all losses."),
+      tcPara("All cargo must comply with import and export rules of the destination country. YASAI may exercise a lien on goods to recover losses from breach of these rules."),
+    ].join("")),
+
+    tcSection("9", "Contact &amp; Support", [
+      tcPara("For urgent queries, service issues, or complaints, please contact our operations team at:"),
+      `<div class="tc-contact-box">
+        <div class="tc-contact-row">&#128222;&#160;+966 55 932 6687</div>
+        <div class="tc-contact-row">&#9993;&#160;info@yasailogistics.com</div>
+        <div class="tc-contact-row">&#127760;&#160;www.yasailogistics.com</div>
+        <div class="tc-tagline">Trusted Name in Cargo Consolidation</div>
+      </div>`,
+    ].join("")),
+  ].join("");
+}
+
+/* ── Main HTML builder ── */
 
 function buildPdfHtml(
   data: GoodsCollectionNote,
@@ -70,14 +160,24 @@ function buildPdfHtml(
 <head>
 <meta charset="UTF-8">
 <style>
-  @page { margin: 0; size: A5 landscape; }
+  @page { margin: 0; size: A4; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: Arial, Helvetica, sans-serif;
     font-size: 7.5pt;
     color: #222;
     width: 210mm;
-    height: 148mm;
+    height: 297mm;
+    overflow: hidden;
+    background: #FAFAFA;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── RECEIPT WRAPPER ── */
+  .receipt-wrapper {
+    width: 210mm;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -188,8 +288,7 @@ function buildPdfHtml(
 
   /* ── CONTENT AREA ── */
   .content {
-    flex: 1;
-    padding: 6px 14px 4px;
+    padding: 6px 14px 6px;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -281,7 +380,6 @@ function buildPdfHtml(
     vertical-align: top;
   }
 
-  /* Section header cells */
   .sec-hdr {
     background: ${HDR_BG};
     padding: 3px 6px;
@@ -307,7 +405,6 @@ function buildPdfHtml(
     color: #111;
   }
 
-  /* Transport pills container */
   .transport-pills {
     display: flex;
     gap: 4px;
@@ -315,8 +412,6 @@ function buildPdfHtml(
     align-items: center;
     justify-content: center;
   }
-
-  /* Billing pills container */
   .billing-pills {
     display: flex;
     gap: 6px;
@@ -325,7 +420,7 @@ function buildPdfHtml(
     justify-content: center;
   }
 
-  /* ── BOTTOM ROW (Packages/Volume/Weight/Signatures) ── */
+  /* ── BOTTOM ROW ── */
   .btm-table {
     width: 100%;
     border-collapse: separate;
@@ -352,7 +447,6 @@ function buildPdfHtml(
     letter-spacing: 0.3px;
     border-bottom: 1px solid ${BORDER};
   }
-
   .orange-cell {
     background: ${ORANGE};
     color: white;
@@ -383,10 +477,11 @@ function buildPdfHtml(
     font-size: 24px;
     margin-left: auto;
   }
-
   .sig-td { min-height: 48px; vertical-align: top; }
   .sig-img { width: 80px; height: 36px; object-fit: contain; display: block; margin: 4px; }
   .sig-line { border-bottom: 1px solid #CCC; margin: 34px 8px 0; }
+  .goods-img { width: calc(100% - 8px); max-height: 58px; object-fit: cover; display: block; margin: 3px 4px; border-radius: 2px; }
+  .no-goods-img { font-size: 5.5pt; color: #CCC; text-align: center; padding: 18px 4px; }
 
   /* ── FOOTER ── */
   .bottom {
@@ -395,7 +490,7 @@ function buildPdfHtml(
     align-items: center;
     background: ${NAVY};
     padding: 6px 14px;
-    margin-top: auto;
+    flex-shrink: 0;
   }
   .footer-left {
     display: flex;
@@ -422,7 +517,6 @@ function buildPdfHtml(
   .f-ad-en { font-size: 5.5pt; color: #AAA; line-height: 1.4; margin-top: 1px; }
   .f-co-ar { font-size: 8pt; font-weight: bold; color: white; text-align: right; direction: rtl; }
   .f-ad-ar { font-size: 5.5pt; color: #AAA; text-align: right; direction: rtl; line-height: 1.4; margin-top: 1px; }
-
   .qr-wrap {
     display: flex;
     align-items: center;
@@ -437,195 +531,304 @@ function buildPdfHtml(
     border-radius: 4px;
   }
   .qr-img { width: 36px; height: 36px; display: block; }
-  .qr-text {
-    text-align: left;
+  .qr-text { text-align: left; }
+  .qr-lbl { font-size: 6pt; color: #AAA; font-weight: 600; }
+  .qr-num { font-size: 7pt; color: ${ORANGE}; font-weight: 800; margin-top: 1px; }
+
+  /* ── TERMS & CONDITIONS ── */
+  .tc-wrapper {
+    flex: 1;
+    overflow: hidden;
+    background: white;
+    padding: 4px 14px 4px;
+    border-top: 2.5px solid ${ORANGE};
+    display: flex;
+    flex-direction: column;
   }
-  .qr-lbl {
+  .tc-header {
+    text-align: center;
+    padding-bottom: 3px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid ${BORDER};
+    flex-shrink: 0;
+  }
+  .tc-main-title {
+    font-size: 9pt;
+    font-weight: 900;
+    color: ${NAVY};
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .tc-subtitle {
     font-size: 6pt;
-    color: #AAA;
-    font-weight: 600;
-  }
-  .qr-num {
-    font-size: 7pt;
-    color: ${ORANGE};
-    font-weight: 800;
+    color: #666;
+    font-style: italic;
     margin-top: 1px;
+  }
+  .tc-columns {
+    column-count: 3;
+    column-gap: 12px;
+    flex: 1;
+    overflow: hidden;
+  }
+  .tc-sec {
+    break-inside: avoid-column;
+    margin-bottom: 4px;
+  }
+  .tc-sec-title {
+    font-size: 6.5pt;
+    font-weight: 800;
+    color: ${NAVY};
+    padding: 1px 4px;
+    margin-bottom: 2px;
+    background: ${HDR_BG};
+    border-left: 2px solid ${ORANGE};
+    display: block;
+  }
+  .tc-p {
+    font-size: 6pt;
+    color: #333;
+    line-height: 1.25;
+    text-align: justify;
+    margin-bottom: 2px;
+  }
+  .tc-bullet {
+    font-size: 6pt;
+    color: #333;
+    line-height: 1.25;
+    padding-left: 7px;
+    margin-bottom: 1px;
+  }
+  .tc-lettered {
+    font-size: 6pt;
+    color: #333;
+    line-height: 1.25;
+    padding-left: 7px;
+    margin-bottom: 1px;
+  }
+  .tc-contact-box {
+    border: 1px solid ${BORDER};
+    border-radius: 3px;
+    padding: 3px 5px;
+    background: ${HDR_BG};
+    margin-top: 2px;
+  }
+  .tc-contact-row {
+    font-size: 6pt;
+    color: ${NAVY};
+    font-weight: bold;
+    line-height: 1.5;
+  }
+  .tc-tagline {
+    font-size: 5.5pt;
+    color: ${ORANGE};
+    font-style: italic;
+    margin-top: 2px;
+    text-align: center;
+    border-top: 1px solid ${BORDER};
+    padding-top: 2px;
   }
 </style>
 </head>
 <body>
 
-  <!-- LETTERHEAD -->
-  <div class="lh">
-    <div class="lh-logo">
-      ${logoDataUrl ? `<img src="${logoDataUrl}" alt="YASAI">` : ""}
-    </div>
-    <div class="lh-center">
-      <div class="lh-title-en">YASAI LOGISTICS COMPANY</div>
-      <div class="lh-subtitle">Freight &amp; Logistics Solutions</div>
-    </div>
-    <div class="lh-ar">شركة ياساي للوجستيات ش.ذ.م.م</div>
-  </div>
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- RECEIPT SECTION (A5 landscape block, top of A4)    -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div class="receipt-wrapper">
 
-  <!-- Contact Row -->
-  <div class="contact-row">
-    <div class="ci"><span class="ci-icon">●</span> H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai – UAE</div>
-    <div class="ci"><span class="ci-icon">✆</span> +966 55 932 6687</div>
-    <div class="ci"><span class="ci-icon">✉</span> info@yasailogistics.com</div>
-    <div class="ci"><span class="web-icon">⊕</span> www.yasailogistics.com</div>
-  </div>
-
-  <!-- Badge -->
-  <div class="badge-row">
-    <div class="doc-badge">Goods Collection Note</div>
-  </div>
-
-  <div class="content">
-
-    <!-- Row 1: Doc No + Shipper/Consignee -->
-    <div class="top-row">
-      <div class="doc-no-card">
-        <div class="doc-no-label">Document No.</div>
-        <div class="doc-no-value">${esc(data.collection_number)}</div>
+    <!-- LETTERHEAD -->
+    <div class="lh">
+      <div class="lh-logo">
+        ${logoDataUrl ? `<img src="${logoDataUrl}" alt="YASAI">` : ""}
       </div>
-      <div class="ship-con-wrap">
-        <div class="ship-cell">
-          <div class="sc-hdr">
-            <div class="sc-icon"><span>👤</span></div>
-            SHIPPER
-          </div>
-          <div class="sc-val">${esc(data.shipper_name)}</div>
+      <div class="lh-center">
+        <div class="lh-title-en">YASAI LOGISTICS COMPANY</div>
+        <div class="lh-subtitle">Freight &amp; Logistics Solutions</div>
+      </div>
+      <div class="lh-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1575;&#1578; &#1588;.&#1584;.&#1605;.&#1605;</div>
+    </div>
+
+    <!-- Contact Row -->
+    <div class="contact-row">
+      <div class="ci"><span class="ci-icon">&#9679;</span> H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
+      <div class="ci"><span class="ci-icon">&#9990;</span> +966 55 932 6687</div>
+      <div class="ci"><span class="ci-icon">&#9993;</span> info@yasailogistics.com</div>
+      <div class="ci"><span class="web-icon">&#8853;</span> www.yasailogistics.com</div>
+    </div>
+
+    <!-- Badge -->
+    <div class="badge-row">
+      <div class="doc-badge">Goods Collection Note</div>
+    </div>
+
+    <div class="content">
+
+      <!-- Row 1: Doc No + Shipper/Consignee -->
+      <div class="top-row">
+        <div class="doc-no-card">
+          <div class="doc-no-label">Document No.</div>
+          <div class="doc-no-value">${esc(data.collection_number)}</div>
         </div>
-        <div class="con-cell">
-          <div class="sc-hdr">
-            <div class="sc-icon"><span>👤</span></div>
-            CONSIGNEE
+        <div class="ship-con-wrap">
+          <div class="ship-cell">
+            <div class="sc-hdr">
+              <div class="sc-icon"><span>&#128100;</span></div>
+              SHIPPER
+            </div>
+            <div class="sc-val">${esc(data.shipper_name)}</div>
           </div>
-          <div class="sc-val">
-            ${esc(data.consignee_name)}
-            ${data.contact_person ? `<div style="font-size:6pt;color:#888;margin-top:1px;">Contact: ${esc(data.contact_person)}</div>` : ""}
-            ${data.phone ? `<div style="font-size:6pt;color:#888;">Tel: ${esc(data.phone)}</div>` : ""}
+          <div class="con-cell">
+            <div class="sc-hdr">
+              <div class="sc-icon"><span>&#128100;</span></div>
+              CONSIGNEE
+            </div>
+            <div class="sc-val">
+              ${esc(data.consignee_name)}
+              ${data.contact_person ? `<div style="font-size:6pt;color:#888;margin-top:1px;">Contact: ${esc(data.contact_person)}</div>` : ""}
+              ${data.phone ? `<div style="font-size:6pt;color:#888;">Tel: ${esc(data.phone)}</div>` : ""}
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- Row 2: Cargo Particulars / Shipping Mark / Cargo Type / Mode of Transport -->
+      <table class="gcn">
+        <tr>
+          <td style="width:18%">
+            <div class="sec-hdr">${headerIcon("&#128230;")} CARGO PARTICULARS</div>
+            <div class="sec-val">${esc(data.commodity)}</div>
+          </td>
+          <td style="width:18%">
+            <div class="sec-hdr">${headerIcon("&#127991;")} SHIPPING MARK</div>
+            <div class="sec-val">${esc(data.shipping_mark) || "&#8211;"}</div>
+          </td>
+          <td style="width:14%">
+            <div class="sec-hdr">${headerIcon("&#128203;")} CARGO TYPE</div>
+            <div class="sec-val">${esc(cargoLabel)}</div>
+          </td>
+          <td style="width:22%">
+            <div class="sec-hdr">${headerIcon("&#128667;")} MODE OF TRANSPORT</div>
+            <div class="transport-pills">
+              ${modePill("LAND FREIGHT", "&#128667;", data.cargo_type === "land")}
+              ${modePill("SEA FREIGHT", "&#128674;", data.cargo_type === "sea")}
+              ${modePill("AIR FREIGHT", "&#9992;", data.cargo_type === "air")}
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Row 3: Date / Destination / Commodity / Doc Ref / Instructions / Billing -->
+      <table class="gcn">
+        <tr>
+          <td style="width:10%">
+            <div class="sec-hdr">${headerIcon("&#128197;")} DATE</div>
+            <div class="sec-val-bold">${esc(date)}</div>
+          </td>
+          <td style="width:18%">
+            <div class="sec-hdr">${headerIcon("&#128205;")} DESTINATION</div>
+            <div class="sec-val-bold">${esc(data.destination)}</div>
+          </td>
+          <td style="width:20%">
+            <div class="sec-hdr">${headerIcon("&#128230;")} COMMODITY</div>
+            <div class="sec-val">${esc(data.commodity)}</div>
+          </td>
+          <td style="width:14%">
+            <div class="sec-hdr">${headerIcon("&#128196;")} DOC. REF. NO.</div>
+            <div class="sec-val">${esc(data.doc_ref_number) || "&#8211;"}</div>
+          </td>
+          <td style="width:20%">
+            <div class="sec-hdr">${headerIcon("&#128221;")} SPECIAL INSTRUCTIONS</div>
+            <div class="sec-val">${esc(data.special_instructions) || "&#8211;"}</div>
+          </td>
+          <td style="width:18%">
+            <div class="sec-hdr">${headerIcon("&#128176;")} BILLING OF</div>
+            <div class="billing-pills">
+              ${billingPill("CUSTOMER", data.billing_type === "customer")}
+              ${billingPill("SUPPLIER", data.billing_type === "supplier")}
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Row 4: Packages / Volume / Weight / Goods Image / Signatures -->
+      <table class="btm-table">
+        <tr>
+          <td style="width:11%">
+            <div class="btm-hdr">${headerIcon("&#128230;")} NO. OF PACKAGES</div>
+            <div class="sec-val-bold">${esc(data.num_packages) || "&#8211;"}</div>
+          </td>
+          <td class="orange-cell" style="width:13%">
+            <div class="btm-hdr">${headerIcon("&#128208;")} VOLUME (CBM)</div>
+            <div class="orange-val">
+              <div>
+                <div class="orange-num">${data.volume_cbm ? Number(data.volume_cbm).toFixed(2) : "&#8211;"}</div>
+              </div>
+              <div class="orange-icon">&#128230;</div>
+            </div>
+          </td>
+          <td class="orange-cell" style="width:13%">
+            <div class="btm-hdr">${headerIcon("&#9878;")} WEIGHT (KGS)</div>
+            <div class="orange-val">
+              <div>
+                <div class="orange-num">${data.weight_kg ? Number(data.weight_kg).toFixed(2) : "&#8211;"}</div>
+                <div class="orange-unit">KGS</div>
+              </div>
+              <div class="orange-icon">&#9878;</div>
+            </div>
+          </td>
+          <td style="width:26%">
+            <div class="btm-hdr">${headerIcon("&#128247;")} GOODS IMAGE</div>
+            <div class="sig-td">
+              ${data.goods_image_url
+                ? `<img src="${data.goods_image_url}" class="goods-img" alt="Goods">`
+                : `<div class="no-goods-img">No image</div>`}
+            </div>
+          </td>
+          <td style="width:18%">
+            <div class="btm-hdr">${headerIcon("&#9997;")} SIGNATURE</div>
+            <div class="sig-td">
+              ${data.staff_signature
+                ? `<img src="${data.staff_signature}" class="sig-img" alt="Sig">`
+                : `<div class="sig-line"></div>`}
+            </div>
+          </td>
+          <td style="width:19%">
+            <div class="btm-hdr">${headerIcon("&#9997;")} RECEIVER&#39;S SIGNATURE</div>
+            <div class="sig-td">
+              ${data.receiver_signature
+                ? `<img src="${data.receiver_signature}" class="sig-img" alt="Sig">`
+                : `<div class="sig-line"></div>`}
+            </div>
+          </td>
+        </tr>
+      </table>
+
     </div>
 
-    <!-- Row 2: Cargo Particulars / Shipping Mark / Cargo Type / Mode of Transport -->
-    <table class="gcn">
-      <tr>
-        <td style="width:18%">
-          <div class="sec-hdr">${headerIcon("📦")} CARGO PARTICULARS</div>
-          <div class="sec-val">${esc(data.commodity)}</div>
-        </td>
-        <td style="width:18%">
-          <div class="sec-hdr">${headerIcon("🏷")} SHIPPING MARK</div>
-          <div class="sec-val">${esc(data.shipping_mark) || "–"}</div>
-        </td>
-        <td style="width:14%">
-          <div class="sec-hdr">${headerIcon("📋")} CARGO TYPE</div>
-          <div class="sec-val">${esc(cargoLabel)}</div>
-        </td>
-        <td style="width:22%">
-          <div class="sec-hdr">${headerIcon("🚛")} MODE OF TRANSPORT</div>
-          <div class="transport-pills">
-            ${modePill("LAND FREIGHT", "🚛", data.cargo_type === "land")}
-            ${modePill("SEA FREIGHT", "🚢", data.cargo_type === "sea")}
-            ${modePill("AIR FREIGHT", "✈", data.cargo_type === "air")}
-          </div>
-        </td>
-      </tr>
-    </table>
+  </div>
+  <!-- end .receipt-wrapper -->
 
-    <!-- Row 2b: Date row (separate small cell within the cargo row) -->
-    <!-- Integrated into Row 2 as an extra cell -->
-
-    <!-- Row 3: Cargo row with Date -->
-    <table class="gcn">
-      <tr>
-        <td style="width:10%">
-          <div class="sec-hdr">${headerIcon("📅")} DATE</div>
-          <div class="sec-val-bold">${esc(date)}</div>
-        </td>
-        <td style="width:18%">
-          <div class="sec-hdr">${headerIcon("📍")} DESTINATION</div>
-          <div class="sec-val-bold">${esc(data.destination)}</div>
-        </td>
-        <td style="width:20%">
-          <div class="sec-hdr">${headerIcon("📦")} COMMODITY</div>
-          <div class="sec-val">${esc(data.commodity)}</div>
-        </td>
-        <td style="width:14%">
-          <div class="sec-hdr">${headerIcon("📄")} DOC. REF. NO.</div>
-          <div class="sec-val">${esc(data.doc_ref_number) || "–"}</div>
-        </td>
-        <td style="width:20%">
-          <div class="sec-hdr">${headerIcon("📝")} SPECIAL INSTRUCTIONS</div>
-          <div class="sec-val">${esc(data.special_instructions) || "–"}</div>
-        </td>
-        <td style="width:18%">
-          <div class="sec-hdr">${headerIcon("💰")} BILLING OF</div>
-          <div class="billing-pills">
-            ${billingPill("CUSTOMER", data.billing_type === "customer")}
-            ${billingPill("SUPPLIER", data.billing_type === "supplier")}
-          </div>
-        </td>
-      </tr>
-    </table>
-
-    <!-- Row 4: Packages / Volume / Weight / Signatures -->
-    <table class="btm-table">
-      <tr>
-        <td style="width:16%">
-          <div class="btm-hdr">${headerIcon("📦")} NO. OF PACKAGES</div>
-          <div class="sec-val-bold">${esc(data.num_packages) || "–"}</div>
-        </td>
-        <td class="orange-cell" style="width:17%">
-          <div class="btm-hdr">${headerIcon("📐")} VOLUME (CBM)</div>
-          <div class="orange-val">
-            <div>
-              <div class="orange-num">${data.volume_cbm ? Number(data.volume_cbm).toFixed(2) : "–"}</div>
-            </div>
-            <div class="orange-icon">📦</div>
-          </div>
-        </td>
-        <td class="orange-cell" style="width:17%">
-          <div class="btm-hdr">${headerIcon("⚖")} WEIGHT (KGS)</div>
-          <div class="orange-val">
-            <div>
-              <div class="orange-num">${data.weight_kg ? Number(data.weight_kg).toFixed(2) : "–"}</div>
-              <div class="orange-unit">KGS</div>
-            </div>
-            <div class="orange-icon">⚖</div>
-          </div>
-        </td>
-        <td style="width:25%">
-          <div class="btm-hdr">${headerIcon("✍")} SIGNATURE</div>
-          <div class="sig-td">
-            ${data.staff_signature
-              ? `<img src="${data.staff_signature}" class="sig-img" alt="Sig">`
-              : `<div class="sig-line"></div>`}
-          </div>
-        </td>
-        <td style="width:25%">
-          <div class="btm-hdr">${headerIcon("✍")} RECEIVER'S NAME AND SIGNATURE</div>
-          <div class="sig-td">
-            ${data.receiver_signature
-              ? `<img src="${data.receiver_signature}" class="sig-img" alt="Sig">`
-              : `<div class="sig-line"></div>`}
-          </div>
-        </td>
-      </tr>
-    </table>
-
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- TERMS & CONDITIONS SECTION                          -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div class="tc-wrapper">
+    <div class="tc-header">
+      <div class="tc-main-title">TERMS &amp; CONDITIONS</div>
+      <div class="tc-subtitle">Standard Conditions Governing All Shipments and Cargo Services</div>
+    </div>
+    <div class="tc-columns">
+      ${buildTCContent()}
+    </div>
   </div>
 
   <!-- FOOTER with QR -->
   <div class="bottom">
     <div class="footer-left">
-      <div class="pin"><span>●</span></div>
+      <div class="pin"><span>&#9679;</span></div>
       <div>
         <div class="f-co-en">YASAI LOGISTICS COMPANY</div>
-        <div class="f-ad-en">H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai – UAE</div>
+        <div class="f-ad-en">H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
       </div>
     </div>
 
@@ -640,10 +843,10 @@ function buildPdfHtml(
 
     <div class="footer-right">
       <div>
-        <div class="f-co-ar">شركة ياساي اللوجستية</div>
-        <div class="f-ad-ar">٧٥٧٩، ابن الملاح نهضة منطقة<br>الرياض، المملكة العربية السعودية</div>
+        <div class="f-co-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1575;&#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1577;</div>
+        <div class="f-ad-ar">&#1607;&#1607; &#1575;&#1604;&#1588;&#1610;&#1582; &#1587;&#1593;&#1608;&#1583; &#1576;&#1606; &#1589;&#1602;&#1585;&#1548; &#1575;&#1604;&#1605;&#1578;&#1610;&#1606;&#1577;&#1548; &#1583;&#1576;&#1610; &#8211; &#1575;&#1604;&#1573;&#1605;&#1575;&#1585;&#1575;&#1578;</div>
       </div>
-      <div class="pin"><span>●</span></div>
+      <div class="pin"><span>&#9679;</span></div>
     </div>
   </div>
 
@@ -682,9 +885,9 @@ export async function generateCollectionPDF(
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "load" });
     const pdf = await page.pdf({
-      width: "210mm",
-      height: "148mm",
+      format: "A4",
       printBackground: true,
+      margin: { top: "0mm", right: "0mm", bottom: "0mm", left: "0mm" },
     });
     return Buffer.from(pdf);
   } finally {

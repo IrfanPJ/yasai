@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2, FileText, Save, X } from "lucide-react";
+import { Loader2, FileText, Save, X, ImagePlus, Trash2 } from "lucide-react";
 import { SignaturePad } from "./signature-pad";
 import { cn } from "@/lib/utils";
 import type { GoodsCollectionNote, CargoType, BillingType } from "@/types";
@@ -76,6 +76,30 @@ const inputCls =
 
 const selectCls = inputCls + " appearance-none cursor-pointer";
 
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_W = 800, MAX_H = 600;
+        let w = img.width, h = img.height;
+        if (w > MAX_W) { h = Math.round((h * MAX_W) / w); w = MAX_W; }
+        if (h > MAX_H) { w = Math.round((w * MAX_H) / h); h = MAX_H; }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.75));
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export function CollectionForm({
   defaultValues,
   collectionId,
@@ -85,6 +109,8 @@ export function CollectionForm({
   const [loading, setLoading] = useState(false);
   const [receiverSig, setReceiverSig] = useState<string | undefined>(defaultValues?.receiver_signature);
   const [staffSig, setStaffSig] = useState<string | undefined>(defaultValues?.staff_signature);
+  const [goodsImage, setGoodsImage] = useState<string | undefined>(defaultValues?.goods_image_url);
+  const [imageUploading, setImageUploading] = useState(false);
 
   const {
     register,
@@ -114,16 +140,32 @@ export function CollectionForm({
   const cargoType = watch("cargo_type");
   const billingType = watch("billing_type");
 
+  async function handleGoodsImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageUploading(true);
+    try {
+      const compressed = await compressImage(file);
+      setGoodsImage(compressed);
+    } catch {
+      // ignore compression errors silently
+    } finally {
+      setImageUploading(false);
+      e.target.value = "";
+    }
+  }
+
   function handleClear() {
     reset();
     setReceiverSig(undefined);
     setStaffSig(undefined);
+    setGoodsImage(undefined);
   }
 
   async function onSubmit(data: FormData) {
     setLoading(true);
     try {
-      const payload = { ...data, receiver_signature: receiverSig, staff_signature: staffSig };
+      const payload = { ...data, receiver_signature: receiverSig, staff_signature: staffSig, goods_image_url: goodsImage };
       const url = isEdit ? `/api/collections/${collectionId}` : "/api/collections";
       const method = isEdit ? "PUT" : "POST";
 
@@ -286,6 +328,56 @@ export function CollectionForm({
               className={inputCls}
             />
           </Field>
+        </div>
+
+        {/* ── GOODS IMAGE ── */}
+        <SectionHeader>Goods Image</SectionHeader>
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+          {goodsImage ? (
+            <div className="flex items-start gap-4">
+              <img
+                src={goodsImage}
+                alt="Goods"
+                className="h-32 w-auto max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 object-contain bg-gray-50 dark:bg-gray-900"
+              />
+              <div className="flex flex-col gap-2 justify-start mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400">Image attached</p>
+                <label className="flex items-center gap-1.5 cursor-pointer px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all w-fit">
+                  <ImagePlus className="h-3.5 w-3.5" />
+                  Replace
+                  <input type="file" accept="image/*" className="hidden" onChange={handleGoodsImageChange} />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setGoodsImage(undefined)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-red-200 dark:border-red-900 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-all w-fit"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <label className={cn(
+              "flex flex-col items-center justify-center gap-2 w-full h-28 rounded-lg border-2 border-dashed cursor-pointer transition-all",
+              imageUploading
+                ? "border-[#E67A32] bg-orange-50 dark:bg-orange-950/20"
+                : "border-gray-200 dark:border-gray-700 hover:border-[#E67A32] hover:bg-orange-50 dark:hover:bg-orange-950/10"
+            )}>
+              {imageUploading ? (
+                <Loader2 className="h-6 w-6 animate-spin text-[#E67A32]" />
+              ) : (
+                <>
+                  <ImagePlus className="h-6 w-6 text-gray-400" />
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    Click to upload a photo of the goods
+                  </span>
+                  <span className="text-[11px] text-gray-400">JPG, PNG, WEBP — auto-compressed</span>
+                </>
+              )}
+              <input type="file" accept="image/*" className="hidden" onChange={handleGoodsImageChange} disabled={imageUploading} />
+            </label>
+          )}
         </div>
 
         {/* ── SIGNATURES ── */}

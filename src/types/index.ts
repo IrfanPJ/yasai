@@ -57,6 +57,9 @@ export interface GoodsCollectionNote {
   receiver_signature?: string;
   staff_signature?: string;
 
+  // Goods photo
+  goods_image_url?: string;
+
   // Status
   status: CollectionStatus;
 
@@ -129,6 +132,7 @@ export interface CollectionFormData {
   billing_type?: BillingType;
   receiver_signature?: string;
   staff_signature?: string;
+  goods_image_url?: string;
 }
 
 export const STATUS_LABELS: Record<CollectionStatus, string> = {
