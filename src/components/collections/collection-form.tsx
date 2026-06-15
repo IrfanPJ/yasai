@@ -211,7 +211,7 @@ export function CollectionForm({
         </div>
 
         {/* ── Row 1: Receipt # + Date ── */}
-        <div className="grid grid-cols-2 gap-4 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
           <Field label="Receipt Number">
             <input
               readOnly
@@ -249,7 +249,7 @@ export function CollectionForm({
 
         {/* ── CARGO DETAILS ── */}
         <SectionHeader>Cargo Details</SectionHeader>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
           <Field label="Cargo Particulars" required error={errors.commodity?.message}>
             <input
               {...register("commodity")}
@@ -278,7 +278,7 @@ export function CollectionForm({
 
         {/* ── SHIPPING DETAILS ── */}
         <SectionHeader>Shipping Details</SectionHeader>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
           <Field label="Destination" required error={errors.destination?.message}>
             <input
               {...register("destination")}
@@ -388,7 +388,7 @@ export function CollectionForm({
         </div>
 
         {/* ── ACTIONS ── */}
-        <div className="flex items-center gap-3 px-5 py-4 bg-gray-50 dark:bg-[#071A3A]/40">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 sm:px-5 py-4 bg-gray-50 dark:bg-[#071A3A]/40">
           <button
             type="submit"
             disabled={loading}

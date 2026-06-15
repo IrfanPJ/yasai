@@ -169,25 +169,29 @@ export function CollectionDetail({ collection }: CollectionDetailProps) {
   return (
     <>
       {/* ── Action Bar ── */}
-      <div className="flex flex-wrap items-center gap-2 mb-6">
-        <StatusBadge status={collection.status} />
-        <span className="text-muted-foreground text-sm">·</span>
-        <span className="text-sm text-muted-foreground font-mono">
-          {collection.collection_number}
-        </span>
-        <span className="text-muted-foreground text-sm">·</span>
-        <span className="text-sm text-muted-foreground">
-          {formatDateTime(collection.created_at)}
-        </span>
+      <div className="flex flex-col gap-3 mb-6">
+        {/* Info row */}
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={collection.status} />
+          <span className="text-muted-foreground text-sm">·</span>
+          <span className="text-sm text-muted-foreground font-mono">
+            {collection.collection_number}
+          </span>
+          <span className="text-muted-foreground text-sm hidden sm:inline">·</span>
+          <span className="text-sm text-muted-foreground hidden sm:inline">
+            {formatDateTime(collection.created_at)}
+          </span>
+        </div>
 
-        <div className="ml-auto flex items-center gap-2 flex-wrap">
+        {/* Actions row */}
+        <div className="flex flex-wrap items-center gap-2">
           {/* Status selector */}
           <Select
             value={collection.status}
             onValueChange={(v) => handleStatusChange(v as CollectionStatus)}
             disabled={updatingStatus}
           >
-            <SelectTrigger className="h-9 text-sm gap-1.5 min-w-36">
+            <SelectTrigger className="h-9 text-sm gap-1.5 flex-1 sm:flex-none sm:min-w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -207,26 +211,22 @@ export function CollectionDetail({ collection }: CollectionDetailProps) {
             </Link>
           </Button>
 
-          {/* ── PDF Action Buttons (Save / Print / Share) ── */}
+          {/* PDF buttons — visible on sm+ screens */}
           <Button
-            id="btn-save-pdf"
             variant="outline"
             size="sm"
-            className="gap-1.5 border-[#071A3A] text-[#071A3A] hover:bg-[#071A3A] hover:text-white dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-[#071A3A] transition-colors"
+            className="gap-1.5 hidden sm:flex border-[#071A3A] text-[#071A3A] hover:bg-[#071A3A] hover:text-white dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-[#071A3A] transition-colors"
             onClick={handleSavePDF}
             disabled={savingPDF}
           >
-            {savingPDF
-              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              : <Download className="h-3.5 w-3.5" />}
+            {savingPDF ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
             {savingPDF ? "Saving..." : "Save PDF"}
           </Button>
 
           <Button
-            id="btn-print-pdf"
             variant="outline"
             size="sm"
-            className="gap-1.5 border-[#E67A32] text-[#E67A32] hover:bg-[#E67A32] hover:text-white transition-colors"
+            className="gap-1.5 hidden sm:flex border-[#E67A32] text-[#E67A32] hover:bg-[#E67A32] hover:text-white transition-colors"
             onClick={handlePrint}
           >
             <Printer className="h-3.5 w-3.5" />
@@ -234,29 +234,39 @@ export function CollectionDetail({ collection }: CollectionDetailProps) {
           </Button>
 
           <Button
-            id="btn-share-pdf"
             variant="outline"
             size="sm"
-            className="gap-1.5 border-[#071A3A] text-[#071A3A] hover:bg-[#071A3A] hover:text-white dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-[#071A3A] transition-colors"
+            className="gap-1.5 hidden sm:flex border-[#071A3A] text-[#071A3A] hover:bg-[#071A3A] hover:text-white dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-[#071A3A] transition-colors"
             onClick={handleSharePDF}
           >
             <Share2 className="h-3.5 w-3.5" />
             Share PDF
           </Button>
 
-          {/* More actions menu (email, whatsapp, tracking, delete) */}
+          {/* More / overflow menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5">
+              <Button variant="outline" size="sm" className="gap-1.5 ml-auto sm:ml-0">
                 More
                 <ChevronDown className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem
-                onClick={() => setEmailOpen(true)}
-                className="gap-2"
-              >
+            <DropdownMenuContent align="end" className="w-52">
+              {/* PDF actions shown here on mobile only */}
+              <DropdownMenuItem onClick={handleSavePDF} className="gap-2 sm:hidden">
+                <Download className="h-4 w-4" />
+                Save PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handlePrint} className="gap-2 sm:hidden">
+                <Printer className="h-4 w-4" />
+                Print PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSharePDF} className="gap-2 sm:hidden">
+                <Share2 className="h-4 w-4" />
+                Share PDF
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="sm:hidden" />
+              <DropdownMenuItem onClick={() => setEmailOpen(true)} className="gap-2">
                 <Mail className="h-4 w-4" />
                 Send via Email
               </DropdownMenuItem>
@@ -341,7 +351,7 @@ export function CollectionDetail({ collection }: CollectionDetailProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
             <InfoItem
               icon={<MapPin className="h-4 w-4" />}
               label="Destination"
@@ -405,7 +415,7 @@ export function CollectionDetail({ collection }: CollectionDetailProps) {
       {/* ── QR Code + PDF ── */}
       {(collection.qr_url || collection.pdf_url) && (
         <Card className="border-none shadow-sm mt-4">
-          <CardContent className="p-5 flex items-center gap-6">
+          <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
             {collection.qr_url && (
               <img
                 src={collection.qr_url}

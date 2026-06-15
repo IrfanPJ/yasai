@@ -173,50 +173,55 @@ export function CollectionsTable({
     <>
       <Card className="border-none shadow-sm">
         {/* ── Filter Bar ── */}
-        <div className="p-4 border-b flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-48 max-w-xs">
+        <div className="p-3 md:p-4 border-b flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 sm:gap-3">
+          {/* Search — full width on mobile */}
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by #, shipper, consignee..."
-              className="pl-9 h-9 text-sm"
+              className="pl-9 h-9 text-sm w-full"
             />
           </div>
 
-          <Select value={cargoFilter} onValueChange={setCargoFilter}>
-            <SelectTrigger className="h-9 w-36 text-sm">
-              <Filter className="h-3.5 w-3.5 mr-1" />
-              <SelectValue placeholder="Cargo Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="air">Air Freight</SelectItem>
-              <SelectItem value="sea">Sea Freight</SelectItem>
-              <SelectItem value="land">Land Freight</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Filters row */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={cargoFilter} onValueChange={setCargoFilter}>
+              <SelectTrigger className="h-9 w-full xs:w-36 text-sm flex-1 sm:flex-none sm:w-36">
+                <Filter className="h-3.5 w-3.5 mr-1 shrink-0" />
+                <SelectValue placeholder="Cargo Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="air">Air Freight</SelectItem>
+                <SelectItem value="sea">Sea Freight</SelectItem>
+                <SelectItem value="land">Land Freight</SelectItem>
+              </SelectContent>
+            </Select>
 
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-9 w-40 text-sm">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                <SelectItem key={k} value={k}>{v}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-9 flex-1 sm:flex-none sm:w-40 text-sm">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          {hasFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 gap-1.5 text-muted-foreground">
-              <X className="h-3.5 w-3.5" />
-              Clear
-            </Button>
-          )}
+            {hasFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 gap-1.5 text-muted-foreground shrink-0">
+                <X className="h-3.5 w-3.5" />
+                Clear
+              </Button>
+            )}
+          </div>
 
-          <div className="ml-auto flex items-center gap-2">
+          {/* Count + Export */}
+          <div className="flex items-center gap-2 sm:ml-auto">
             <span className="text-xs text-muted-foreground">
               {filtered.length} record{filtered.length !== 1 ? "s" : ""}
             </span>
@@ -224,7 +229,7 @@ export function CollectionsTable({
               variant="outline"
               size="sm"
               onClick={exportToExcel}
-              className="gap-1.5 h-9"
+              className="gap-1.5 h-9 ml-auto sm:ml-0"
             >
               <FileDown className="h-3.5 w-3.5" />
               Export
@@ -233,8 +238,8 @@ export function CollectionsTable({
         </div>
 
         {/* ── Table ── */}
-        <CardContent className="p-0">
-          <Table>
+        <CardContent className="p-0 overflow-x-auto">
+          <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-36">Collection #</TableHead>
@@ -294,7 +299,7 @@ export function CollectionsTable({
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-7 px-2 opacity-0 group-hover:opacity-100">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 sm:opacity-0 sm:group-hover:opacity-100">
                             •••
                           </Button>
                         </DropdownMenuTrigger>

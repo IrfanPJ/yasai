@@ -102,7 +102,7 @@ export default async function DashboardPage() {
         <StatsCards stats={stats} />
 
         {/* Content Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2">
             <RecentActivity items={(recentData || []) as GoodsCollectionNote[]} />
           </div>
