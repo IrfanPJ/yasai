@@ -159,6 +159,9 @@ function buildPdfHtml(
 <html>
 <head>
 <meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">
 <style>
   @page { margin: 0; size: A4; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -223,6 +226,7 @@ function buildPdfHtml(
     direction: rtl;
     text-align: right;
     min-width: 160px;
+    font-family: 'Noto Naskh Arabic', Arial, sans-serif;
   }
 
   /* Contact row */
@@ -515,8 +519,8 @@ function buildPdfHtml(
   .pin span { font-size: 10px; color: ${ORANGE}; }
   .f-co-en { font-size: 7pt; font-weight: bold; color: white; }
   .f-ad-en { font-size: 5.5pt; color: #AAA; line-height: 1.4; margin-top: 1px; }
-  .f-co-ar { font-size: 8pt; font-weight: bold; color: white; text-align: right; direction: rtl; }
-  .f-ad-ar { font-size: 5.5pt; color: #AAA; text-align: right; direction: rtl; line-height: 1.4; margin-top: 1px; }
+  .f-co-ar { font-size: 8pt; font-weight: bold; color: white; text-align: right; direction: rtl; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
+  .f-ad-ar { font-size: 5.5pt; color: #AAA; text-align: right; direction: rtl; line-height: 1.4; margin-top: 1px; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
   .qr-wrap {
     display: flex;
     align-items: center;
@@ -884,6 +888,7 @@ export async function generateCollectionPDF(
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "load" });
+    await page.evaluateHandle("document.fonts.ready");
     const pdf = await page.pdf({
       format: "A4",
       printBackground: true,
