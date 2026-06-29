@@ -25,7 +25,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { formatDateTime, formatWeight, formatVolume,
-  generateWhatsAppMessage, openWhatsApp, downloadFile, copyToClipboard,
+  generateWhatsAppMessage, openWhatsApp, copyToClipboard, buildReceiptFilename, buildPdfPath,
 } from "@/lib/utils";
 import type { GoodsCollectionNote, CollectionStatus, UserRole } from "@/types";
 import { STATUS_LABELS, CARGO_TYPE_LABELS } from "@/types";
@@ -126,7 +126,7 @@ export function CollectionDetail({ collection, userRole }: CollectionDetailProps
 
   function handlePrint() {
     // Open PDF inline in a new browser tab — user can view and print from there
-    window.open(`/api/pdf/${collection.id}`, "_blank");
+    window.open(buildPdfPath(collection.id, collection.consignee_name), "_blank");
   }
 
   async function handleSavePDF() {
@@ -135,8 +135,8 @@ export function CollectionDetail({ collection, userRole }: CollectionDetailProps
       // ?download=1 tells the API to set Content-Disposition: attachment
       // so the browser triggers a file download directly
       const link = document.createElement("a");
-      link.href = `/api/pdf/${collection.id}?download=1`;
-      link.download = `${collection.collection_number}.pdf`;
+      link.href = buildPdfPath(collection.id, collection.consignee_name, true);
+      link.download = buildReceiptFilename(collection.consignee_name);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -151,7 +151,7 @@ export function CollectionDetail({ collection, userRole }: CollectionDetailProps
   async function handleSharePDF() {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ||
       (typeof window !== "undefined" ? window.location.origin : "");
-    const pdfUrl = collection.pdf_url || `${appUrl}/api/pdf/${collection.id}`;
+    const pdfUrl = collection.pdf_url || `${appUrl}${buildPdfPath(collection.id, collection.consignee_name)}`;
     if (navigator.share) {
       try {
         await navigator.share({
@@ -441,12 +441,8 @@ export function CollectionDetail({ collection, userRole }: CollectionDetailProps
                   variant="outline"
                   size="sm"
                   className="mt-2 gap-2"
-                  onClick={() =>
-                    downloadFile(
-                      collection.pdf_url!,
-                      `${collection.collection_number}.pdf`
-                    )
-                  }
+                  onClick={handleSavePDF}
+                  disabled={savingPDF}
                 >
                   <Download className="h-3.5 w-3.5" />
                   Download PDF

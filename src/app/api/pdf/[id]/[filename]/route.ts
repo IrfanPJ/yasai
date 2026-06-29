@@ -4,7 +4,10 @@ import { servePdfResponse } from "@/lib/pdf-route-handler";
 export const dynamic = "force-dynamic";
 
 interface RouteParams {
-  params: Promise<{ id: string }>;
+  // filename is purely cosmetic — it makes browsers' built-in PDF viewers
+  // derive the right "Save" name from the URL path. The actual filename
+  // served is always recomputed server-side from the DB record.
+  params: Promise<{ id: string; filename: string }>;
 }
 
 export async function GET(req: NextRequest, { params }: RouteParams) {

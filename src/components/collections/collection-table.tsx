@@ -26,7 +26,7 @@ import {
   DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { StatusBadge } from "./status-badge";
-import { formatDate, formatWeight, generateWhatsAppMessage, openWhatsApp } from "@/lib/utils";
+import { formatDate, formatWeight, generateWhatsAppMessage, openWhatsApp, downloadFile, buildReceiptFilename, buildPdfPath } from "@/lib/utils";
 import type { GoodsCollectionNote, CargoType } from "@/types";
 import { STATUS_LABELS, CARGO_TYPE_LABELS } from "@/types";
 
@@ -94,19 +94,23 @@ export function CollectionsTable({
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
     const msg = generateWhatsAppMessage({
       collectionNumber: item.collection_number,
-      pdfLink: item.pdf_url || `${appUrl}/api/pdf/${item.id}`,
+      pdfLink: item.pdf_url || `${appUrl}${buildPdfPath(item.id, item.consignee_name)}`,
       trackingLink: `${appUrl}/track/${item.collection_number}`,
     });
     openWhatsApp(msg);
   }
 
   function handlePrintPDF(item: GoodsCollectionNote) {
-    window.open(`/api/pdf/${item.id}`, "_blank");
+    window.open(buildPdfPath(item.id, item.consignee_name), "_blank");
+  }
+
+  function handleDownloadPDF(item: GoodsCollectionNote) {
+    downloadFile(buildPdfPath(item.id, item.consignee_name, true), buildReceiptFilename(item.consignee_name));
   }
 
   async function handleSharePDF(item: GoodsCollectionNote) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-    const pdfUrl = item.pdf_url || `${appUrl}/api/pdf/${item.id}`;
+    const pdfUrl = item.pdf_url || `${appUrl}${buildPdfPath(item.id, item.consignee_name)}`;
     if (navigator.share) {
       try {
         await navigator.share({
@@ -327,7 +331,7 @@ export function CollectionsTable({
                           {item.pdf_url && (
                             <DropdownMenuItem
                               className="gap-2"
-                              onClick={() => window.open(item.pdf_url!, "_blank")}
+                              onClick={() => handleDownloadPDF(item)}
                             >
                               <Download className="h-3.5 w-3.5" />
                               Download PDF

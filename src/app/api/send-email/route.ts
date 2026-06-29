@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sendCollectionEmail } from "@/lib/email";
+import { buildPdfPath } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
       collectionNumber: gcn.collection_number,
       shipperName: gcn.shipper_name,
       consigneeName: gcn.consignee_name,
-      pdfUrl: gcn.pdf_url || `${appUrl}/api/pdf/${gcn.id}`,
+      pdfUrl: gcn.pdf_url || `${appUrl}${buildPdfPath(gcn.id, gcn.consignee_name)}`,
       trackingUrl,
     });
 

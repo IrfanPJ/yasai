@@ -24,6 +24,20 @@ export function formatVolume(volume?: number) {
   return `${volume.toFixed(3)} CBM`;
 }
 
+export function buildReceiptFilename(consigneeName: string): string {
+  const safe = consigneeName.replace(/[\\/:*?"<>|]/g, "").trim() || "Receipt";
+  return `Goods Collection Receipt - ${safe}.pdf`;
+}
+
+// Embeds the filename as the last URL path segment (not just a query param or
+// Content-Disposition header) because browsers' built-in PDF viewers often
+// derive their own "Save" filename from the URL path itself for inline PDFs,
+// ignoring Content-Disposition — without this, saved files show the raw id.
+export function buildPdfPath(id: string, consigneeName: string, download = false): string {
+  const filename = encodeURIComponent(buildReceiptFilename(consigneeName));
+  return `/api/pdf/${id}/${filename}${download ? "?download=1" : ""}`;
+}
+
 export function generateWhatsAppMessage(params: {
   collectionNumber: string;
   pdfLink: string;
