@@ -371,7 +371,7 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
                   </TableHeader>
                   <TableBody>
                     {activeUsers.map((u) => {
-                      const RoleIcon = ROLE_ICONS[u.role];
+                      const RoleIcon = ROLE_ICONS[u.role] ?? Eye;
                       const isSelf = u.id === currentUser?.id;
                       const isUpdating = updatingUser === u.id;
 
@@ -399,7 +399,7 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
                             <div className="flex items-center gap-2">
                               <Badge
                                 variant="secondary"
-                                className={`${ROLE_COLORS[u.role]} gap-1 text-xs font-semibold`}
+                                className={`${ROLE_COLORS[u.role] ?? ROLE_COLORS.viewer} gap-1 text-xs font-semibold`}
                               >
                                 <RoleIcon className="h-3 w-3" />
                                 {u.role}
