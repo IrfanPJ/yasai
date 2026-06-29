@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "./status-badge";
+import { WarehouseReceivingPanel } from "./warehouse-receiving-panel";
 import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -26,12 +27,13 @@ import {
 import { formatDateTime, formatWeight, formatVolume,
   generateWhatsAppMessage, openWhatsApp, downloadFile, copyToClipboard,
 } from "@/lib/utils";
-import type { GoodsCollectionNote, CollectionStatus } from "@/types";
+import type { GoodsCollectionNote, CollectionStatus, UserRole } from "@/types";
 import { STATUS_LABELS, CARGO_TYPE_LABELS } from "@/types";
 import { useRouter } from "next/navigation";
 
 interface CollectionDetailProps {
   collection: GoodsCollectionNote;
+  userRole: UserRole;
 }
 
 const STATUS_ORDER: CollectionStatus[] = [
@@ -39,7 +41,7 @@ const STATUS_ORDER: CollectionStatus[] = [
   "customs_clearance", "out_for_delivery", "delivered",
 ];
 
-export function CollectionDetail({ collection }: CollectionDetailProps) {
+export function CollectionDetail({ collection, userRole }: CollectionDetailProps) {
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
@@ -411,6 +413,9 @@ export function CollectionDetail({ collection }: CollectionDetailProps) {
         <StatCard label="Volume" value={formatVolume(collection.volume_cbm)} />
         <StatCard label="Weight" value={formatWeight(collection.weight_kg)} />
       </div>
+
+      {/* ── Warehouse Receiving ── */}
+      <WarehouseReceivingPanel collection={collection} userRole={userRole} />
 
       {/* ── QR Code + PDF ── */}
       {(collection.qr_url || collection.pdf_url) && (

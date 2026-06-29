@@ -90,3 +90,106 @@ export async function sendCollectionEmail(params: SendCollectionEmailParams) {
     html,
   });
 }
+
+interface SendWarehouseReportEmailParams {
+  to: string;
+  type: "submitted" | "approved" | "rejected";
+  collectionNumber: string;
+  shipperName: string;
+  consigneeName: string;
+  reviewUrl: string;
+  rejectionReason?: string;
+}
+
+const WAREHOUSE_REPORT_COPY: Record<
+  SendWarehouseReportEmailParams["type"],
+  { subject: string; title: string; message: string }
+> = {
+  submitted: {
+    subject: "Warehouse Report Pending Approval",
+    title: "Warehouse Receiving Report Submitted",
+    message: "A warehouse receiving report has been submitted and is awaiting your review and approval.",
+  },
+  approved: {
+    subject: "Warehouse Report Approved",
+    title: "Warehouse Receiving Report Approved",
+    message: "Your warehouse receiving report has been approved.",
+  },
+  rejected: {
+    subject: "Warehouse Report Needs Correction",
+    title: "Warehouse Receiving Report Rejected",
+    message: "Your warehouse receiving report was rejected and needs correction before it can be resubmitted.",
+  },
+};
+
+export async function sendWarehouseReportEmail(params: SendWarehouseReportEmailParams) {
+  const { to, type, collectionNumber, shipperName, consigneeName, reviewUrl, rejectionReason } = params;
+  const copy = WAREHOUSE_REPORT_COPY[type];
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: #071A3A; padding: 24px 32px; }
+        .header-title { color: white; font-size: 22px; font-weight: bold; margin: 0; }
+        .header-sub { color: #E67A32; font-size: 13px; letter-spacing: 2px; margin: 4px 0 0; }
+        .body { padding: 32px; }
+        .title { color: #071A3A; font-size: 20px; font-weight: bold; margin: 0 0 8px; }
+        .number { color: #E67A32; font-size: 16px; font-weight: bold; }
+        .details { background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 24px 0; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .label { color: #666; font-size: 13px; }
+        .value { color: #071A3A; font-size: 13px; font-weight: bold; }
+        .reason { background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 8px; padding: 16px; margin: 16px 0; color: #991B1B; font-size: 13px; }
+        .btn { display: inline-block; background: #071A3A; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; margin: 8px 8px 8px 0; }
+        .footer { background: #071A3A; padding: 20px 32px; color: #ccc; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <p class="header-title">YASAI</p>
+          <p class="header-sub">LOGISTICS</p>
+        </div>
+        <div class="body">
+          <p class="title">${copy.title}</p>
+          <p class="number">${collectionNumber}</p>
+          <p style="color: #444; font-size: 14px; margin: 16px 0;">${copy.message}</p>
+          <div class="details">
+            <div class="row">
+              <span class="label">Shipper</span>
+              <span class="value">${shipperName}</span>
+            </div>
+            <div class="row">
+              <span class="label">Consignee</span>
+              <span class="value">${consigneeName}</span>
+            </div>
+            <div class="row">
+              <span class="label">Collection #</span>
+              <span class="value">${collectionNumber}</span>
+            </div>
+          </div>
+          ${rejectionReason ? `<div class="reason"><strong>Reason:</strong> ${rejectionReason}</div>` : ""}
+          <a href="${reviewUrl}" class="btn">Review Collection</a>
+        </div>
+        <div class="footer">
+          <p style="margin: 0;">YASAI LOGISTICS COMPANY</p>
+          <p style="margin: 4px 0 0;">+966 55 932 6687 &nbsp;|&nbsp; info@yasailogistics.com &nbsp;|&nbsp; www.yasailogistics.com</p>
+          <p style="margin: 4px 0 0;">H.H Shaikh Saud Bin Saqar, Al Muteena Dubai – UAE</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return getResendClient().emails.send({
+    from: `${process.env.EMAIL_FROM_NAME || "YASAI Logistics"} <${process.env.EMAIL_FROM || "noreply@yasailogistics.com"}>`,
+    to: [to],
+    subject: `${copy.subject} – ${collectionNumber}`,
+    html,
+  });
+}

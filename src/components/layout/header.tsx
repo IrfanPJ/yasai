@@ -63,9 +63,8 @@ export function Header({ title, subtitle }: HeaderProps) {
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-72 p-0">
           <SheetHeader className="px-6 py-5 border-b border-gray-100 bg-white">
-            <SheetTitle asChild>
-              <YasaiLogo variant="dark" />
-            </SheetTitle>
+            <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+            <YasaiLogo variant="dark" />
           </SheetHeader>
           <div className="px-3">
             <MobileNav onClose={() => setMobileOpen(false)} />

@@ -858,33 +858,27 @@ function buildPdfHtml(
 </html>`;
 }
 
-export async function generateCollectionPDF(
-  data: GoodsCollectionNote,
-  qrDataUrl?: string,
-  logoDataUrl?: string,
-): Promise<Buffer> {
-  const html = buildPdfHtml(data, qrDataUrl, logoDataUrl);
-
-  let browser;
-
+async function launchBrowser() {
   if (process.env.VERCEL || process.env.NODE_ENV === "production") {
     const puppeteer = await import("puppeteer-core");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const chromium = (await import("@sparticuz/chromium")).default as any;
-    browser = await puppeteer.launch({
+    return puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
     });
-  } else {
-    const puppeteer = await import("puppeteer");
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-    });
   }
+  const puppeteer = await import("puppeteer");
+  return puppeteer.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+  });
+}
 
+async function renderHtmlToPdf(html: string): Promise<Buffer> {
+  const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "load" });
@@ -896,8 +890,145 @@ export async function generateCollectionPDF(
     });
     return Buffer.from(pdf);
   } finally {
-    if (browser) {
-      await browser.close();
-    }
+    await browser.close();
   }
+}
+
+export async function generateCollectionPDF(
+  data: GoodsCollectionNote,
+  qrDataUrl?: string,
+  logoDataUrl?: string,
+): Promise<Buffer> {
+  const html = buildPdfHtml(data, qrDataUrl, logoDataUrl);
+  return renderHtmlToPdf(html);
+}
+
+interface WarehouseReportNames {
+  receivedBy?: string;
+  submittedBy?: string;
+  approvedBy?: string;
+}
+
+function buildWarehouseReportHtml(
+  data: GoodsCollectionNote,
+  names: WarehouseReportNames,
+  logoDataUrl?: string,
+): string {
+  const fmt = (d?: string) => (d ? format(new Date(d), "d MMM yyyy, h:mm a") : "&#8211;");
+
+  const reportStatusBlock = (() => {
+    switch (data.warehouse_report_status) {
+      case "approved":
+        return `<div class="wr-status wr-status-approved">APPROVED</div>
+          <div class="wr-row"><span class="wr-label">Approved By</span><span class="wr-val">${esc(names.approvedBy) || "&#8211;"}</span></div>
+          <div class="wr-row"><span class="wr-label">Approved At</span><span class="wr-val">${fmt(data.warehouse_report_approved_at)}</span></div>`;
+      case "rejected":
+        return `<div class="wr-status wr-status-rejected">REJECTED &#8211; PENDING CORRECTION</div>
+          <div class="wr-row"><span class="wr-label">Reason</span><span class="wr-val">${esc(data.warehouse_report_rejection_reason) || "&#8211;"}</span></div>`;
+      case "submitted":
+        return `<div class="wr-status wr-status-pending">PENDING APPROVAL</div>`;
+      default:
+        return `<div class="wr-status wr-status-pending">NOT YET SUBMITTED</div>`;
+    }
+  })();
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { margin: 0; size: A4; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+    color: #222;
+    width: 210mm;
+    padding: 0;
+  }
+  .wr-lh {
+    display: flex;
+    align-items: center;
+    padding: 14px 20px;
+    background: white;
+    border-bottom: 2.5px solid ${ORANGE};
+  }
+  .wr-lh img { height: 42px; width: auto; object-fit: contain; margin-right: 14px; }
+  .wr-lh-title { font-size: 13pt; font-weight: 900; color: ${NAVY}; }
+  .wr-lh-sub { font-size: 8pt; color: #888; margin-top: 1px; }
+  .wr-badge-row { display: flex; justify-content: flex-end; padding: 10px 20px 0; }
+  .wr-badge {
+    background: ${ORANGE}; color: white; font-size: 11pt; font-weight: 900;
+    padding: 6px 20px; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .wr-body { padding: 10px 20px 20px; }
+  .wr-section { margin-top: 14px; border: 1.5px solid ${BORDER}; border-radius: 6px; overflow: hidden; }
+  .wr-section-hdr {
+    background: ${HDR_BG}; padding: 6px 10px; font-size: 8.5pt; font-weight: 800;
+    color: ${NAVY}; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1px solid ${BORDER};
+  }
+  .wr-row { display: flex; justify-content: space-between; padding: 6px 12px; border-bottom: 1px solid #F0F0F0; font-size: 9pt; }
+  .wr-row:last-child { border-bottom: none; }
+  .wr-label { color: #666; }
+  .wr-val { color: #111; font-weight: 700; text-align: right; }
+  .wr-status { font-size: 10pt; font-weight: 900; padding: 8px 12px; letter-spacing: 0.4px; }
+  .wr-status-approved { background: #ECFDF5; color: #065F46; }
+  .wr-status-rejected { background: #FEF2F2; color: #991B1B; }
+  .wr-status-pending { background: ${LIGHT_ORANGE}; color: ${ORANGE}; }
+  .wr-goods-img { max-width: 160px; max-height: 110px; object-fit: cover; border-radius: 4px; margin: 10px 12px; display: block; }
+  .wr-notes { padding: 8px 12px; font-size: 8.5pt; color: #444; line-height: 1.4; }
+  .wr-footer { background: ${NAVY}; padding: 10px 20px; text-align: center; font-size: 7.5pt; color: #AAA; margin-top: 20px; }
+</style>
+</head>
+<body>
+  <div class="wr-lh">
+    ${logoDataUrl ? `<img src="${logoDataUrl}" alt="YASAI">` : ""}
+    <div>
+      <div class="wr-lh-title">YASAI LOGISTICS COMPANY</div>
+      <div class="wr-lh-sub">Freight &amp; Logistics Solutions</div>
+    </div>
+  </div>
+  <div class="wr-badge-row"><div class="wr-badge">Warehouse Receiving Report</div></div>
+
+  <div class="wr-body">
+    <div class="wr-section">
+      <div class="wr-section-hdr">${headerIcon("&#128196;")} Goods Collection Reference</div>
+      <div class="wr-row"><span class="wr-label">Document No.</span><span class="wr-val">${esc(data.collection_number)}</span></div>
+      <div class="wr-row"><span class="wr-label">Shipper</span><span class="wr-val">${esc(data.shipper_name)}</span></div>
+      <div class="wr-row"><span class="wr-label">Consignee</span><span class="wr-val">${esc(data.consignee_name)}</span></div>
+      <div class="wr-row"><span class="wr-label">Commodity</span><span class="wr-val">${esc(data.commodity)}</span></div>
+      <div class="wr-row"><span class="wr-label">Destination</span><span class="wr-val">${esc(data.destination)}</span></div>
+      <div class="wr-row"><span class="wr-label">Packages / Volume / Weight</span><span class="wr-val">${esc(data.num_packages) || "&#8211;"} &nbsp;/&nbsp; ${data.volume_cbm ? Number(data.volume_cbm).toFixed(2) : "&#8211;"} CBM &nbsp;/&nbsp; ${data.weight_kg ? Number(data.weight_kg).toFixed(2) : "&#8211;"} KGS</span></div>
+    </div>
+
+    <div class="wr-section">
+      <div class="wr-section-hdr">${headerIcon("&#127974;")} Warehouse Receiving Details</div>
+      <div class="wr-row"><span class="wr-label">Received By</span><span class="wr-val">${esc(names.receivedBy) || "&#8211;"}</span></div>
+      <div class="wr-row"><span class="wr-label">Received At</span><span class="wr-val">${fmt(data.warehouse_received_at)}</span></div>
+      <div class="wr-row"><span class="wr-label">Storage Location</span><span class="wr-val">${esc(data.storage_location) || "&#8211;"}</span></div>
+      <div class="wr-row"><span class="wr-label">Palletized</span><span class="wr-val">${data.palletized ? "Yes" : "No"}</span></div>
+      ${data.goods_image_url ? `<img src="${data.goods_image_url}" class="wr-goods-img" alt="Goods">` : ""}
+    </div>
+
+    <div class="wr-section">
+      <div class="wr-section-hdr">${headerIcon("&#9997;")} Report Status</div>
+      ${reportStatusBlock}
+      <div class="wr-row"><span class="wr-label">Submitted By</span><span class="wr-val">${esc(names.submittedBy) || "&#8211;"}</span></div>
+      <div class="wr-row"><span class="wr-label">Submitted At</span><span class="wr-val">${fmt(data.warehouse_report_submitted_at)}</span></div>
+      ${data.warehouse_report_notes ? `<div class="wr-notes"><strong>Notes:</strong> ${esc(data.warehouse_report_notes)}</div>` : ""}
+    </div>
+  </div>
+
+  <div class="wr-footer">YASAI LOGISTICS COMPANY &nbsp;&#8211;&nbsp; Trusted Name in Cargo Consolidation</div>
+</body>
+</html>`;
+}
+
+export async function generateWarehouseReportPDF(
+  data: GoodsCollectionNote,
+  names: WarehouseReportNames,
+  logoDataUrl?: string,
+): Promise<Buffer> {
+  const html = buildWarehouseReportHtml(data, names, logoDataUrl);
+  return renderHtmlToPdf(html);
 }

@@ -1,4 +1,6 @@
-export type UserRole = "admin" | "operations" | "warehouse" | "viewer";
+export type UserRole = "admin" | "operations" | "warehouse" | "warehouse_supervisor" | "viewer";
+
+export type WarehouseReportStatus = "not_submitted" | "submitted" | "approved" | "rejected";
 
 export type CargoType = "air" | "sea" | "land";
 
@@ -59,6 +61,21 @@ export interface GoodsCollectionNote {
 
   // Goods photo
   goods_image_url?: string;
+
+  // Warehouse receiving (Stage 2)
+  storage_location?: string;
+  palletized: boolean;
+  warehouse_received_by?: string;
+  warehouse_received_at?: string;
+  warehouse_verified_by?: string;
+  warehouse_verified_at?: string;
+  warehouse_report_status: WarehouseReportStatus;
+  warehouse_report_notes?: string;
+  warehouse_report_submitted_by?: string;
+  warehouse_report_submitted_at?: string;
+  warehouse_report_approved_by?: string;
+  warehouse_report_approved_at?: string;
+  warehouse_report_rejection_reason?: string;
 
   // Status
   status: CollectionStatus;
@@ -157,4 +174,11 @@ export const CARGO_TYPE_LABELS: Record<CargoType, string> = {
   air: "Air Freight",
   sea: "Sea Freight",
   land: "Land Freight",
+};
+
+export const WAREHOUSE_REPORT_LABELS: Record<WarehouseReportStatus, string> = {
+  not_submitted: "Not Submitted",
+  submitted: "Pending Approval",
+  approved: "Approved",
+  rejected: "Rejected",
 };

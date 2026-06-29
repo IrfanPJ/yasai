@@ -8,7 +8,7 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-const VALID_ROLES: UserRole[] = ["admin", "operations", "warehouse", "viewer"];
+const VALID_ROLES: UserRole[] = ["admin", "operations", "warehouse", "warehouse_supervisor", "viewer"];
 
 // Admin-only: Update a user's role or active status
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
