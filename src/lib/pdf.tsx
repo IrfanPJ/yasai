@@ -1039,12 +1039,12 @@ export async function generateWarehouseReportPDF(
    ═══════════════════════════════════════════════════════ */
 
 function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
-  const fmtDate = (d?: string | null) => {
-    if (!d) return "&#8211;";
+  const fmtDate = (d?: string | null): string | null => {
+    if (!d) return null;
     try { return format(new Date(d), "dd/MM/yyyy"); } catch { return d; }
   };
 
-  const TOTAL_ROWS = 10;
+  const TOTAL_ROWS = 7;
   const items: DeliveryNoteItem[] = Array.isArray(dn.items) ? dn.items : [];
   const emptyRowsNeeded = Math.max(0, TOTAL_ROWS - items.length);
 
@@ -1059,7 +1059,7 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
     </tr>`).join("");
 
   const emptyRows = Array.from({ length: emptyRowsNeeded }, () => `
-    <tr style="height:20px">
+    <tr style="height:26px">
       <td class="dn-td"></td>
       <td class="dn-td"></td>
       <td class="dn-td"></td>
@@ -1068,10 +1068,11 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
       <td class="dn-td"></td>
     </tr>`).join("");
 
+  // value is already safe HTML (either esc()'d or a date string) — do NOT re-escape
   const infoRow = (label: string, value: string | null) =>
     `<div class="dn-info-row">
       <span class="dn-info-label">${label}</span>
-      <span class="dn-info-val">${value ? esc(value) : "&#8211;"}</span>
+      <span class="dn-info-val">${value ?? "&#8211;"}</span>
     </div>`;
 
   return `<!DOCTYPE html>
@@ -1098,7 +1099,7 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
   .lh {
     display: flex;
     align-items: center;
-    padding: 8px 14px 6px;
+    padding: 10px 16px 8px;
     border-bottom: 2.5px solid ${ORANGE};
     background: white;
     flex-shrink: 0;
@@ -1106,44 +1107,44 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
   .lh-logo {
     display: flex;
     align-items: center;
-    padding-right: 12px;
+    padding-right: 14px;
     border-right: 2.5px solid ${ORANGE};
-    min-width: 90px;
-    height: 48px;
+    min-width: 100px;
+    height: 54px;
   }
-  .lh-logo img { height: 42px; width: auto; object-fit: contain; }
-  .lh-center { flex: 1; padding: 0 14px; }
-  .lh-title-en { font-size: 12pt; font-weight: 900; color: ${NAVY}; letter-spacing: 0.5px; }
-  .lh-subtitle { font-size: 7pt; color: #888; margin-top: 1px; }
-  .lh-ar { font-size: 10pt; font-weight: bold; color: ${NAVY}; direction: rtl; text-align: right; min-width: 160px; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
+  .lh-logo img { height: 48px; width: auto; object-fit: contain; }
+  .lh-center { flex: 1; padding: 0 16px; }
+  .lh-title-en { font-size: 14pt; font-weight: 900; color: ${NAVY}; letter-spacing: 0.5px; }
+  .lh-subtitle { font-size: 8pt; color: #888; margin-top: 2px; }
+  .lh-ar { font-size: 12pt; font-weight: bold; color: ${NAVY}; direction: rtl; text-align: right; min-width: 180px; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
 
   /* ── CONTACT ROW ── */
   .contact-row {
-    display: flex; align-items: center; padding: 3px 14px;
-    background: white; gap: 14px; font-size: 6pt; color: #666;
+    display: flex; align-items: center; padding: 4px 16px;
+    background: white; gap: 16px; font-size: 7pt; color: #666;
     border-bottom: 1px solid #eee; flex-shrink: 0;
   }
   .contact-row .ci { display: flex; align-items: center; gap: 3px; }
   .ci-icon {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 12px; height: 12px; background: ${ORANGE}; border-radius: 50%;
+    width: 13px; height: 13px; background: ${ORANGE}; border-radius: 50%;
     color: white; font-size: 7px; flex-shrink: 0;
   }
   .web-icon {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 12px; height: 12px; background: ${NAVY}; border-radius: 50%;
+    width: 13px; height: 13px; background: ${NAVY}; border-radius: 50%;
     color: white; font-size: 7px; flex-shrink: 0;
   }
 
   /* ── BADGE ── */
   .badge-row {
     display: flex; justify-content: flex-end;
-    padding: 0 14px; margin-top: -18px; position: relative; z-index: 2;
+    padding: 0 16px; margin-top: -20px; position: relative; z-index: 2;
     flex-shrink: 0;
   }
   .doc-badge {
-    background: ${ORANGE}; color: white; font-size: 9.5pt; font-weight: 900;
-    padding: 5px 18px; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase;
+    background: ${ORANGE}; color: white; font-size: 11pt; font-weight: 900;
+    padding: 6px 20px; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase;
   }
 
   /* ── CONTENT ── */
@@ -1151,15 +1152,15 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 8px 14px 6px;
-    gap: 6px;
+    padding: 10px 16px 8px;
+    gap: 8px;
     overflow: hidden;
   }
 
   /* ── TOP INFO ROW ── */
   .dn-top-grid {
     display: flex;
-    gap: 6px;
+    gap: 8px;
     flex-shrink: 0;
   }
 
@@ -1173,18 +1174,18 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
   .dn-card-hdr {
     background: ${NAVY};
     color: white;
-    font-size: 6.5pt;
+    font-size: 8pt;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 3px 8px;
+    padding: 5px 10px;
     display: flex;
     align-items: center;
     gap: 4px;
   }
-  .dn-card-body { padding: 6px 8px; }
-  .dn-cust-name { font-size: 10pt; font-weight: 900; color: ${NAVY}; margin-bottom: 3px; }
-  .dn-cust-line { font-size: 7.5pt; color: #444; line-height: 1.6; }
+  .dn-card-body { padding: 8px 10px; }
+  .dn-cust-name { font-size: 12pt; font-weight: 900; color: ${NAVY}; margin-bottom: 4px; }
+  .dn-cust-line { font-size: 9pt; color: #444; line-height: 1.65; }
 
   /* Doc details card */
   .dn-doc-card {
@@ -1196,21 +1197,21 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
   .dn-info-row {
     display: flex;
     align-items: baseline;
-    padding: 2.5px 8px;
+    padding: 3.5px 10px;
     border-bottom: 1px solid ${BORDER};
-    gap: 4px;
+    gap: 6px;
   }
   .dn-info-row:last-child { border-bottom: none; }
   .dn-info-label {
-    font-size: 6.5pt;
+    font-size: 8pt;
     font-weight: 700;
     color: #666;
     text-transform: uppercase;
     letter-spacing: 0.3px;
-    min-width: 68px;
+    min-width: 80px;
     flex-shrink: 0;
   }
-  .dn-info-val { font-size: 8pt; font-weight: 600; color: ${NAVY}; }
+  .dn-info-val { font-size: 9.5pt; font-weight: 600; color: ${NAVY}; }
 
   /* Notes card */
   .dn-notes-card {
@@ -1219,7 +1220,7 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
     border-radius: 6px;
     overflow: hidden;
   }
-  .dn-notes-body { padding: 6px 8px; font-size: 7.5pt; color: #444; line-height: 1.5; }
+  .dn-notes-body { padding: 8px 10px; font-size: 9pt; color: #444; line-height: 1.5; }
 
   /* ── ITEMS TABLE ── */
   .dn-table-wrap {
@@ -1235,11 +1236,11 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
   .dn-th {
     background: ${NAVY};
     color: white;
-    font-size: 7pt;
+    font-size: 8.5pt;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.4px;
-    padding: 5px 6px;
+    padding: 7px 8px;
     text-align: center;
     border-right: 1px solid rgba(255,255,255,0.15);
   }
@@ -1247,8 +1248,8 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
   .dn-th:nth-child(2) { text-align: left; }
   .dn-td {
     border: 1px solid ${BORDER};
-    padding: 4px 6px;
-    font-size: 8pt;
+    padding: 5px 8px;
+    font-size: 9pt;
     vertical-align: top;
     color: #222;
   }
@@ -1265,24 +1266,24 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
   .dn-signoff-hdr {
     background: ${LIGHT_ORANGE};
     border-bottom: 1.5px solid ${ORANGE};
-    padding: 4px 10px;
-    font-size: 7.5pt;
+    padding: 5px 12px;
+    font-size: 9pt;
     font-weight: 700;
     color: ${NAVY};
   }
   .dn-signoff-body {
     display: flex;
-    padding: 8px 10px 10px;
+    padding: 10px 12px 12px;
     gap: 0;
   }
-  .dn-sig-block { flex: 1; font-size: 8pt; color: #444; }
+  .dn-sig-block { flex: 1; font-size: 9pt; color: #444; }
   .dn-sig-line {
     display: block;
     border-bottom: 1px solid #999;
-    margin-top: 16px;
-    margin-right: 20px;
+    margin-top: 18px;
+    margin-right: 24px;
   }
-  .dn-sig-label { font-size: 7pt; color: #888; margin-top: 3px; }
+  .dn-sig-label { font-size: 8pt; color: #888; margin-top: 4px; }
 
   /* ── FOOTER ── */
   .dn-footer {
@@ -1290,7 +1291,7 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
     justify-content: space-between;
     align-items: center;
     background: ${NAVY};
-    padding: 6px 14px;
+    padding: 7px 16px;
     flex-shrink: 0;
   }
   .dn-footer-left { display: flex; align-items: center; gap: 6px; }
@@ -1301,18 +1302,18 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .pin span { font-size: 10px; color: ${ORANGE}; }
-  .f-co-en { font-size: 7pt; font-weight: bold; color: white; }
-  .f-ad-en { font-size: 5.5pt; color: #AAA; line-height: 1.4; margin-top: 1px; }
-  .f-co-ar { font-size: 8pt; font-weight: bold; color: white; text-align: right; direction: rtl; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
-  .f-ad-ar { font-size: 5.5pt; color: #AAA; text-align: right; direction: rtl; line-height: 1.4; margin-top: 1px; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
+  .f-co-en { font-size: 8pt; font-weight: bold; color: white; }
+  .f-ad-en { font-size: 6pt; color: #AAA; line-height: 1.4; margin-top: 1px; }
+  .f-co-ar { font-size: 9pt; font-weight: bold; color: white; text-align: right; direction: rtl; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
+  .f-ad-ar { font-size: 6pt; color: #AAA; text-align: right; direction: rtl; line-height: 1.4; margin-top: 1px; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
 
   /* Doc ref strip */
   .dn-doc-ref {
     display: flex;
     justify-content: space-between;
     background: ${HDR_BG};
-    padding: 2px 14px;
-    font-size: 6.5pt;
+    padding: 3px 16px;
+    font-size: 7.5pt;
     color: #666;
     flex-shrink: 0;
   }
@@ -1366,11 +1367,11 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
       <div class="dn-doc-card">
         <div class="dn-card-hdr">${headerIcon("&#128196;")} Document Info</div>
         ${infoRow("Date", fmtDate(dn.doc_date))}
-        ${infoRow("Doc No", dn.doc_number)}
-        ${infoRow("Job", dn.job_number)}
-        ${infoRow("Shipper", dn.shipper)}
-        ${infoRow("Ref", dn.ref_number)}
-        ${infoRow("Destination", dn.destination)}
+        ${infoRow("Doc No", dn.doc_number ? esc(dn.doc_number) : null)}
+        ${infoRow("Job", dn.job_number ? esc(dn.job_number) : null)}
+        ${infoRow("Shipper", dn.shipper ? esc(dn.shipper) : null)}
+        ${infoRow("Ref", dn.ref_number ? esc(dn.ref_number) : null)}
+        ${infoRow("Destination", dn.destination ? esc(dn.destination) : null)}
       </div>
 
       <!-- Notes card -->
@@ -1452,5 +1453,5 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
 
 export async function generateDeliveryNotePDF(dn: DeliveryNote, logoDataUrl?: string): Promise<Buffer> {
   const html = buildDeliveryNoteHtml(dn, logoDataUrl);
-  return renderHtmlToPdf(html, 1.2);
+  return renderHtmlToPdf(html);
 }
