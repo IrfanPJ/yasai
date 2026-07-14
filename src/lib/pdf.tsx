@@ -1086,7 +1086,7 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
   @page { size: A4; margin: 0; }
   body {
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 9pt;
+    font-size: 10pt;
     color: #111;
     background: white;
     height: 297mm;
@@ -1095,237 +1095,195 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
     overflow: hidden;
   }
 
-  /* ── LETTERHEAD ── */
+  /* ── LETTERHEAD (identical to GCN — brand anchor) ── */
   .lh {
-    display: flex;
-    align-items: center;
-    padding: 10px 16px 8px;
+    display: flex; align-items: center;
+    padding: 8px 14px 6px;
     border-bottom: 2.5px solid ${ORANGE};
-    background: white;
-    flex-shrink: 0;
+    background: white; flex-shrink: 0;
   }
-  .lh-logo {
-    display: flex;
-    align-items: center;
-    padding-right: 14px;
-    border-right: 2.5px solid ${ORANGE};
-    min-width: 100px;
-    height: 54px;
-  }
-  .lh-logo img { height: 48px; width: auto; object-fit: contain; }
-  .lh-center { flex: 1; padding: 0 16px; }
-  .lh-title-en { font-size: 14pt; font-weight: 900; color: ${NAVY}; letter-spacing: 0.5px; }
-  .lh-subtitle { font-size: 8pt; color: #888; margin-top: 2px; }
-  .lh-ar { font-size: 12pt; font-weight: bold; color: ${NAVY}; direction: rtl; text-align: right; min-width: 180px; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
+  .lh-logo { display: flex; align-items: center; padding-right: 12px; border-right: 2.5px solid ${ORANGE}; min-width: 90px; height: 48px; }
+  .lh-logo img { height: 42px; width: auto; object-fit: contain; }
+  .lh-center { flex: 1; padding: 0 14px; }
+  .lh-title-en { font-size: 12pt; font-weight: 900; color: ${NAVY}; letter-spacing: 0.5px; }
+  .lh-subtitle { font-size: 7pt; color: #888; margin-top: 1px; }
+  .lh-ar { font-size: 10pt; font-weight: bold; color: ${NAVY}; direction: rtl; text-align: right; min-width: 160px; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
 
-  /* ── CONTACT ROW ── */
-  .contact-row {
-    display: flex; align-items: center; padding: 4px 16px;
-    background: white; gap: 16px; font-size: 7pt; color: #666;
-    border-bottom: 1px solid #eee; flex-shrink: 0;
-  }
+  /* ── CONTACT ROW (identical to GCN) ── */
+  .contact-row { display: flex; align-items: center; padding: 3px 14px; background: white; gap: 14px; font-size: 6pt; color: #666; border-bottom: 1px solid #eee; flex-shrink: 0; }
   .contact-row .ci { display: flex; align-items: center; gap: 3px; }
-  .ci-icon {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 13px; height: 13px; background: ${ORANGE}; border-radius: 50%;
-    color: white; font-size: 7px; flex-shrink: 0;
-  }
-  .web-icon {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 13px; height: 13px; background: ${NAVY}; border-radius: 50%;
-    color: white; font-size: 7px; flex-shrink: 0;
-  }
+  .ci-icon { display: inline-flex; align-items: center; justify-content: center; width: 12px; height: 12px; background: ${ORANGE}; border-radius: 50%; color: white; font-size: 7px; flex-shrink: 0; }
+  .web-icon { display: inline-flex; align-items: center; justify-content: center; width: 12px; height: 12px; background: ${NAVY}; border-radius: 50%; color: white; font-size: 7px; flex-shrink: 0; }
 
-  /* ── BADGE ── */
-  .badge-row {
-    display: flex; justify-content: flex-end;
-    padding: 0 16px; margin-top: -20px; position: relative; z-index: 2;
+  /* ── ORANGE TITLE BAND — replaces the badge, very different from GCN ── */
+  .dn-title-band {
+    background: ${ORANGE};
+    padding: 10px 18px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
     flex-shrink: 0;
   }
-  .doc-badge {
-    background: ${ORANGE}; color: white; font-size: 11pt; font-weight: 900;
-    padding: 6px 20px; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase;
+  .dn-title-text {
+    font-size: 16pt;
+    font-weight: 900;
+    color: white;
+    letter-spacing: 2px;
+    text-transform: uppercase;
   }
+  .dn-title-meta {
+    display: flex;
+    gap: 20px;
+  }
+  .dn-meta-item {
+    font-size: 8pt;
+    color: rgba(255,255,255,0.85);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  .dn-meta-label { font-size: 6.5pt; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.6); }
+  .dn-meta-val { font-weight: 700; font-size: 9pt; color: white; }
 
   /* ── CONTENT ── */
-  .dn-content {
+  .dn-body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 10px 16px 8px;
-    gap: 8px;
+    padding: 12px 18px 8px;
+    gap: 10px;
     overflow: hidden;
   }
 
-  /* ── TOP INFO ROW ── */
-  .dn-top-grid {
+  /* ── CUSTOMER + DOC INFO: plain two-column table, no colored boxes ── */
+  .dn-info-grid {
     display: flex;
-    gap: 8px;
+    gap: 0;
+    border: 1px solid ${BORDER};
     flex-shrink: 0;
   }
+  .dn-cust-col {
+    flex: 1.5;
+    padding: 10px 14px;
+    border-right: 1px solid ${BORDER};
+  }
+  .dn-col-label {
+    font-size: 7pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: ${ORANGE};
+    border-bottom: 1.5px solid ${ORANGE};
+    padding-bottom: 3px;
+    margin-bottom: 6px;
+  }
+  .dn-cust-name { font-size: 12pt; font-weight: 900; color: ${NAVY}; margin-bottom: 4px; }
+  .dn-cust-line { font-size: 9pt; color: #444; line-height: 1.7; }
 
-  /* Customer card */
-  .dn-cust-card {
-    flex: 1.4;
-    border: 1.5px solid ${BORDER};
-    border-radius: 6px;
+  .dn-doc-col {
+    flex: 1;
+    border-right: 1px solid ${BORDER};
+  }
+  .dn-field {
+    display: flex;
+    align-items: baseline;
+    padding: 4px 12px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .dn-field:last-child { border-bottom: none; }
+  .dn-field-lbl {
+    font-size: 7.5pt;
+    color: #888;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    min-width: 72px;
+    flex-shrink: 0;
+  }
+  .dn-field-val { font-size: 9pt; font-weight: 700; color: ${NAVY}; }
+
+  .dn-notes-col {
+    flex: 0.7;
+    padding: 10px 12px;
+  }
+  .dn-notes-txt { font-size: 8.5pt; color: #555; line-height: 1.55; margin-top: 6px; }
+
+  /* ── ITEMS TABLE — orange header, not navy ── */
+  .dn-table-wrap {
+    flex: 1;
+    border: 1px solid ${BORDER};
     overflow: hidden;
   }
-  .dn-card-hdr {
-    background: ${NAVY};
+  .dn-table { width: 100%; border-collapse: collapse; }
+  .dn-th {
+    background: ${ORANGE};
     color: white;
     font-size: 8pt;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 5px 10px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .dn-card-body { padding: 8px 10px; }
-  .dn-cust-name { font-size: 12pt; font-weight: 900; color: ${NAVY}; margin-bottom: 4px; }
-  .dn-cust-line { font-size: 9pt; color: #444; line-height: 1.65; }
-
-  /* Doc details card */
-  .dn-doc-card {
-    flex: 1;
-    border: 1.5px solid ${BORDER};
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .dn-info-row {
-    display: flex;
-    align-items: baseline;
-    padding: 3.5px 10px;
-    border-bottom: 1px solid ${BORDER};
-    gap: 6px;
-  }
-  .dn-info-row:last-child { border-bottom: none; }
-  .dn-info-label {
-    font-size: 8pt;
-    font-weight: 700;
-    color: #666;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    min-width: 80px;
-    flex-shrink: 0;
-  }
-  .dn-info-val { font-size: 9.5pt; font-weight: 600; color: ${NAVY}; }
-
-  /* Notes card */
-  .dn-notes-card {
-    flex: 0.7;
-    border: 1.5px solid ${BORDER};
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .dn-notes-body { padding: 8px 10px; font-size: 9pt; color: #444; line-height: 1.5; }
-
-  /* ── ITEMS TABLE ── */
-  .dn-table-wrap {
-    flex: 1;
-    border: 1.5px solid ${BORDER};
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .dn-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  .dn-th {
-    background: ${NAVY};
-    color: white;
-    font-size: 8.5pt;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
     padding: 7px 8px;
     text-align: center;
-    border-right: 1px solid rgba(255,255,255,0.15);
+    border-right: 1px solid rgba(255,255,255,0.25);
   }
-  .dn-th:first-child { text-align: center; }
   .dn-th:nth-child(2) { text-align: left; }
+  .dn-th:last-child { text-align: left; }
   .dn-td {
     border: 1px solid ${BORDER};
     padding: 5px 8px;
     font-size: 9pt;
-    vertical-align: top;
+    vertical-align: middle;
     color: #222;
   }
   .dn-center { text-align: center; }
-  tr:nth-child(even) .dn-td { background: ${HDR_BG}; }
+  tr:nth-child(even) .dn-td { background: #fafafa; }
 
-  /* ── RECEIVER SIGN-OFF ── */
+  /* ── SIGN-OFF: plain ruled lines, no box ── */
   .dn-signoff {
     flex-shrink: 0;
-    border: 1.5px solid ${BORDER};
-    border-radius: 6px;
-    overflow: hidden;
+    padding: 6px 0 4px;
+    border-top: 2px solid ${ORANGE};
   }
-  .dn-signoff-hdr {
-    background: ${LIGHT_ORANGE};
-    border-bottom: 1.5px solid ${ORANGE};
-    padding: 5px 12px;
+  .dn-signoff-text {
     font-size: 9pt;
-    font-weight: 700;
-    color: ${NAVY};
+    color: #333;
+    font-style: italic;
+    margin-bottom: 12px;
   }
-  .dn-signoff-body {
-    display: flex;
-    padding: 10px 12px 12px;
-    gap: 0;
-  }
-  .dn-sig-block { flex: 1; font-size: 9pt; color: #444; }
-  .dn-sig-line {
-    display: block;
-    border-bottom: 1px solid #999;
-    margin-top: 18px;
-    margin-right: 24px;
-  }
-  .dn-sig-label { font-size: 8pt; color: #888; margin-top: 4px; }
+  .dn-sig-row { display: flex; gap: 20px; }
+  .dn-sig-block { flex: 1; }
+  .dn-sig-line { border-bottom: 1px solid #aaa; margin-bottom: 4px; height: 20px; }
+  .dn-sig-lbl { font-size: 7.5pt; color: #888; text-transform: uppercase; letter-spacing: 0.4px; }
 
-  /* ── FOOTER ── */
-  .dn-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: ${NAVY};
-    padding: 7px 16px;
+  /* ── DOC REF STRIP ── */
+  .dn-doc-ref {
+    display: flex; justify-content: space-between;
+    padding: 3px 18px;
+    font-size: 7pt; color: #888;
+    border-top: 1px solid ${BORDER};
     flex-shrink: 0;
+  }
+
+  /* ── FOOTER (identical to GCN — brand anchor) ── */
+  .dn-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    background: ${NAVY}; padding: 6px 14px; flex-shrink: 0;
   }
   .dn-footer-left { display: flex; align-items: center; gap: 6px; }
   .dn-footer-right { display: flex; align-items: center; gap: 6px; }
-  .pin {
-    width: 18px; height: 18px; border-radius: 50%;
-    border: 1.5px solid ${ORANGE};
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  }
+  .pin { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid ${ORANGE}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .pin span { font-size: 10px; color: ${ORANGE}; }
-  .f-co-en { font-size: 8pt; font-weight: bold; color: white; }
-  .f-ad-en { font-size: 6pt; color: #AAA; line-height: 1.4; margin-top: 1px; }
-  .f-co-ar { font-size: 9pt; font-weight: bold; color: white; text-align: right; direction: rtl; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
-  .f-ad-ar { font-size: 6pt; color: #AAA; text-align: right; direction: rtl; line-height: 1.4; margin-top: 1px; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
-
-  /* Doc ref strip */
-  .dn-doc-ref {
-    display: flex;
-    justify-content: space-between;
-    background: ${HDR_BG};
-    padding: 3px 16px;
-    font-size: 7.5pt;
-    color: #666;
-    flex-shrink: 0;
-  }
+  .f-co-en { font-size: 7pt; font-weight: bold; color: white; }
+  .f-ad-en { font-size: 5.5pt; color: #AAA; line-height: 1.4; margin-top: 1px; }
+  .f-co-ar { font-size: 8pt; font-weight: bold; color: white; text-align: right; direction: rtl; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
+  .f-ad-ar { font-size: 5.5pt; color: #AAA; text-align: right; direction: rtl; line-height: 1.4; margin-top: 1px; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
 </style>
 </head>
 <body>
 
-  <!-- LETTERHEAD -->
+  <!-- LETTERHEAD (same as GCN) -->
   <div class="lh">
-    <div class="lh-logo">
-      ${logoDataUrl ? `<img src="${logoDataUrl}" alt="YASAI">` : ""}
-    </div>
+    <div class="lh-logo">${logoDataUrl ? `<img src="${logoDataUrl}" alt="YASAI">` : ""}</div>
     <div class="lh-center">
       <div class="lh-title-en">YASAI LOGISTICS COMPANY</div>
       <div class="lh-subtitle">Freight &amp; Logistics Solutions</div>
@@ -1333,7 +1291,7 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
     <div class="lh-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1575;&#1578; &#1588;.&#1584;.&#1605;.&#1605;</div>
   </div>
 
-  <!-- CONTACT ROW -->
+  <!-- CONTACT ROW (same as GCN) -->
   <div class="contact-row">
     <div class="ci"><span class="ci-icon">&#9679;</span> H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
     <div class="ci"><span class="ci-icon">&#9990;</span> +966 55 932 6687</div>
@@ -1341,58 +1299,60 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
     <div class="ci"><span class="web-icon">&#8853;</span> www.yasailogistics.com</div>
   </div>
 
-  <!-- BADGE -->
-  <div class="badge-row">
-    <div class="doc-badge">Delivery Note</div>
+  <!-- ORANGE TITLE BAND with doc meta inline -->
+  <div class="dn-title-band">
+    <div class="dn-title-text">Delivery Note</div>
+    <div class="dn-title-meta">
+      ${dn.doc_number ? `<div class="dn-meta-item"><span class="dn-meta-label">Doc No</span><span class="dn-meta-val">${esc(dn.doc_number)}</span></div>` : ""}
+      ${dn.doc_date ? `<div class="dn-meta-item"><span class="dn-meta-label">Date</span><span class="dn-meta-val">${fmtDate(dn.doc_date) ?? ""}</span></div>` : ""}
+    </div>
   </div>
 
-  <!-- CONTENT -->
-  <div class="dn-content">
+  <!-- BODY -->
+  <div class="dn-body">
 
-    <!-- Top: Customer + Doc Info + Notes -->
-    <div class="dn-top-grid">
+    <!-- Customer + Doc fields + Notes — plain, no colored boxes -->
+    <div class="dn-info-grid">
 
-      <!-- Customer card -->
-      <div class="dn-cust-card">
-        <div class="dn-card-hdr">${headerIcon("&#128100;")} Customer Details</div>
-        <div class="dn-card-body">
-          <div class="dn-cust-name">${esc(dn.customer_name) || "&#8211;"}</div>
-          ${dn.customer_address ? `<div class="dn-cust-line">${esc(dn.customer_address).replace(/\n/g, "<br>")}</div>` : ""}
-          ${dn.customer_phone ? `<div class="dn-cust-line">Tel: ${esc(dn.customer_phone)}</div>` : ""}
-          ${dn.customer_email ? `<div class="dn-cust-line">Email: ${esc(dn.customer_email)}</div>` : ""}
-        </div>
+      <div class="dn-cust-col">
+        <div class="dn-col-label">Customer Details</div>
+        <div class="dn-cust-name">${esc(dn.customer_name) || "&#8211;"}</div>
+        ${dn.customer_address ? `<div class="dn-cust-line">${esc(dn.customer_address).replace(/\n/g, "<br>")}</div>` : ""}
+        ${dn.customer_phone ? `<div class="dn-cust-line">Tel: ${esc(dn.customer_phone)}</div>` : ""}
+        ${dn.customer_email ? `<div class="dn-cust-line">Email: ${esc(dn.customer_email)}</div>` : ""}
       </div>
 
-      <!-- Doc details card -->
-      <div class="dn-doc-card">
-        <div class="dn-card-hdr">${headerIcon("&#128196;")} Document Info</div>
-        ${infoRow("Date", fmtDate(dn.doc_date))}
-        ${infoRow("Doc No", dn.doc_number ? esc(dn.doc_number) : null)}
-        ${infoRow("Job", dn.job_number ? esc(dn.job_number) : null)}
-        ${infoRow("Shipper", dn.shipper ? esc(dn.shipper) : null)}
-        ${infoRow("Ref", dn.ref_number ? esc(dn.ref_number) : null)}
-        ${infoRow("Destination", dn.destination ? esc(dn.destination) : null)}
+      <div class="dn-doc-col">
+        <div style="padding:10px 12px 3px"><div class="dn-col-label">Shipment Info</div></div>
+        ${[
+          ["Job", dn.job_number],
+          ["Shipper", dn.shipper],
+          ["Ref", dn.ref_number],
+          ["Destination", dn.destination],
+        ].map(([l, v]) => `<div class="dn-field">
+          <span class="dn-field-lbl">${l}</span>
+          <span class="dn-field-val">${v ? esc(v) : "&#8211;"}</span>
+        </div>`).join("")}
       </div>
 
-      <!-- Notes card -->
-      <div class="dn-notes-card">
-        <div class="dn-card-hdr">${headerIcon("&#9998;")} Remarks</div>
-        <div class="dn-notes-body">${dn.notes ? esc(dn.notes).replace(/\n/g, "<br>") : "&#8211;"}</div>
+      <div class="dn-notes-col">
+        <div class="dn-col-label">Remarks</div>
+        <div class="dn-notes-txt">${dn.notes ? esc(dn.notes).replace(/\n/g, "<br>") : "&#8211;"}</div>
       </div>
 
     </div>
 
-    <!-- Items table -->
+    <!-- Items table — orange header -->
     <div class="dn-table-wrap">
       <table class="dn-table">
         <thead>
           <tr>
             <th class="dn-th" style="width:5%">No</th>
-            <th class="dn-th" style="text-align:left">Item Description</th>
+            <th class="dn-th">Item Description</th>
             <th class="dn-th" style="width:8%">QTY</th>
             <th class="dn-th" style="width:9%">UNIT</th>
-            <th class="dn-th" style="width:12%">TOTAL<br>PALLETS</th>
-            <th class="dn-th" style="width:17%;text-align:left">REMARK</th>
+            <th class="dn-th" style="width:12%">Total Pallets</th>
+            <th class="dn-th" style="width:17%">Remark</th>
           </tr>
         </thead>
         <tbody>
@@ -1402,34 +1362,25 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
       </table>
     </div>
 
-    <!-- Receiver sign-off -->
+    <!-- Sign-off: plain ruled lines, no box -->
     <div class="dn-signoff">
-      <div class="dn-signoff-hdr">The above goods received in good condition</div>
-      <div class="dn-signoff-body">
-        <div class="dn-sig-block">
-          <div class="dn-sig-line"></div>
-          <div class="dn-sig-label">Receiver's Name</div>
-        </div>
-        <div class="dn-sig-block">
-          <div class="dn-sig-line"></div>
-          <div class="dn-sig-label">Signature</div>
-        </div>
-        <div class="dn-sig-block">
-          <div class="dn-sig-line"></div>
-          <div class="dn-sig-label">Date</div>
-        </div>
+      <div class="dn-signoff-text">The above goods received in good condition :</div>
+      <div class="dn-sig-row">
+        <div class="dn-sig-block"><div class="dn-sig-line"></div><div class="dn-sig-lbl">Receiver's Name</div></div>
+        <div class="dn-sig-block"><div class="dn-sig-line"></div><div class="dn-sig-lbl">Signature</div></div>
+        <div class="dn-sig-block"><div class="dn-sig-line"></div><div class="dn-sig-lbl">Date</div></div>
       </div>
     </div>
 
   </div>
 
-  <!-- DOC REF STRIP -->
+  <!-- DOC REF -->
   <div class="dn-doc-ref">
     <span>Doc No: YSI-KSA-WMS-FRM-03</span>
     <span>Rev No. 00</span>
   </div>
 
-  <!-- FOOTER -->
+  <!-- FOOTER (same as GCN) -->
   <div class="dn-footer">
     <div class="dn-footer-left">
       <div class="pin"><span>&#9679;</span></div>
