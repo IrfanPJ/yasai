@@ -877,7 +877,7 @@ async function launchBrowser() {
   });
 }
 
-async function renderHtmlToPdf(html: string): Promise<Buffer> {
+async function renderHtmlToPdf(html: string, scale = 1): Promise<Buffer> {
   const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
@@ -886,6 +886,7 @@ async function renderHtmlToPdf(html: string): Promise<Buffer> {
     const pdf = await page.pdf({
       format: "A4",
       printBackground: true,
+      scale,
       margin: { top: "0mm", right: "0mm", bottom: "0mm", left: "0mm" },
     });
     return Buffer.from(pdf);
@@ -1451,5 +1452,5 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
 
 export async function generateDeliveryNotePDF(dn: DeliveryNote, logoDataUrl?: string): Promise<Buffer> {
   const html = buildDeliveryNoteHtml(dn, logoDataUrl);
-  return renderHtmlToPdf(html);
+  return renderHtmlToPdf(html, 1.2);
 }
