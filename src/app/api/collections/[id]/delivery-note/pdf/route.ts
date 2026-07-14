@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { generateDeliveryNotePDF } from "@/lib/pdf";
+import { getLogoDataUrl } from "@/lib/logo";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,8 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   }
 
   try {
-    const pdfBuffer = await generateDeliveryNotePDF(dn);
+    const logoDataUrl = getLogoDataUrl();
+    const pdfBuffer = await generateDeliveryNotePDF(dn, logoDataUrl);
     const safe = (dn.customer_name || "Delivery")
       .replace(/[\\/:*?"<>|]/g, "")
       .trim();

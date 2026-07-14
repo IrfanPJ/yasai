@@ -1037,237 +1037,419 @@ export async function generateWarehouseReportPDF(
    DELIVERY NOTE PDF
    ═══════════════════════════════════════════════════════ */
 
-function buildDeliveryNoteHtml(dn: DeliveryNote): string {
+function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
   const fmtDate = (d?: string | null) => {
-    if (!d) return "";
+    if (!d) return "&#8211;";
     try { return format(new Date(d), "dd/MM/yyyy"); } catch { return d; }
   };
 
-  const TOTAL_ROWS = 12; // minimum rows in items table (pad with empty rows)
+  const TOTAL_ROWS = 10;
   const items: DeliveryNoteItem[] = Array.isArray(dn.items) ? dn.items : [];
   const emptyRowsNeeded = Math.max(0, TOTAL_ROWS - items.length);
 
   const itemRows = items.map((it, i) => `
     <tr>
-      <td class="dn-td dn-center">${i + 1}</td>
+      <td class="dn-td dn-center" style="width:5%">${i + 1}</td>
       <td class="dn-td">${esc(it.item_description)}</td>
-      <td class="dn-td dn-center">${esc(it.qty)}</td>
-      <td class="dn-td dn-center">${esc(it.unit)}</td>
-      <td class="dn-td dn-center">${esc(it.total_pallets)}</td>
-      <td class="dn-td">${esc(it.remark)}</td>
+      <td class="dn-td dn-center" style="width:8%">${esc(it.qty)}</td>
+      <td class="dn-td dn-center" style="width:9%">${esc(it.unit)}</td>
+      <td class="dn-td dn-center" style="width:12%">${esc(it.total_pallets)}</td>
+      <td class="dn-td" style="width:17%">${esc(it.remark)}</td>
     </tr>`).join("");
 
   const emptyRows = Array.from({ length: emptyRowsNeeded }, () => `
-    <tr>
-      <td class="dn-td dn-empty">&nbsp;</td>
-      <td class="dn-td dn-empty">&nbsp;</td>
-      <td class="dn-td dn-empty">&nbsp;</td>
-      <td class="dn-td dn-empty">&nbsp;</td>
-      <td class="dn-td dn-empty">&nbsp;</td>
-      <td class="dn-td dn-empty">&nbsp;</td>
+    <tr style="height:20px">
+      <td class="dn-td"></td>
+      <td class="dn-td"></td>
+      <td class="dn-td"></td>
+      <td class="dn-td"></td>
+      <td class="dn-td"></td>
+      <td class="dn-td"></td>
     </tr>`).join("");
+
+  const infoRow = (label: string, value: string | null) =>
+    `<div class="dn-info-row">
+      <span class="dn-info-label">${label}</span>
+      <span class="dn-info-val">${value ? esc(value) : "&#8211;"}</span>
+    </div>`;
 
   return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   @page { size: A4; margin: 0; }
   body {
     font-family: Arial, Helvetica, sans-serif;
     font-size: 9pt;
-    color: #000;
+    color: #111;
     background: white;
-    padding: 14mm 12mm 10mm;
     height: 297mm;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
-  .dn-title {
-    text-align: center;
-    font-size: 20pt;
-    font-weight: 900;
-    letter-spacing: 3px;
-    margin-bottom: 8px;
+  /* ── LETTERHEAD ── */
+  .lh {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px 6px;
+    border-bottom: 2.5px solid ${ORANGE};
+    background: white;
+    flex-shrink: 0;
+  }
+  .lh-logo {
+    display: flex;
+    align-items: center;
+    padding-right: 12px;
+    border-right: 2.5px solid ${ORANGE};
+    min-width: 90px;
+    height: 48px;
+  }
+  .lh-logo img { height: 42px; width: auto; object-fit: contain; }
+  .lh-center { flex: 1; padding: 0 14px; }
+  .lh-title-en { font-size: 12pt; font-weight: 900; color: ${NAVY}; letter-spacing: 0.5px; }
+  .lh-subtitle { font-size: 7pt; color: #888; margin-top: 1px; }
+  .lh-ar { font-size: 10pt; font-weight: bold; color: ${NAVY}; direction: rtl; text-align: right; min-width: 160px; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
+
+  /* ── CONTACT ROW ── */
+  .contact-row {
+    display: flex; align-items: center; padding: 3px 14px;
+    background: white; gap: 14px; font-size: 6pt; color: #666;
+    border-bottom: 1px solid #eee; flex-shrink: 0;
+  }
+  .contact-row .ci { display: flex; align-items: center; gap: 3px; }
+  .ci-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 12px; height: 12px; background: ${ORANGE}; border-radius: 50%;
+    color: white; font-size: 7px; flex-shrink: 0;
+  }
+  .web-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 12px; height: 12px; background: ${NAVY}; border-radius: 50%;
+    color: white; font-size: 7px; flex-shrink: 0;
+  }
+
+  /* ── BADGE ── */
+  .badge-row {
+    display: flex; justify-content: flex-end;
+    padding: 0 14px; margin-top: -18px; position: relative; z-index: 2;
+    flex-shrink: 0;
+  }
+  .doc-badge {
+    background: ${ORANGE}; color: white; font-size: 9.5pt; font-weight: 900;
+    padding: 5px 18px; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase;
+  }
+
+  /* ── CONTENT ── */
+  .dn-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 14px 6px;
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  /* ── TOP INFO ROW ── */
+  .dn-top-grid {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  /* Customer card */
+  .dn-cust-card {
+    flex: 1.4;
+    border: 1.5px solid ${BORDER};
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .dn-card-hdr {
+    background: ${NAVY};
+    color: white;
+    font-size: 6.5pt;
+    font-weight: 800;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
+  .dn-card-body { padding: 6px 8px; }
+  .dn-cust-name { font-size: 10pt; font-weight: 900; color: ${NAVY}; margin-bottom: 3px; }
+  .dn-cust-line { font-size: 7.5pt; color: #444; line-height: 1.6; }
 
-  .dn-divider {
-    border: none;
-    border-top: 1.5px solid #000;
-    margin-bottom: 6px;
-  }
-
-  .dn-cust-label {
-    font-weight: bold;
-    font-size: 9pt;
-    margin-bottom: 3px;
-  }
-
-  /* ── Top info block ── */
-  .dn-top {
-    width: 100%;
-    border-collapse: collapse;
-    border: 1px solid #000;
-    margin-bottom: 8px;
-  }
-  .dn-top td {
-    border: 1px solid #000;
-    padding: 6px 8px;
-    vertical-align: top;
-  }
-  .dn-cust-name {
-    font-weight: bold;
-    font-size: 11pt;
-    margin-bottom: 3px;
-  }
-  .dn-cust-line {
-    font-size: 8.5pt;
-    line-height: 1.6;
+  /* Doc details card */
+  .dn-doc-card {
+    flex: 1;
+    border: 1.5px solid ${BORDER};
+    border-radius: 6px;
+    overflow: hidden;
   }
   .dn-info-row {
-    font-size: 8.5pt;
-    line-height: 1.65;
+    display: flex;
+    align-items: baseline;
+    padding: 2.5px 8px;
+    border-bottom: 1px solid ${BORDER};
+    gap: 4px;
   }
-  .dn-info-row b {
-    display: inline-block;
-    min-width: 76px;
+  .dn-info-row:last-child { border-bottom: none; }
+  .dn-info-label {
+    font-size: 6.5pt;
+    font-weight: 700;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    min-width: 68px;
+    flex-shrink: 0;
   }
-  .dn-notes-cell {
-    font-size: 8pt;
-    color: #333;
-    line-height: 1.5;
-    min-width: 90px;
-  }
+  .dn-info-val { font-size: 8pt; font-weight: 600; color: ${NAVY}; }
 
-  /* ── Items table ── */
+  /* Notes card */
+  .dn-notes-card {
+    flex: 0.7;
+    border: 1.5px solid ${BORDER};
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .dn-notes-body { padding: 6px 8px; font-size: 7.5pt; color: #444; line-height: 1.5; }
+
+  /* ── ITEMS TABLE ── */
+  .dn-table-wrap {
+    flex: 1;
+    border: 1.5px solid ${BORDER};
+    border-radius: 6px;
+    overflow: hidden;
+  }
   .dn-table {
     width: 100%;
     border-collapse: collapse;
-    flex: 1;
   }
   .dn-th {
-    border: 1px solid #000;
-    padding: 5px 4px;
+    background: ${NAVY};
+    color: white;
+    font-size: 7pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 5px 6px;
     text-align: center;
-    font-size: 8pt;
-    font-weight: bold;
-    background: #f0f0f0;
+    border-right: 1px solid rgba(255,255,255,0.15);
   }
+  .dn-th:first-child { text-align: center; }
+  .dn-th:nth-child(2) { text-align: left; }
   .dn-td {
-    border: 1px solid #000;
-    padding: 4px 5px;
-    font-size: 8.5pt;
+    border: 1px solid ${BORDER};
+    padding: 4px 6px;
+    font-size: 8pt;
     vertical-align: top;
-    min-height: 20px;
+    color: #222;
   }
   .dn-center { text-align: center; }
-  .dn-empty { height: 20px; }
+  tr:nth-child(even) .dn-td { background: ${HDR_BG}; }
 
-  /* ── Footer area ── */
-  .dn-received-text {
-    font-size: 9pt;
-    margin-top: 12px;
-    margin-bottom: 20px;
+  /* ── RECEIVER SIGN-OFF ── */
+  .dn-signoff {
+    flex-shrink: 0;
+    border: 1.5px solid ${BORDER};
+    border-radius: 6px;
+    overflow: hidden;
   }
-  .dn-sig-row {
+  .dn-signoff-hdr {
+    background: ${LIGHT_ORANGE};
+    border-bottom: 1.5px solid ${ORANGE};
+    padding: 4px 10px;
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: ${NAVY};
+  }
+  .dn-signoff-body {
     display: flex;
+    padding: 8px 10px 10px;
     gap: 0;
-    margin-bottom: 16px;
   }
-  .dn-sig-block {
-    flex: 1;
-    font-size: 8.5pt;
-    padding-right: 10px;
-  }
+  .dn-sig-block { flex: 1; font-size: 8pt; color: #444; }
   .dn-sig-line {
-    display: inline-block;
-    border-bottom: 1px solid #000;
-    width: 120px;
-    margin-left: 4px;
-    vertical-align: bottom;
+    display: block;
+    border-bottom: 1px solid #999;
+    margin-top: 16px;
+    margin-right: 20px;
   }
-  .dn-doc-footer {
+  .dn-sig-label { font-size: 7pt; color: #888; margin-top: 3px; }
+
+  /* ── FOOTER ── */
+  .dn-footer {
     display: flex;
     justify-content: space-between;
-    font-size: 7.5pt;
-    color: #444;
-    border-top: 1px solid #ccc;
-    padding-top: 5px;
-    margin-top: auto;
+    align-items: center;
+    background: ${NAVY};
+    padding: 6px 14px;
+    flex-shrink: 0;
+  }
+  .dn-footer-left { display: flex; align-items: center; gap: 6px; }
+  .dn-footer-right { display: flex; align-items: center; gap: 6px; }
+  .pin {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 1.5px solid ${ORANGE};
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .pin span { font-size: 10px; color: ${ORANGE}; }
+  .f-co-en { font-size: 7pt; font-weight: bold; color: white; }
+  .f-ad-en { font-size: 5.5pt; color: #AAA; line-height: 1.4; margin-top: 1px; }
+  .f-co-ar { font-size: 8pt; font-weight: bold; color: white; text-align: right; direction: rtl; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
+  .f-ad-ar { font-size: 5.5pt; color: #AAA; text-align: right; direction: rtl; line-height: 1.4; margin-top: 1px; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
+
+  /* Doc ref strip */
+  .dn-doc-ref {
+    display: flex;
+    justify-content: space-between;
+    background: ${HDR_BG};
+    padding: 2px 14px;
+    font-size: 6.5pt;
+    color: #666;
+    flex-shrink: 0;
   }
 </style>
 </head>
 <body>
 
-  <div class="dn-title">DELIVERY NOTE</div>
-  <hr class="dn-divider">
-  <div class="dn-cust-label">Customer Details</div>
-
-  <!-- Top info block -->
-  <table class="dn-top">
-    <tr>
-      <!-- Customer details (left ~45%) -->
-      <td style="width:45%">
-        <div class="dn-cust-name">${esc(dn.customer_name) || "&nbsp;"}</div>
-        ${dn.customer_address ? `<div class="dn-cust-line">${esc(dn.customer_address).replace(/\n/g, "<br>")}</div>` : ""}
-        ${dn.customer_phone ? `<div class="dn-cust-line">Tel : &nbsp;${esc(dn.customer_phone)}</div>` : ""}
-        ${dn.customer_email ? `<div class="dn-cust-line">Email: ${esc(dn.customer_email)}</div>` : ""}
-      </td>
-      <!-- Doc details (middle ~33%) -->
-      <td style="width:33%">
-        <div class="dn-info-row"><b>Date :</b>${fmtDate(dn.doc_date)}</div>
-        <div class="dn-info-row"><b>No :</b>${esc(dn.doc_number)}</div>
-        <div class="dn-info-row"><b>Job :</b>${esc(dn.job_number)}</div>
-        <div class="dn-info-row"><b>Shipper :</b>${esc(dn.shipper)}</div>
-        <div class="dn-info-row"><b>Ref -</b>${esc(dn.ref_number)}</div>
-        <div class="dn-info-row"><b>Destination:</b>${esc(dn.destination)}</div>
-      </td>
-      <!-- Notes (right ~22%) -->
-      <td style="width:22%">
-        <div class="dn-notes-cell">${dn.notes ? esc(dn.notes).replace(/\n/g, "<br>") : "&nbsp;"}</div>
-      </td>
-    </tr>
-  </table>
-
-  <!-- Items table -->
-  <table class="dn-table">
-    <thead>
-      <tr>
-        <th class="dn-th" style="width:5%">No</th>
-        <th class="dn-th">Item Description</th>
-        <th class="dn-th" style="width:8%">QTY</th>
-        <th class="dn-th" style="width:8%">UNIT</th>
-        <th class="dn-th" style="width:13%">TOTAL<br>PALLETS</th>
-        <th class="dn-th" style="width:16%">REMARK</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${itemRows}
-      ${emptyRows}
-    </tbody>
-  </table>
-
-  <!-- Footer -->
-  <div class="dn-received-text">The above goods received in good condition :</div>
-  <div class="dn-sig-row">
-    <div class="dn-sig-block">Receiver's Name <span class="dn-sig-line"></span></div>
-    <div class="dn-sig-block">Signature <span class="dn-sig-line"></span></div>
-    <div class="dn-sig-block">Date <span class="dn-sig-line"></span></div>
+  <!-- LETTERHEAD -->
+  <div class="lh">
+    <div class="lh-logo">
+      ${logoDataUrl ? `<img src="${logoDataUrl}" alt="YASAI">` : ""}
+    </div>
+    <div class="lh-center">
+      <div class="lh-title-en">YASAI LOGISTICS COMPANY</div>
+      <div class="lh-subtitle">Freight &amp; Logistics Solutions</div>
+    </div>
+    <div class="lh-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1575;&#1578; &#1588;.&#1584;.&#1605;.&#1605;</div>
   </div>
 
-  <div class="dn-doc-footer">
+  <!-- CONTACT ROW -->
+  <div class="contact-row">
+    <div class="ci"><span class="ci-icon">&#9679;</span> H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
+    <div class="ci"><span class="ci-icon">&#9990;</span> +966 55 932 6687</div>
+    <div class="ci"><span class="ci-icon">&#9993;</span> info@yasailogistics.com</div>
+    <div class="ci"><span class="web-icon">&#8853;</span> www.yasailogistics.com</div>
+  </div>
+
+  <!-- BADGE -->
+  <div class="badge-row">
+    <div class="doc-badge">Delivery Note</div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="dn-content">
+
+    <!-- Top: Customer + Doc Info + Notes -->
+    <div class="dn-top-grid">
+
+      <!-- Customer card -->
+      <div class="dn-cust-card">
+        <div class="dn-card-hdr">${headerIcon("&#128100;")} Customer Details</div>
+        <div class="dn-card-body">
+          <div class="dn-cust-name">${esc(dn.customer_name) || "&#8211;"}</div>
+          ${dn.customer_address ? `<div class="dn-cust-line">${esc(dn.customer_address).replace(/\n/g, "<br>")}</div>` : ""}
+          ${dn.customer_phone ? `<div class="dn-cust-line">Tel: ${esc(dn.customer_phone)}</div>` : ""}
+          ${dn.customer_email ? `<div class="dn-cust-line">Email: ${esc(dn.customer_email)}</div>` : ""}
+        </div>
+      </div>
+
+      <!-- Doc details card -->
+      <div class="dn-doc-card">
+        <div class="dn-card-hdr">${headerIcon("&#128196;")} Document Info</div>
+        ${infoRow("Date", fmtDate(dn.doc_date))}
+        ${infoRow("Doc No", dn.doc_number)}
+        ${infoRow("Job", dn.job_number)}
+        ${infoRow("Shipper", dn.shipper)}
+        ${infoRow("Ref", dn.ref_number)}
+        ${infoRow("Destination", dn.destination)}
+      </div>
+
+      <!-- Notes card -->
+      <div class="dn-notes-card">
+        <div class="dn-card-hdr">${headerIcon("&#9998;")} Remarks</div>
+        <div class="dn-notes-body">${dn.notes ? esc(dn.notes).replace(/\n/g, "<br>") : "&#8211;"}</div>
+      </div>
+
+    </div>
+
+    <!-- Items table -->
+    <div class="dn-table-wrap">
+      <table class="dn-table">
+        <thead>
+          <tr>
+            <th class="dn-th" style="width:5%">No</th>
+            <th class="dn-th" style="text-align:left">Item Description</th>
+            <th class="dn-th" style="width:8%">QTY</th>
+            <th class="dn-th" style="width:9%">UNIT</th>
+            <th class="dn-th" style="width:12%">TOTAL<br>PALLETS</th>
+            <th class="dn-th" style="width:17%;text-align:left">REMARK</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemRows}
+          ${emptyRows}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Receiver sign-off -->
+    <div class="dn-signoff">
+      <div class="dn-signoff-hdr">The above goods received in good condition</div>
+      <div class="dn-signoff-body">
+        <div class="dn-sig-block">
+          <div class="dn-sig-line"></div>
+          <div class="dn-sig-label">Receiver's Name</div>
+        </div>
+        <div class="dn-sig-block">
+          <div class="dn-sig-line"></div>
+          <div class="dn-sig-label">Signature</div>
+        </div>
+        <div class="dn-sig-block">
+          <div class="dn-sig-line"></div>
+          <div class="dn-sig-label">Date</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- DOC REF STRIP -->
+  <div class="dn-doc-ref">
     <span>Doc No: YSI-KSA-WMS-FRM-03</span>
     <span>Rev No. 00</span>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="dn-footer">
+    <div class="dn-footer-left">
+      <div class="pin"><span>&#9679;</span></div>
+      <div>
+        <div class="f-co-en">YASAI LOGISTICS COMPANY</div>
+        <div class="f-ad-en">H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
+      </div>
+    </div>
+    <div class="dn-footer-right">
+      <div>
+        <div class="f-co-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1577;</div>
+        <div class="f-ad-ar">&#1607;&#1607; &#1575;&#1604;&#1588;&#1610;&#1582; &#1587;&#1593;&#1608;&#1583; &#1576;&#1606; &#1589;&#1602;&#1585;&#1548; &#1575;&#1604;&#1605;&#1578;&#1610;&#1606;&#1577;&#1548; &#1583;&#1576;&#1610; &#8211; &#1575;&#1604;&#1573;&#1605;&#1575;&#1585;&#1575;&#1578;</div>
+      </div>
+      <div class="pin"><span>&#9679;</span></div>
+    </div>
   </div>
 
 </body>
 </html>`;
 }
 
-export async function generateDeliveryNotePDF(dn: DeliveryNote): Promise<Buffer> {
-  const html = buildDeliveryNoteHtml(dn);
+export async function generateDeliveryNotePDF(dn: DeliveryNote, logoDataUrl?: string): Promise<Buffer> {
+  const html = buildDeliveryNoteHtml(dn, logoDataUrl);
   return renderHtmlToPdf(html);
 }
