@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "./status-badge";
 import { WarehouseReceivingPanel } from "./warehouse-receiving-panel";
+import { DeliveryNoteSection } from "./delivery-note-section";
 import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -27,13 +28,14 @@ import {
 import { formatDateTime, formatWeight, formatVolume,
   generateWhatsAppMessage, openWhatsApp, copyToClipboard, buildReceiptFilename, buildPdfPath,
 } from "@/lib/utils";
-import type { GoodsCollectionNote, CollectionStatus, UserRole } from "@/types";
+import type { GoodsCollectionNote, CollectionStatus, UserRole, DeliveryNote } from "@/types";
 import { STATUS_LABELS, CARGO_TYPE_LABELS } from "@/types";
 import { useRouter } from "next/navigation";
 
 interface CollectionDetailProps {
   collection: GoodsCollectionNote;
   userRole: UserRole;
+  deliveryNote: DeliveryNote | null;
 }
 
 const STATUS_ORDER: CollectionStatus[] = [
@@ -41,7 +43,7 @@ const STATUS_ORDER: CollectionStatus[] = [
   "customs_clearance", "out_for_delivery", "delivered",
 ];
 
-export function CollectionDetail({ collection, userRole }: CollectionDetailProps) {
+export function CollectionDetail({ collection, userRole, deliveryNote }: CollectionDetailProps) {
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
@@ -416,6 +418,9 @@ export function CollectionDetail({ collection, userRole }: CollectionDetailProps
 
       {/* ── Warehouse Receiving ── */}
       <WarehouseReceivingPanel collection={collection} userRole={userRole} />
+
+      {/* ── Delivery Note ── */}
+      <DeliveryNoteSection collectionId={collection.id} deliveryNote={deliveryNote} />
 
       {/* ── QR Code + PDF ── */}
       {(collection.qr_url || collection.pdf_url) && (

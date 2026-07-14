@@ -1,4 +1,4 @@
-import type { GoodsCollectionNote } from "@/types";
+import type { GoodsCollectionNote, DeliveryNote, DeliveryNoteItem } from "@/types";
 import { format } from "date-fns";
 
 const NAVY         = "#0B1F3F";
@@ -1030,5 +1030,244 @@ export async function generateWarehouseReportPDF(
   logoDataUrl?: string,
 ): Promise<Buffer> {
   const html = buildWarehouseReportHtml(data, names, logoDataUrl);
+  return renderHtmlToPdf(html);
+}
+
+/* ═══════════════════════════════════════════════════════
+   DELIVERY NOTE PDF
+   ═══════════════════════════════════════════════════════ */
+
+function buildDeliveryNoteHtml(dn: DeliveryNote): string {
+  const fmtDate = (d?: string | null) => {
+    if (!d) return "";
+    try { return format(new Date(d), "dd/MM/yyyy"); } catch { return d; }
+  };
+
+  const TOTAL_ROWS = 12; // minimum rows in items table (pad with empty rows)
+  const items: DeliveryNoteItem[] = Array.isArray(dn.items) ? dn.items : [];
+  const emptyRowsNeeded = Math.max(0, TOTAL_ROWS - items.length);
+
+  const itemRows = items.map((it, i) => `
+    <tr>
+      <td class="dn-td dn-center">${i + 1}</td>
+      <td class="dn-td">${esc(it.item_description)}</td>
+      <td class="dn-td dn-center">${esc(it.qty)}</td>
+      <td class="dn-td dn-center">${esc(it.unit)}</td>
+      <td class="dn-td dn-center">${esc(it.total_pallets)}</td>
+      <td class="dn-td">${esc(it.remark)}</td>
+    </tr>`).join("");
+
+  const emptyRows = Array.from({ length: emptyRowsNeeded }, () => `
+    <tr>
+      <td class="dn-td dn-empty">&nbsp;</td>
+      <td class="dn-td dn-empty">&nbsp;</td>
+      <td class="dn-td dn-empty">&nbsp;</td>
+      <td class="dn-td dn-empty">&nbsp;</td>
+      <td class="dn-td dn-empty">&nbsp;</td>
+      <td class="dn-td dn-empty">&nbsp;</td>
+    </tr>`).join("");
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  @page { size: A4; margin: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+    color: #000;
+    background: white;
+    padding: 14mm 12mm 10mm;
+    height: 297mm;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dn-title {
+    text-align: center;
+    font-size: 20pt;
+    font-weight: 900;
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  .dn-divider {
+    border: none;
+    border-top: 1.5px solid #000;
+    margin-bottom: 6px;
+  }
+
+  .dn-cust-label {
+    font-weight: bold;
+    font-size: 9pt;
+    margin-bottom: 3px;
+  }
+
+  /* ── Top info block ── */
+  .dn-top {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #000;
+    margin-bottom: 8px;
+  }
+  .dn-top td {
+    border: 1px solid #000;
+    padding: 6px 8px;
+    vertical-align: top;
+  }
+  .dn-cust-name {
+    font-weight: bold;
+    font-size: 11pt;
+    margin-bottom: 3px;
+  }
+  .dn-cust-line {
+    font-size: 8.5pt;
+    line-height: 1.6;
+  }
+  .dn-info-row {
+    font-size: 8.5pt;
+    line-height: 1.65;
+  }
+  .dn-info-row b {
+    display: inline-block;
+    min-width: 76px;
+  }
+  .dn-notes-cell {
+    font-size: 8pt;
+    color: #333;
+    line-height: 1.5;
+    min-width: 90px;
+  }
+
+  /* ── Items table ── */
+  .dn-table {
+    width: 100%;
+    border-collapse: collapse;
+    flex: 1;
+  }
+  .dn-th {
+    border: 1px solid #000;
+    padding: 5px 4px;
+    text-align: center;
+    font-size: 8pt;
+    font-weight: bold;
+    background: #f0f0f0;
+  }
+  .dn-td {
+    border: 1px solid #000;
+    padding: 4px 5px;
+    font-size: 8.5pt;
+    vertical-align: top;
+    min-height: 20px;
+  }
+  .dn-center { text-align: center; }
+  .dn-empty { height: 20px; }
+
+  /* ── Footer area ── */
+  .dn-received-text {
+    font-size: 9pt;
+    margin-top: 12px;
+    margin-bottom: 20px;
+  }
+  .dn-sig-row {
+    display: flex;
+    gap: 0;
+    margin-bottom: 16px;
+  }
+  .dn-sig-block {
+    flex: 1;
+    font-size: 8.5pt;
+    padding-right: 10px;
+  }
+  .dn-sig-line {
+    display: inline-block;
+    border-bottom: 1px solid #000;
+    width: 120px;
+    margin-left: 4px;
+    vertical-align: bottom;
+  }
+  .dn-doc-footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 7.5pt;
+    color: #444;
+    border-top: 1px solid #ccc;
+    padding-top: 5px;
+    margin-top: auto;
+  }
+</style>
+</head>
+<body>
+
+  <div class="dn-title">DELIVERY NOTE</div>
+  <hr class="dn-divider">
+  <div class="dn-cust-label">Customer Details</div>
+
+  <!-- Top info block -->
+  <table class="dn-top">
+    <tr>
+      <!-- Customer details (left ~45%) -->
+      <td style="width:45%">
+        <div class="dn-cust-name">${esc(dn.customer_name) || "&nbsp;"}</div>
+        ${dn.customer_address ? `<div class="dn-cust-line">${esc(dn.customer_address).replace(/\n/g, "<br>")}</div>` : ""}
+        ${dn.customer_phone ? `<div class="dn-cust-line">Tel : &nbsp;${esc(dn.customer_phone)}</div>` : ""}
+        ${dn.customer_email ? `<div class="dn-cust-line">Email: ${esc(dn.customer_email)}</div>` : ""}
+      </td>
+      <!-- Doc details (middle ~33%) -->
+      <td style="width:33%">
+        <div class="dn-info-row"><b>Date :</b>${fmtDate(dn.doc_date)}</div>
+        <div class="dn-info-row"><b>No :</b>${esc(dn.doc_number)}</div>
+        <div class="dn-info-row"><b>Job :</b>${esc(dn.job_number)}</div>
+        <div class="dn-info-row"><b>Shipper :</b>${esc(dn.shipper)}</div>
+        <div class="dn-info-row"><b>Ref -</b>${esc(dn.ref_number)}</div>
+        <div class="dn-info-row"><b>Destination:</b>${esc(dn.destination)}</div>
+      </td>
+      <!-- Notes (right ~22%) -->
+      <td style="width:22%">
+        <div class="dn-notes-cell">${dn.notes ? esc(dn.notes).replace(/\n/g, "<br>") : "&nbsp;"}</div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Items table -->
+  <table class="dn-table">
+    <thead>
+      <tr>
+        <th class="dn-th" style="width:5%">No</th>
+        <th class="dn-th">Item Description</th>
+        <th class="dn-th" style="width:8%">QTY</th>
+        <th class="dn-th" style="width:8%">UNIT</th>
+        <th class="dn-th" style="width:13%">TOTAL<br>PALLETS</th>
+        <th class="dn-th" style="width:16%">REMARK</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${itemRows}
+      ${emptyRows}
+    </tbody>
+  </table>
+
+  <!-- Footer -->
+  <div class="dn-received-text">The above goods received in good condition :</div>
+  <div class="dn-sig-row">
+    <div class="dn-sig-block">Receiver's Name <span class="dn-sig-line"></span></div>
+    <div class="dn-sig-block">Signature <span class="dn-sig-line"></span></div>
+    <div class="dn-sig-block">Date <span class="dn-sig-line"></span></div>
+  </div>
+
+  <div class="dn-doc-footer">
+    <span>Doc No: YSI-KSA-WMS-FRM-03</span>
+    <span>Rev No. 00</span>
+  </div>
+
+</body>
+</html>`;
+}
+
+export async function generateDeliveryNotePDF(dn: DeliveryNote): Promise<Buffer> {
+  const html = buildDeliveryNoteHtml(dn);
   return renderHtmlToPdf(html);
 }

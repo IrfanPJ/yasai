@@ -95,6 +95,35 @@ export interface GoodsCollectionNote {
   creator?: UserProfile;
 }
 
+export interface DeliveryNoteItem {
+  item_description: string;
+  qty: string | number;
+  unit: string;
+  total_pallets: string | number;
+  remark: string;
+}
+
+export interface DeliveryNote {
+  id: string;
+  collection_id: string;
+  doc_number: string | null;
+  doc_date: string | null;
+  job_number: string | null;
+  shipper: string | null;
+  ref_number: string | null;
+  destination: string | null;
+  customer_name: string | null;
+  customer_address: string | null;
+  customer_phone: string | null;
+  customer_email: string | null;
+  notes: string | null;
+  items: DeliveryNoteItem[];
+  receiver_name: string | null;
+  received_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Attachment {
   id: string;
   gcn_id: string;

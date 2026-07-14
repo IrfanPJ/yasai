@@ -6,10 +6,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2, FileText, Save, X, ImagePlus, Trash2 } from "lucide-react";
+import { Loader2, FileText, Save, X, ImagePlus, Trash2, Plus } from "lucide-react";
 import { SignaturePad } from "./signature-pad";
 import { cn } from "@/lib/utils";
-import type { GoodsCollectionNote, CargoType, BillingType } from "@/types";
+import type { GoodsCollectionNote, CargoType, BillingType, DeliveryNoteItem } from "@/types";
 
 const schema = z.object({
   shipper_name: z.string().min(1, "Required"),
@@ -112,6 +112,26 @@ export function CollectionForm({
   const [goodsImage, setGoodsImage] = useState<string | undefined>(defaultValues?.goods_image_url);
   const [imageUploading, setImageUploading] = useState(false);
 
+  // Delivery Note
+  const [dnEnabled, setDnEnabled] = useState(false);
+  const [dnForm, setDnForm] = useState({
+    doc_number: "", doc_date: "", job_number: "", shipper: "",
+    ref_number: "", destination: "", customer_name: "", customer_address: "",
+    customer_phone: "", customer_email: "", notes: "", receiver_name: "", received_date: "",
+  });
+  const [dnItems, setDnItems] = useState<DeliveryNoteItem[]>([
+    { item_description: "", qty: "", unit: "", total_pallets: "", remark: "" },
+  ]);
+
+  function setDn(k: keyof typeof dnForm, v: string) {
+    setDnForm(p => ({ ...p, [k]: v }));
+  }
+  function setDnItem(i: number, k: keyof DeliveryNoteItem, v: string) {
+    setDnItems(p => p.map((it, idx) => idx === i ? { ...it, [k]: v } : it));
+  }
+  function addDnItem() { setDnItems(p => [...p, { item_description: "", qty: "", unit: "", total_pallets: "", remark: "" }]); }
+  function removeDnItem(i: number) { setDnItems(p => p.filter((_, idx) => idx !== i)); }
+
   const {
     register,
     handleSubmit,
@@ -181,11 +201,22 @@ export function CollectionForm({
       }
 
       const result = await res.json();
+      const savedId: string = result.id;
+
+      // Save delivery note if enabled
+      if (dnEnabled && savedId) {
+        await fetch(`/api/collections/${savedId}/delivery-note`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...dnForm, items: dnItems }),
+        });
+      }
+
       toast.success(
         isEdit ? "Collection updated" : `Collection ${result.collection_number} created!`,
         { description: "PDF generated and stored." }
       );
-      router.push(`/collections/${result.id}`);
+      router.push(`/collections/${savedId}`);
       router.refresh();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
@@ -379,6 +410,120 @@ export function CollectionForm({
             </label>
           )}
         </div>
+
+        {/* ── DELIVERY NOTE ── */}
+        <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={dnEnabled}
+              onChange={e => setDnEnabled(e.target.checked)}
+              className="h-4 w-4 accent-[#E67A32]"
+            />
+            <span className="text-sm font-semibold text-[#071A3A] dark:text-white">Add Delivery Note</span>
+            <span className="text-xs text-muted-foreground">(optional — generates a separate delivery receipt)</span>
+          </label>
+        </div>
+
+        {dnEnabled && (
+          <div className="border-b border-gray-100 dark:border-gray-800">
+            <SectionHeader>Delivery Note</SectionHeader>
+
+            {/* Doc info */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+              {(["doc_number", "doc_date", "job_number", "shipper", "ref_number", "destination"] as const).map(k => (
+                <Field key={k} label={k === "doc_number" ? "Doc Number" : k === "doc_date" ? "Date" : k === "job_number" ? "Job Number" : k === "ref_number" ? "Ref Number" : k.charAt(0).toUpperCase() + k.slice(1)}>
+                  <input
+                    className={inputCls}
+                    type={k === "doc_date" ? "date" : "text"}
+                    value={dnForm[k]}
+                    onChange={e => setDn(k, e.target.value)}
+                    placeholder={k === "doc_number" ? "DLO-YSI-26-0001" : k === "job_number" ? "YSIKSA009/LTL" : k === "destination" ? "DAMMAM" : ""}
+                  />
+                </Field>
+              ))}
+            </div>
+
+            {/* Customer details */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+              <Field label="Customer Name">
+                <input className={inputCls} value={dnForm.customer_name} onChange={e => setDn("customer_name", e.target.value)} placeholder="M/s. Company Name" />
+              </Field>
+              <Field label="Phone">
+                <input className={inputCls} value={dnForm.customer_phone} onChange={e => setDn("customer_phone", e.target.value)} placeholder="+966 50 120 3503" />
+              </Field>
+              <Field label="Address">
+                <textarea className={inputCls} rows={2} value={dnForm.customer_address} onChange={e => setDn("customer_address", e.target.value)} placeholder="Street, City, Country" />
+              </Field>
+              <Field label="Email">
+                <input className={inputCls} value={dnForm.customer_email} onChange={e => setDn("customer_email", e.target.value)} placeholder="contact@company.com" />
+              </Field>
+              <div className="sm:col-span-2">
+                <Field label="Remarks / Notes">
+                  <textarea className={inputCls} rows={2} value={dnForm.notes} onChange={e => setDn("notes", e.target.value)} placeholder="Additional notes or remarks" />
+                </Field>
+              </div>
+            </div>
+
+            {/* Items */}
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-[#071A3A] dark:text-white mb-2">Items</p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse min-w-[540px]">
+                  <thead>
+                    <tr className="bg-gray-50 dark:bg-[#071A3A]/40">
+                      {["#", "Item Description", "QTY", "UNIT", "Pallets", "Remark", ""].map(h => (
+                        <th key={h} className="border border-gray-200 dark:border-gray-700 px-2 py-1.5 text-left font-semibold text-[#071A3A] dark:text-gray-200 first:w-8 last:w-7">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dnItems.map((it, i) => (
+                      <tr key={i}>
+                        <td className="border border-gray-200 dark:border-gray-700 px-2 py-1 text-center text-muted-foreground">{i + 1}</td>
+                        <td className="border border-gray-200 dark:border-gray-700 p-0.5">
+                          <input className="w-full px-1.5 py-1 text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-[#071A3A] rounded" value={it.item_description} onChange={e => setDnItem(i, "item_description", e.target.value)} placeholder="Description" />
+                        </td>
+                        <td className="border border-gray-200 dark:border-gray-700 p-0.5">
+                          <input className="w-full px-1.5 py-1 text-xs bg-transparent focus:outline-none text-center rounded" value={String(it.qty)} onChange={e => setDnItem(i, "qty", e.target.value)} placeholder="1" />
+                        </td>
+                        <td className="border border-gray-200 dark:border-gray-700 p-0.5">
+                          <input className="w-full px-1.5 py-1 text-xs bg-transparent focus:outline-none text-center rounded" value={it.unit} onChange={e => setDnItem(i, "unit", e.target.value)} placeholder="NOS" />
+                        </td>
+                        <td className="border border-gray-200 dark:border-gray-700 p-0.5">
+                          <input className="w-full px-1.5 py-1 text-xs bg-transparent focus:outline-none text-center rounded" value={String(it.total_pallets)} onChange={e => setDnItem(i, "total_pallets", e.target.value)} placeholder="1" />
+                        </td>
+                        <td className="border border-gray-200 dark:border-gray-700 p-0.5">
+                          <input className="w-full px-1.5 py-1 text-xs bg-transparent focus:outline-none rounded" value={it.remark} onChange={e => setDnItem(i, "remark", e.target.value)} placeholder="Remark" />
+                        </td>
+                        <td className="border border-gray-200 dark:border-gray-700 px-1 py-1 text-center">
+                          {dnItems.length > 1 && (
+                            <button type="button" onClick={() => removeDnItem(i)} className="text-red-400 hover:text-red-600">
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <button type="button" onClick={addDnItem} className="mt-2 flex items-center gap-1 text-xs text-[#E67A32] hover:text-[#d06820] font-medium">
+                <Plus className="h-3 w-3" /> Add Row
+              </button>
+            </div>
+
+            {/* Receiver */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-5 py-4">
+              <Field label="Receiver Name">
+                <input className={inputCls} value={dnForm.receiver_name} onChange={e => setDn("receiver_name", e.target.value)} placeholder="Full name" />
+              </Field>
+              <Field label="Received Date">
+                <input className={inputCls} type="date" value={dnForm.received_date} onChange={e => setDn("received_date", e.target.value)} />
+              </Field>
+            </div>
+          </div>
+        )}
 
         {/* ── SIGNATURES ── */}
         <SectionHeader>Signatures</SectionHeader>

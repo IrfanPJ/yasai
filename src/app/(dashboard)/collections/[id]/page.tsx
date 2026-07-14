@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { Header } from "@/components/layout/header";
 import { CollectionDetail } from "@/components/collections/collection-detail";
-import type { GoodsCollectionNote } from "@/types";
+import type { GoodsCollectionNote, DeliveryNote } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -25,9 +25,17 @@ export default async function CollectionDetailPage({ params }: PageProps) {
   if (error || !data) notFound();
 
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = user
-    ? await serviceClient.from("user_profiles").select("role").eq("id", user.id).single()
-    : { data: null };
+
+  const [{ data: profile }, { data: deliveryNote }] = await Promise.all([
+    user
+      ? serviceClient.from("user_profiles").select("role").eq("id", user.id).single()
+      : Promise.resolve({ data: null }),
+    serviceClient
+      .from("delivery_notes")
+      .select("*")
+      .eq("collection_id", id)
+      .maybeSingle(),
+  ]);
 
   return (
     <>
@@ -40,6 +48,7 @@ export default async function CollectionDetailPage({ params }: PageProps) {
           <CollectionDetail
             collection={data as GoodsCollectionNote}
             userRole={profile?.role || "viewer"}
+            deliveryNote={(deliveryNote as DeliveryNote | null) ?? null}
           />
         </div>
       </div>
