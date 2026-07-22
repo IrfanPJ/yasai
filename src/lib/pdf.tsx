@@ -6,7 +6,6 @@ const ORANGE       = "#E67A32";
 const BORDER       = "#D1D5DB";
 const HDR_BG       = "#F3F4F6";
 const LIGHT_ORANGE = "#FFF7ED";
-const ORANGE_BG    = "#F97316";
 
 function esc(v: unknown): string {
   const s = v == null ? "" : String(v);
@@ -1349,10 +1348,6 @@ export async function generateDeliveryNotePDF(dn: DeliveryNote, logoDataUrl?: st
   const html = buildDeliveryNoteHtml(dn, logoDataUrl);
   return renderHtmlToPdf(html);
 }
-
-// ══════════════════════════════════════════════════════════════
-// PACKING LIST PDF (Stage 4 — Origin Dispatch)
-// ══════════════════════════════════════════════════════════════
 
 function buildPackingListHtml(job: JobOrder, gcns: GoodsCollectionNote[], logoDataUrl?: string): string {
   const fmtDate = (d?: string | null) => {
