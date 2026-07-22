@@ -99,7 +99,6 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
       });
       if (error) throw error;
       toast.success("Password changed successfully");
-      setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch {
