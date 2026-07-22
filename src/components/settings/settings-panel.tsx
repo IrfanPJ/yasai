@@ -20,8 +20,8 @@ import { Separator } from "@/components/ui/separator";
 import type { UserProfile, UserRole } from "@/types";
 import { useTheme } from "next-themes";
 import {
-  Loader2, Shield, User, Building2, Moon, Sun, Users,
-  UserCheck, UserX, Crown, Eye, Wrench, Warehouse,
+  Loader2, Shield, User, Building2, Sun, Users,
+  UserCheck, UserX, Crown, Eye, Wrench, Warehouse, Calculator,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -35,6 +35,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
   operations: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   warehouse: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   warehouse_supervisor: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+  finance: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
   viewer: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
 };
 
@@ -43,6 +44,7 @@ const ROLE_ICONS: Record<UserRole, typeof Crown> = {
   operations: Wrench,
   warehouse: Warehouse,
   warehouse_supervisor: UserCheck,
+  finance: Calculator,
   viewer: Eye,
 };
 
@@ -51,6 +53,7 @@ const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   operations: "Create, edit, delete collections and manage shipments",
   warehouse: "View and update collection status in warehouse",
   warehouse_supervisor: "Second-check warehouse verification (Warehouse Incharge - 2)",
+  finance: "Manage invoices, track payments, and financial reporting",
   viewer: "Read-only access to view collections and reports",
 };
 
@@ -61,7 +64,6 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [fullName, setFullName] = useState(currentUser?.full_name || "");
-  const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [updatingUser, setUpdatingUser] = useState<string | null>(null);
@@ -97,7 +99,6 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
       });
       if (error) throw error;
       toast.success("Password changed successfully");
-      setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch {
@@ -323,7 +324,7 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
           <TabsContent value="users" className="space-y-6">
             {/* Role Overview Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {(["admin", "operations", "warehouse", "warehouse_supervisor", "viewer"] as UserRole[]).map((role) => {
+              {(["admin", "operations", "warehouse", "warehouse_supervisor", "finance", "viewer"] as UserRole[]).map((role) => {
                 const RoleIcon = ROLE_ICONS[role];
                 const count = allUsers.filter((u) => u.role === role).length;
                 return (
@@ -420,7 +421,7 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {(["admin", "operations", "warehouse", "warehouse_supervisor", "viewer"] as UserRole[]).map((role) => {
+                                    {(["admin", "operations", "warehouse", "warehouse_supervisor", "finance", "viewer"] as UserRole[]).map((role) => {
                                       const Icon = ROLE_ICONS[role];
                                       return (
                                         <SelectItem key={role} value={role}>
@@ -472,7 +473,7 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {(["admin", "operations", "warehouse", "warehouse_supervisor", "viewer"] as UserRole[]).map((role) => {
+                  {(["admin", "operations", "warehouse", "warehouse_supervisor", "finance", "viewer"] as UserRole[]).map((role) => {
                     const RoleIcon = ROLE_ICONS[role];
                     return (
                       <div

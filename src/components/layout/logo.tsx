@@ -9,9 +9,7 @@ interface YasaiLogoProps {
 }
 
 export function YasaiLogo({
-  variant = "dark",
   className,
-  height = 44,
 }: YasaiLogoProps) {
   return (
     <div className={cn("flex items-center w-full", className)}>

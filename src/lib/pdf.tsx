@@ -1,4 +1,4 @@
-import type { GoodsCollectionNote, DeliveryNote, DeliveryNoteItem } from "@/types";
+import type { GoodsCollectionNote, DeliveryNote, DeliveryNoteItem, JobOrder, Invoice, InvoiceLineItem } from "@/types";
 import { format } from "date-fns";
 
 const NAVY         = "#0B1F3F";
@@ -6,7 +6,6 @@ const ORANGE       = "#E67A32";
 const BORDER       = "#D1D5DB";
 const HDR_BG       = "#F3F4F6";
 const LIGHT_ORANGE = "#FFF7ED";
-const ORANGE_BG    = "#F97316";
 
 function esc(v: unknown): string {
   const s = v == null ? "" : String(v);
@@ -1050,309 +1049,252 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
 
   const itemRows = items.map((it, i) => `
     <tr>
-      <td class="dn-td dn-center" style="width:5%">${i + 1}</td>
-      <td class="dn-td">${esc(it.item_description)}</td>
-      <td class="dn-td dn-center" style="width:8%">${esc(it.qty)}</td>
-      <td class="dn-td dn-center" style="width:9%">${esc(it.unit)}</td>
-      <td class="dn-td dn-center" style="width:12%">${esc(it.total_pallets)}</td>
-      <td class="dn-td" style="width:17%">${esc(it.remark)}</td>
+      <td class="tbl-td tbl-num">${i + 1}</td>
+      <td class="tbl-td">${esc(it.item_description)}</td>
+      <td class="tbl-td tbl-ctr">${esc(it.qty)}</td>
+      <td class="tbl-td tbl-ctr">${esc(it.unit)}</td>
+      <td class="tbl-td tbl-ctr">${esc(it.total_pallets)}</td>
+      <td class="tbl-td">${esc(it.remark)}</td>
     </tr>`).join("");
 
   const emptyRows = Array.from({ length: emptyRowsNeeded }, () => `
     <tr style="height:26px">
-      <td class="dn-td"></td>
-      <td class="dn-td"></td>
-      <td class="dn-td"></td>
-      <td class="dn-td"></td>
-      <td class="dn-td"></td>
-      <td class="dn-td"></td>
+      <td class="tbl-td"></td>
+      <td class="tbl-td"></td>
+      <td class="tbl-td"></td>
+      <td class="tbl-td"></td>
+      <td class="tbl-td"></td>
+      <td class="tbl-td"></td>
     </tr>`).join("");
-
-  // value is already safe HTML (either esc()'d or a date string) — do NOT re-escape
-  const infoRow = (label: string, value: string | null) =>
-    `<div class="dn-info-row">
-      <span class="dn-info-label">${label}</span>
-      <span class="dn-info-val">${value ?? "&#8211;"}</span>
-    </div>`;
 
   return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   @page { size: A4; margin: 0; }
+
   body {
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 10pt;
+    font-size: 9pt;
     color: #111;
     background: white;
+    width: 210mm;
     height: 297mm;
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
 
-  /* ── LETTERHEAD (identical to GCN — brand anchor) ── */
-  .lh {
-    display: flex; align-items: center;
-    padding: 8px 14px 6px;
-    border-bottom: 2.5px solid ${ORANGE};
-    background: white; flex-shrink: 0;
-  }
-  .lh-logo { display: flex; align-items: center; padding-right: 12px; border-right: 2.5px solid ${ORANGE}; min-width: 90px; height: 48px; }
-  .lh-logo img { height: 42px; width: auto; object-fit: contain; }
-  .lh-center { flex: 1; padding: 0 14px; }
-  .lh-title-en { font-size: 12pt; font-weight: 900; color: ${NAVY}; letter-spacing: 0.5px; }
-  .lh-subtitle { font-size: 7pt; color: #888; margin-top: 1px; }
-  .lh-ar { font-size: 10pt; font-weight: bold; color: ${NAVY}; direction: rtl; text-align: right; min-width: 160px; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
-
-  /* ── CONTACT ROW (identical to GCN) ── */
-  .contact-row { display: flex; align-items: center; padding: 3px 14px; background: white; gap: 14px; font-size: 6pt; color: #666; border-bottom: 1px solid #eee; flex-shrink: 0; }
-  .contact-row .ci { display: flex; align-items: center; gap: 3px; }
-  .ci-icon { display: inline-flex; align-items: center; justify-content: center; width: 12px; height: 12px; background: ${ORANGE}; border-radius: 50%; color: white; font-size: 7px; flex-shrink: 0; }
-  .web-icon { display: inline-flex; align-items: center; justify-content: center; width: 12px; height: 12px; background: ${NAVY}; border-radius: 50%; color: white; font-size: 7px; flex-shrink: 0; }
-
-  /* ── ORANGE TITLE BAND — replaces the badge, very different from GCN ── */
-  .dn-title-band {
-    background: ${ORANGE};
-    padding: 10px 18px;
+  /* ── Top header: logo + company name ── */
+  .top-hdr {
     display: flex;
-    align-items: baseline;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+  }
+  .top-hdr-left { display: flex; align-items: center; gap: 10px; }
+  .logo-wrap { width: 40px; height: 40px; flex-shrink: 0; }
+  .logo-wrap img { width: 100%; height: 100%; object-fit: contain; }
+  .logo-sep { width: 1px; height: 36px; background: #ddd; flex-shrink: 0; }
+  .co-en { font-size: 13pt; font-weight: 900; color: ${NAVY}; letter-spacing: 0.3px; }
+  .co-sub { font-size: 7pt; color: #888; margin-top: 1px; }
+  .co-ar {
+    font-size: 10pt; font-weight: 700; color: ${NAVY};
+    direction: rtl; font-family: 'Noto Naskh Arabic', Arial, sans-serif; text-align: right;
+  }
+  .co-ar-sub {
+    font-size: 6pt; color: #888; direction: rtl;
+    font-family: 'Noto Naskh Arabic', Arial, sans-serif; text-align: right; margin-top: 1px;
+  }
+
+  /* ── Contact bar (navy) ── */
+  .contact-bar {
+    background: ${NAVY};
+    padding: 5px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .ci { display: flex; align-items: center; gap: 5px; font-size: 6pt; color: rgba(255,255,255,0.65); white-space: nowrap; }
+  .ci-dot {
+    width: 11px; height: 11px; border-radius: 50%; background: ${ORANGE};
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+
+  /* ── DELIVERY NOTE banner: full-width orange ── */
+  .dn-banner {
+    background: ${ORANGE};
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
     justify-content: space-between;
     flex-shrink: 0;
   }
-  .dn-title-text {
-    font-size: 16pt;
-    font-weight: 900;
-    color: white;
-    letter-spacing: 2px;
-    text-transform: uppercase;
+  .dn-title {
+    font-size: 16pt; font-weight: 900; color: white;
+    letter-spacing: 2px; text-transform: uppercase;
   }
-  .dn-title-meta {
-    display: flex;
-    gap: 20px;
-  }
-  .dn-meta-item {
-    font-size: 8pt;
-    color: rgba(255,255,255,0.85);
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-  }
-  .dn-meta-label { font-size: 6.5pt; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.6); }
-  .dn-meta-val { font-weight: 700; font-size: 9pt; color: white; }
+  .dn-meta { display: flex; gap: 20px; align-items: center; }
+  .dn-meta-item { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+  .dn-meta-lbl { font-size: 6pt; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.5px; }
+  .dn-meta-val { font-size: 9.5pt; font-weight: 800; color: white; }
 
-  /* ── CONTENT ── */
-  .dn-body {
+  /* ── Content body ── */
+  .body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 12px 18px 8px;
-    gap: 10px;
+    padding: 10px 16px 8px;
+    gap: 8px;
     overflow: hidden;
   }
 
-  /* ── CUSTOMER + DOC INFO: plain two-column table, no colored boxes ── */
-  .dn-info-grid {
-    display: flex;
-    gap: 0;
-    border: 1px solid ${BORDER};
-    flex-shrink: 0;
+  /* ── Info row: customer | document | remarks ── */
+  .info-row { display: flex; gap: 0; border: 1px solid ${BORDER}; flex-shrink: 0; }
+  .info-col { padding: 8px 12px; border-right: 1px solid ${BORDER}; }
+  .info-col:last-child { border-right: none; }
+  .info-col-label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 6.5pt; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.8px; color: #333;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 4px; margin-bottom: 6px;
   }
-  .dn-cust-col {
-    flex: 1.5;
-    padding: 10px 14px;
-    border-right: 1px solid ${BORDER};
-  }
-  .dn-col-label {
-    font-size: 7pt;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: ${ORANGE};
-    border-bottom: 1.5px solid ${ORANGE};
-    padding-bottom: 3px;
-    margin-bottom: 6px;
-  }
-  .dn-cust-name { font-size: 12pt; font-weight: 900; color: ${NAVY}; margin-bottom: 4px; }
-  .dn-cust-line { font-size: 9pt; color: #444; line-height: 1.7; }
+  .info-col-dot { width: 12px; height: 12px; border-radius: 50%; background: ${ORANGE}; flex-shrink: 0; }
 
-  .dn-doc-col {
-    flex: 1;
-    border-right: 1px solid ${BORDER};
-  }
-  .dn-field {
-    display: flex;
-    align-items: baseline;
-    padding: 4px 12px;
-    border-bottom: 1px solid #f0f0f0;
-  }
-  .dn-field:last-child { border-bottom: none; }
-  .dn-field-lbl {
-    font-size: 7.5pt;
-    color: #888;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    min-width: 72px;
-    flex-shrink: 0;
-  }
-  .dn-field-val { font-size: 9pt; font-weight: 700; color: ${NAVY}; }
+  .cust-name { font-size: 10.5pt; font-weight: 900; color: ${NAVY}; margin-bottom: 2px; }
+  .cust-line { font-size: 8pt; color: #444; line-height: 1.6; }
 
-  .dn-notes-col {
-    flex: 0.7;
-    padding: 10px 12px;
-  }
-  .dn-notes-txt { font-size: 8.5pt; color: #555; line-height: 1.55; margin-top: 6px; }
+  .doc-field { display: flex; align-items: baseline; padding: 2px 0; gap: 6px; border-bottom: 1px solid #f5f5f5; }
+  .doc-field:last-child { border-bottom: none; }
+  .doc-lbl { font-size: 6.5pt; color: #999; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; min-width: 64px; flex-shrink: 0; }
+  .doc-val { font-size: 8.5pt; font-weight: 700; color: ${NAVY}; }
 
-  /* ── ITEMS TABLE — orange header, not navy ── */
-  .dn-table-wrap {
-    flex: 1;
-    border: 1px solid ${BORDER};
-    overflow: hidden;
-  }
-  .dn-table { width: 100%; border-collapse: collapse; }
-  .dn-th {
-    background: ${ORANGE};
-    color: white;
-    font-size: 8pt;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 7px 8px;
-    text-align: center;
-    border-right: 1px solid rgba(255,255,255,0.25);
-  }
-  .dn-th:nth-child(2) { text-align: left; }
-  .dn-th:last-child { text-align: left; }
-  .dn-td {
-    border: 1px solid ${BORDER};
-    padding: 5px 8px;
-    font-size: 9pt;
-    vertical-align: middle;
-    color: #222;
-  }
-  .dn-center { text-align: center; }
-  tr:nth-child(even) .dn-td { background: #fafafa; }
+  .notes-txt { font-size: 8pt; color: #555; line-height: 1.6; }
 
-  /* ── SIGN-OFF: plain ruled lines, no box ── */
-  .dn-signoff {
-    flex-shrink: 0;
-    padding: 6px 0 4px;
-    border-top: 2px solid ${ORANGE};
+  /* ── Items table ── */
+  .tbl-wrap { flex: 1; border: 1px solid ${BORDER}; overflow: hidden; }
+  .tbl { width: 100%; border-collapse: collapse; }
+  .tbl-th {
+    background: ${NAVY}; color: white;
+    font-size: 7.5pt; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 6px 8px; text-align: center;
+    border-right: 1px solid rgba(255,255,255,0.12);
   }
-  .dn-signoff-text {
-    font-size: 9pt;
-    color: #333;
-    font-style: italic;
-    margin-bottom: 12px;
-  }
-  .dn-sig-row { display: flex; gap: 20px; }
-  .dn-sig-block { flex: 1; }
-  .dn-sig-line { border-bottom: 1px solid #aaa; margin-bottom: 4px; height: 20px; }
-  .dn-sig-lbl { font-size: 7.5pt; color: #888; text-transform: uppercase; letter-spacing: 0.4px; }
+  .tbl-th:nth-child(2) { text-align: left; }
+  .tbl-th:last-child { text-align: left; border-right: none; }
+  .tbl-td { border: 1px solid ${BORDER}; padding: 5px 8px; font-size: 8.5pt; vertical-align: middle; color: #222; }
+  .tbl-ctr { text-align: center; }
+  .tbl-num { font-size: 7.5pt; color: #999; text-align: center; }
+  tr:nth-child(even) .tbl-td { background: #f9f9f9; }
 
-  /* ── DOC REF STRIP ── */
-  .dn-doc-ref {
+  /* ── Sign-off ── */
+  .signoff { flex-shrink: 0; border-top: 2px solid ${BORDER}; padding-top: 6px; }
+  .signoff-text { font-size: 8.5pt; color: #333; font-weight: 600; margin-bottom: 10px; }
+  .sig-row { display: flex; gap: 14px; }
+  .sig-block { flex: 1; }
+  .sig-line { border-bottom: 1px solid #bbb; height: 18px; margin-bottom: 3px; }
+  .sig-lbl { font-size: 7pt; color: #999; text-transform: uppercase; letter-spacing: 0.4px; }
+
+  /* ── Doc ref ── */
+  .doc-ref {
     display: flex; justify-content: space-between;
-    padding: 3px 18px;
-    font-size: 7pt; color: #888;
-    border-top: 1px solid ${BORDER};
-    flex-shrink: 0;
+    padding: 3px 16px; font-size: 6.5pt; color: #aaa;
+    border-top: 1px solid #eee; flex-shrink: 0;
   }
 
-  /* ── FOOTER (identical to GCN — brand anchor) ── */
-  .dn-footer {
+  /* ── Footer ── */
+  .footer {
     display: flex; justify-content: space-between; align-items: center;
-    background: ${NAVY}; padding: 6px 14px; flex-shrink: 0;
+    background: ${NAVY}; padding: 5px 16px; flex-shrink: 0;
   }
-  .dn-footer-left { display: flex; align-items: center; gap: 6px; }
-  .dn-footer-right { display: flex; align-items: center; gap: 6px; }
-  .pin { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid ${ORANGE}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .pin span { font-size: 10px; color: ${ORANGE}; }
-  .f-co-en { font-size: 7pt; font-weight: bold; color: white; }
-  .f-ad-en { font-size: 5.5pt; color: #AAA; line-height: 1.4; margin-top: 1px; }
-  .f-co-ar { font-size: 8pt; font-weight: bold; color: white; text-align: right; direction: rtl; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
-  .f-ad-ar { font-size: 5.5pt; color: #AAA; text-align: right; direction: rtl; line-height: 1.4; margin-top: 1px; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
+  .f-left { display: flex; align-items: center; gap: 6px; }
+  .f-right { display: flex; align-items: center; gap: 6px; }
+  .fpin { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid ${ORANGE}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .fpin span { font-size: 9px; color: ${ORANGE}; }
+  .f-co-en { font-size: 6.5pt; font-weight: bold; color: white; }
+  .f-ad-en { font-size: 5pt; color: #AAA; margin-top: 1px; }
+  .f-co-ar { font-size: 7.5pt; font-weight: bold; color: white; text-align: right; direction: rtl; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
+  .f-ad-ar { font-size: 5pt; color: #AAA; text-align: right; direction: rtl; margin-top: 1px; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
 </style>
 </head>
 <body>
 
-  <!-- LETTERHEAD (same as GCN) -->
-  <div class="lh">
-    <div class="lh-logo">${logoDataUrl ? `<img src="${logoDataUrl}" alt="YASAI">` : ""}</div>
-    <div class="lh-center">
-      <div class="lh-title-en">YASAI LOGISTICS COMPANY</div>
-      <div class="lh-subtitle">Freight &amp; Logistics Solutions</div>
+  <!-- TOP HEADER: logo + company name -->
+  <div class="top-hdr">
+    <div class="top-hdr-left">
+      <div class="logo-wrap">
+        ${logoDataUrl ? `<img src="${logoDataUrl}" alt="YASAI">` : ""}
+      </div>
+      <div class="logo-sep"></div>
+      <div>
+        <div class="co-en">YASAI LOGISTICS COMPANY</div>
+        <div class="co-sub">Freight &amp; Logistics Solutions</div>
+      </div>
     </div>
-    <div class="lh-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1575;&#1578; &#1588;.&#1584;.&#1605;.&#1605;</div>
+    <div style="text-align:right">
+      <div class="co-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1575;&#1578; &#1588;.&#1584;.&#1605;.&#1605;</div>
+      <div class="co-ar-sub">&#1588;&#1585;&#1603;&#1577; &#1605;&#1578;&#1582;&#1589;&#1589;&#1577; &#1601;&#1610; &#1575;&#1604;&#1588;&#1581;&#1606; &#1608;&#1575;&#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1575;&#1578;</div>
+    </div>
   </div>
 
-  <!-- CONTACT ROW (same as GCN) -->
-  <div class="contact-row">
-    <div class="ci"><span class="ci-icon">&#9679;</span> H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
-    <div class="ci"><span class="ci-icon">&#9990;</span> +966 55 932 6687</div>
-    <div class="ci"><span class="ci-icon">&#9993;</span> info@yasailogistics.com</div>
-    <div class="ci"><span class="web-icon">&#8853;</span> www.yasailogistics.com</div>
+  <!-- CONTACT BAR (navy) -->
+  <div class="contact-bar">
+    <div class="ci"><span class="ci-dot"></span> H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
+    <div class="ci"><span class="ci-dot"></span> +966 55 932 6687</div>
+    <div class="ci"><span class="ci-dot"></span> info@yasailogistics.com</div>
+    <div class="ci"><span class="ci-dot"></span> www.yasailogistics.com</div>
   </div>
 
-  <!-- ORANGE TITLE BAND with doc meta inline -->
-  <div class="dn-title-band">
-    <div class="dn-title-text">Delivery Note</div>
-    <div class="dn-title-meta">
-      ${dn.doc_number ? `<div class="dn-meta-item"><span class="dn-meta-label">Doc No</span><span class="dn-meta-val">${esc(dn.doc_number)}</span></div>` : ""}
-      ${dn.doc_date ? `<div class="dn-meta-item"><span class="dn-meta-label">Date</span><span class="dn-meta-val">${fmtDate(dn.doc_date) ?? ""}</span></div>` : ""}
+  <!-- DELIVERY NOTE BANNER: full-width orange -->
+  <div class="dn-banner">
+    <span class="dn-title">Delivery Note</span>
+    <div class="dn-meta">
+      ${dn.doc_number ? `<div class="dn-meta-item"><span class="dn-meta-lbl">Doc No</span><span class="dn-meta-val">${esc(dn.doc_number)}</span></div>` : ""}
+      ${dn.doc_date ? `<div class="dn-meta-item"><span class="dn-meta-lbl">Date</span><span class="dn-meta-val">${fmtDate(dn.doc_date) ?? "&#8211;"}</span></div>` : ""}
     </div>
   </div>
 
   <!-- BODY -->
-  <div class="dn-body">
+  <div class="body">
 
-    <!-- Customer + Doc fields + Notes — plain, no colored boxes -->
-    <div class="dn-info-grid">
-
-      <div class="dn-cust-col">
-        <div class="dn-col-label">Customer Details</div>
-        <div class="dn-cust-name">${esc(dn.customer_name) || "&#8211;"}</div>
-        ${dn.customer_address ? `<div class="dn-cust-line">${esc(dn.customer_address).replace(/\n/g, "<br>")}</div>` : ""}
-        ${dn.customer_phone ? `<div class="dn-cust-line">Tel: ${esc(dn.customer_phone)}</div>` : ""}
-        ${dn.customer_email ? `<div class="dn-cust-line">Email: ${esc(dn.customer_email)}</div>` : ""}
+    <!-- Info row: 3 columns -->
+    <div class="info-row">
+      <div class="info-col" style="flex:1.5">
+        <div class="info-col-label"><span class="info-col-dot"></span>Customer Details</div>
+        <div class="cust-name">${esc(dn.customer_name) || "&#8211;"}</div>
+        ${dn.customer_address ? `<div class="cust-line">${esc(dn.customer_address).replace(/\n/g, "<br>")}</div>` : ""}
+        ${dn.customer_phone ? `<div class="cust-line">Tel: ${esc(dn.customer_phone)}</div>` : ""}
+        ${dn.customer_email ? `<div class="cust-line">Email: ${esc(dn.customer_email)}</div>` : ""}
       </div>
-
-      <div class="dn-doc-col">
-        <div style="padding:10px 12px 3px"><div class="dn-col-label">Shipment Info</div></div>
-        ${[
-          ["Job", dn.job_number],
-          ["Shipper", dn.shipper],
-          ["Ref", dn.ref_number],
-          ["Destination", dn.destination],
-        ].map(([l, v]) => `<div class="dn-field">
-          <span class="dn-field-lbl">${l}</span>
-          <span class="dn-field-val">${v ? esc(v) : "&#8211;"}</span>
-        </div>`).join("")}
+      <div class="info-col" style="flex:1">
+        <div class="info-col-label"><span class="info-col-dot"></span>Document Info</div>
+        ${[["Date", fmtDate(dn.doc_date)], ["Doc No", dn.doc_number], ["Job", dn.job_number], ["Shipper", dn.shipper], ["Ref", dn.ref_number], ["Destination", dn.destination]]
+          .map(([l, v]) => `<div class="doc-field"><span class="doc-lbl">${l}</span><span class="doc-val">${v ? esc(String(v)) : "&#8211;"}</span></div>`).join("")}
       </div>
-
-      <div class="dn-notes-col">
-        <div class="dn-col-label">Remarks</div>
-        <div class="dn-notes-txt">${dn.notes ? esc(dn.notes).replace(/\n/g, "<br>") : "&#8211;"}</div>
+      <div class="info-col" style="flex:0.8">
+        <div class="info-col-label"><span class="info-col-dot"></span>Remarks</div>
+        <div class="notes-txt">${dn.notes ? esc(dn.notes).replace(/\n/g, "<br>") : "&#8211;"}</div>
       </div>
-
     </div>
 
-    <!-- Items table — orange header -->
-    <div class="dn-table-wrap">
-      <table class="dn-table">
+    <!-- Items table -->
+    <div class="tbl-wrap">
+      <table class="tbl">
         <thead>
           <tr>
-            <th class="dn-th" style="width:5%">No</th>
-            <th class="dn-th">Item Description</th>
-            <th class="dn-th" style="width:8%">QTY</th>
-            <th class="dn-th" style="width:9%">UNIT</th>
-            <th class="dn-th" style="width:12%">Total Pallets</th>
-            <th class="dn-th" style="width:17%">Remark</th>
+            <th class="tbl-th" style="width:5%">No</th>
+            <th class="tbl-th">Item Description</th>
+            <th class="tbl-th" style="width:8%">QTY</th>
+            <th class="tbl-th" style="width:9%">Unit</th>
+            <th class="tbl-th" style="width:12%">Total Pallets</th>
+            <th class="tbl-th" style="width:17%">Remark</th>
           </tr>
         </thead>
         <tbody>
@@ -1362,39 +1304,39 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
       </table>
     </div>
 
-    <!-- Sign-off: plain ruled lines, no box -->
-    <div class="dn-signoff">
-      <div class="dn-signoff-text">The above goods received in good condition :</div>
-      <div class="dn-sig-row">
-        <div class="dn-sig-block"><div class="dn-sig-line"></div><div class="dn-sig-lbl">Receiver's Name</div></div>
-        <div class="dn-sig-block"><div class="dn-sig-line"></div><div class="dn-sig-lbl">Signature</div></div>
-        <div class="dn-sig-block"><div class="dn-sig-line"></div><div class="dn-sig-lbl">Date</div></div>
+    <!-- Sign-off -->
+    <div class="signoff">
+      <div class="signoff-text">The above goods received in good condition</div>
+      <div class="sig-row">
+        <div class="sig-block"><div class="sig-line"></div><div class="sig-lbl">Receiver's Name</div></div>
+        <div class="sig-block"><div class="sig-line"></div><div class="sig-lbl">Signature</div></div>
+        <div class="sig-block"><div class="sig-line"></div><div class="sig-lbl">Date</div></div>
       </div>
     </div>
 
-  </div>
+  </div><!-- /body -->
 
-  <!-- DOC REF -->
-  <div class="dn-doc-ref">
+  <!-- Doc ref -->
+  <div class="doc-ref">
     <span>Doc No: YSI-KSA-WMS-FRM-03</span>
     <span>Rev No. 00</span>
   </div>
 
-  <!-- FOOTER (same as GCN) -->
-  <div class="dn-footer">
-    <div class="dn-footer-left">
-      <div class="pin"><span>&#9679;</span></div>
+  <!-- Footer -->
+  <div class="footer">
+    <div class="f-left">
+      <div class="fpin"><span>&#9679;</span></div>
       <div>
         <div class="f-co-en">YASAI LOGISTICS COMPANY</div>
         <div class="f-ad-en">H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
       </div>
     </div>
-    <div class="dn-footer-right">
+    <div class="f-right">
       <div>
         <div class="f-co-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1577;</div>
         <div class="f-ad-ar">&#1607;&#1607; &#1575;&#1604;&#1588;&#1610;&#1582; &#1587;&#1593;&#1608;&#1583; &#1576;&#1606; &#1589;&#1602;&#1585;&#1548; &#1575;&#1604;&#1605;&#1578;&#1610;&#1606;&#1577;&#1548; &#1583;&#1576;&#1610; &#8211; &#1575;&#1604;&#1573;&#1605;&#1575;&#1585;&#1575;&#1578;</div>
       </div>
-      <div class="pin"><span>&#9679;</span></div>
+      <div class="fpin"><span>&#9679;</span></div>
     </div>
   </div>
 
@@ -1404,5 +1346,418 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
 
 export async function generateDeliveryNotePDF(dn: DeliveryNote, logoDataUrl?: string): Promise<Buffer> {
   const html = buildDeliveryNoteHtml(dn, logoDataUrl);
+  return renderHtmlToPdf(html);
+}
+
+function buildPackingListHtml(job: JobOrder, gcns: GoodsCollectionNote[], logoDataUrl?: string): string {
+  const fmtDate = (d?: string | null) => {
+    if (!d) return "&#8211;";
+    try { return format(new Date(d), "dd/MM/yyyy"); } catch { return d; }
+  };
+
+  const totalWeight = gcns.reduce((s, g) => s + (g.weight_kg ?? 0), 0);
+  const totalCbm = gcns.reduce((s, g) => s + (g.volume_cbm ?? 0), 0);
+  const MAX_WEIGHT = 24000;
+  const MAX_CBM = 45;
+  const weightPct = Math.min(100, Math.round((totalWeight / MAX_WEIGHT) * 100));
+  const cbmPct = Math.min(100, Math.round((totalCbm / MAX_CBM) * 100));
+
+  const gcnRows = gcns.map((g, i) => `
+    <tr>
+      <td class="td ctr">${i + 1}</td>
+      <td class="td">${esc(g.consignee_name)}</td>
+      <td class="td">${esc(g.commodity)}</td>
+      <td class="td ctr">${esc(g.num_packages ?? "")}</td>
+      <td class="td ctr">${g.weight_kg != null ? g.weight_kg.toFixed(2) : "&#8211;"}</td>
+      <td class="td ctr">${g.volume_cbm != null ? g.volume_cbm.toFixed(3) : "&#8211;"}</td>
+      <td class="td">${esc(g.storage_location ?? "")}</td>
+      <td class="td">${esc(g.collection_number)}</td>
+    </tr>`).join("");
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  @page { size: A4 landscape; margin: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+    color: #111;
+    background: white;
+    width: 297mm;
+    height: 210mm;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+  }
+  .stripe {
+    width: 28px; background: ${ORANGE}; display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-start; flex-shrink: 0; padding-top: 14px;
+  }
+  .stripe-logo { width: 22px; height: 22px; margin-bottom: 10px; }
+  .stripe-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .stripe-text {
+    writing-mode: vertical-rl; transform: rotate(180deg);
+    font-size: 9.5pt; font-weight: 900; color: white;
+    letter-spacing: 3px; text-transform: uppercase; white-space: nowrap; margin-top: 8px;
+  }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .hdr { background: ${NAVY}; padding: 7px 14px 5px; flex-shrink: 0; }
+  .hdr-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
+  .hdr-company { font-size: 11pt; font-weight: 900; color: white; }
+  .hdr-sub { font-size: 6.5pt; color: rgba(255,255,255,0.6); margin-top: 1px; }
+  .hdr-ar { font-size: 8.5pt; font-weight: bold; color: rgba(255,255,255,0.85); direction: rtl; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
+  .hdr-contact { display: flex; gap: 14px; font-size: 5.5pt; color: rgba(255,255,255,0.6); border-top: 1px solid rgba(255,255,255,0.12); padding-top: 3px; }
+  .hdr-ci { display: flex; align-items: center; gap: 3px; }
+  .hdr-dot { width: 9px; height: 9px; border-radius: 50%; background: ${ORANGE}; display: inline-flex; align-items: center; justify-content: center; font-size: 5px; color: white; flex-shrink: 0; }
+  .title-row { display: flex; align-items: stretch; border-bottom: 3px solid ${ORANGE}; flex-shrink: 0; }
+  .doc-title { flex: 1; padding: 6px 14px; font-size: 16pt; font-weight: 900; color: ${NAVY}; letter-spacing: 1px; text-transform: uppercase; }
+  .doc-meta { display: flex; flex-direction: column; justify-content: center; align-items: flex-end; padding: 6px 14px; gap: 2px; border-left: 2px solid ${ORANGE}; background: #fffaf6; min-width: 220px; }
+  .doc-meta-row { display: flex; gap: 8px; align-items: baseline; }
+  .doc-meta-lbl { font-size: 6pt; color: #999; text-transform: uppercase; letter-spacing: 0.4px; }
+  .doc-meta-val { font-size: 8.5pt; font-weight: 800; color: ${NAVY}; }
+  .body { flex: 1; display: flex; flex-direction: column; padding: 8px 14px 6px; gap: 7px; overflow: hidden; }
+  .cap-row { display: flex; gap: 16px; flex-shrink: 0; }
+  .cap-block { flex: 1; }
+  .cap-label { font-size: 6.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: #888; margin-bottom: 2px; }
+  .cap-bar-bg { background: #e5e7eb; border-radius: 3px; height: 6px; overflow: hidden; }
+  .cap-bar-fill { height: 100%; border-radius: 3px; }
+  .cap-val { font-size: 7pt; color: #555; margin-top: 2px; }
+  .tbl-wrap { flex: 1; border: 1px solid ${BORDER}; overflow: hidden; }
+  .tbl { width: 100%; border-collapse: collapse; }
+  .th { background: ${NAVY}; color: white; font-size: 7pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; padding: 5px 7px; text-align: center; border-right: 1px solid rgba(255,255,255,0.12); }
+  .th:nth-child(2), .th:nth-child(3), .th:last-child { text-align: left; }
+  .td { border: 1px solid ${BORDER}; padding: 4px 7px; font-size: 8pt; vertical-align: middle; color: #222; }
+  .ctr { text-align: center; }
+  .total-row .td { background: ${NAVY}; color: white; font-weight: 800; font-size: 8.5pt; }
+  tr:nth-child(even) .td { background: #f9f9f9; }
+  .total-row:nth-child(even) .td { background: ${NAVY}; }
+  .sig-row { display: flex; gap: 20px; flex-shrink: 0; padding-top: 6px; border-top: 1px solid ${BORDER}; }
+  .sig-block { flex: 1; }
+  .sig-line { border-bottom: 1px solid #bbb; height: 18px; margin-bottom: 3px; }
+  .sig-lbl { font-size: 6.5pt; color: #999; text-transform: uppercase; letter-spacing: 0.4px; }
+  .doc-ref { display: flex; justify-content: space-between; padding: 2px 14px; font-size: 6pt; color: #aaa; border-top: 1px solid #eee; flex-shrink: 0; }
+  .footer { display: flex; justify-content: space-between; align-items: center; background: ${NAVY}; padding: 5px 14px; flex-shrink: 0; }
+  .f-left { display: flex; align-items: center; gap: 6px; }
+  .f-right { display: flex; align-items: center; gap: 6px; }
+  .fpin { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid ${ORANGE}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .fpin span { font-size: 8px; color: ${ORANGE}; }
+  .f-co { font-size: 6pt; font-weight: bold; color: white; }
+  .f-ad { font-size: 4.5pt; color: #AAA; margin-top: 1px; }
+  .f-ar { font-size: 6.5pt; font-weight: bold; color: white; text-align: right; direction: rtl; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
+  .f-ad-ar { font-size: 4.5pt; color: #AAA; text-align: right; direction: rtl; margin-top: 1px; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
+</style>
+</head>
+<body>
+
+<div class="stripe">
+  <div class="stripe-logo">${logoDataUrl ? `<img src="${logoDataUrl}" alt="">` : ""}</div>
+  <div class="stripe-text">Packing List</div>
+</div>
+
+<div class="main">
+  <div class="hdr">
+    <div class="hdr-top">
+      <div><div class="hdr-company">YASAI LOGISTICS COMPANY</div><div class="hdr-sub">Freight &amp; Logistics Solutions</div></div>
+      <div class="hdr-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1575;&#1578; &#1588;.&#1584;.&#1605;.&#1605;</div>
+    </div>
+    <div class="hdr-contact">
+      <div class="hdr-ci"><span class="hdr-dot">&#9679;</span> H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
+      <div class="hdr-ci"><span class="hdr-dot">&#9990;</span> +966 55 932 6687</div>
+      <div class="hdr-ci"><span class="hdr-dot">&#9993;</span> info@yasailogistics.com</div>
+      <div class="hdr-ci"><span class="hdr-dot">&#8853;</span> www.yasailogistics.com</div>
+    </div>
+  </div>
+
+  <div class="title-row">
+    <div class="doc-title">Packing List</div>
+    <div class="doc-meta">
+      <div class="doc-meta-row"><span class="doc-meta-lbl">Job No</span><span class="doc-meta-val">${esc(job.job_number)}</span></div>
+      <div class="doc-meta-row"><span class="doc-meta-lbl">Destination</span><span class="doc-meta-val">${esc(job.destination)}</span></div>
+      <div class="doc-meta-row"><span class="doc-meta-lbl">Departure</span><span class="doc-meta-val">${fmtDate(job.departure_date)}</span></div>
+      <div class="doc-meta-row"><span class="doc-meta-lbl">Truck</span><span class="doc-meta-val">${esc(job.truck_number ?? "")}</span></div>
+      <div class="doc-meta-row"><span class="doc-meta-lbl">Driver</span><span class="doc-meta-val">${esc(job.driver_name ?? "")}</span></div>
+      <div class="doc-meta-row"><span class="doc-meta-lbl">Transporter</span><span class="doc-meta-val">${esc(job.transporter_name ?? "")}</span></div>
+    </div>
+  </div>
+
+  <div class="body">
+    <!-- Capacity bars -->
+    <div class="cap-row">
+      <div class="cap-block">
+        <div class="cap-label">Weight: ${totalWeight.toFixed(1)} kg / 24,000 kg (${weightPct}%)</div>
+        <div class="cap-bar-bg"><div class="cap-bar-fill" style="width:${weightPct}%;background:${weightPct >= 90 ? "#E67A32" : "#22c55e"}"></div></div>
+      </div>
+      <div class="cap-block">
+        <div class="cap-label">CBM: ${totalCbm.toFixed(3)} m³ / 45 m³ (${cbmPct}%)</div>
+        <div class="cap-bar-bg"><div class="cap-bar-fill" style="width:${cbmPct}%;background:${cbmPct >= 90 ? "#E67A32" : "#22c55e"}"></div></div>
+      </div>
+    </div>
+
+    <!-- Items table -->
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th class="th" style="width:4%">No</th>
+            <th class="th" style="width:18%">Consignee</th>
+            <th class="th" style="width:16%">Commodity</th>
+            <th class="th" style="width:7%">Packages</th>
+            <th class="th" style="width:10%">Weight (kg)</th>
+            <th class="th" style="width:9%">CBM</th>
+            <th class="th" style="width:14%">Storage Location</th>
+            <th class="th">GCN #</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${gcnRows}
+          <tr class="total-row">
+            <td class="td" colspan="3"><strong>TOTAL</strong></td>
+            <td class="td ctr"><strong>${gcns.length} GCN</strong></td>
+            <td class="td ctr"><strong>${totalWeight.toFixed(2)}</strong></td>
+            <td class="td ctr"><strong>${totalCbm.toFixed(3)}</strong></td>
+            <td class="td" colspan="2"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Sign-off -->
+    <div class="sig-row">
+      <div class="sig-block"><div class="sig-line"></div><div class="sig-lbl">Warehouse Incharge — Loaded by</div></div>
+      <div class="sig-block"><div class="sig-line"></div><div class="sig-lbl">Truck Driver — Received by</div></div>
+      <div class="sig-block"><div class="sig-line"></div><div class="sig-lbl">Operations — Authorised by</div></div>
+      <div class="sig-block"><div class="sig-line"></div><div class="sig-lbl">Date &amp; Time</div></div>
+    </div>
+  </div>
+
+  <div class="doc-ref"><span>Packing List — ${esc(job.job_number)}</span><span>Generated ${format(new Date(), "dd/MM/yyyy HH:mm")}</span></div>
+
+  <div class="footer">
+    <div class="f-left">
+      <div class="fpin"><span>&#9679;</span></div>
+      <div><div class="f-co">YASAI LOGISTICS COMPANY</div><div class="f-ad">H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div></div>
+    </div>
+    <div class="f-right">
+      <div><div class="f-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1577;</div><div class="f-ad-ar">&#1607;&#1607; &#1575;&#1604;&#1588;&#1610;&#1582; &#1587;&#1593;&#1608;&#1583; &#1576;&#1606; &#1589;&#1602;&#1585;&#1548; &#1583;&#1576;&#1610; &#8211; &#1575;&#1604;&#1573;&#1605;&#1575;&#1585;&#1575;&#1578;</div></div>
+      <div class="fpin"><span>&#9679;</span></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>`;
+}
+
+export async function generatePackingListPDF(job: JobOrder, gcns: GoodsCollectionNote[], logoDataUrl?: string): Promise<Buffer> {
+  const html = buildPackingListHtml(job, gcns, logoDataUrl);
+  return renderHtmlToPdf(html);
+}
+
+// ══════════════════════════════════════════════════════════════
+// INVOICE PDF (Stage 7 — Finance)
+// ══════════════════════════════════════════════════════════════
+
+function buildInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string {
+  const fmtDate = (d?: string | null) => {
+    if (!d) return "&#8211;";
+    try { return format(new Date(d), "dd/MM/yyyy"); } catch { return d; }
+  };
+
+  const lineItems: InvoiceLineItem[] = Array.isArray(invoice.line_items) ? invoice.line_items : [];
+
+  const itemRows = lineItems.map((item, i) => `
+    <tr>
+      <td class="td ctr num">${i + 1}</td>
+      <td class="td">${esc(item.description)}</td>
+      <td class="td ctr">${item.qty}</td>
+      <td class="td ctr">${invoice.currency} ${item.unit_price.toFixed(2)}</td>
+      <td class="td ctr">${invoice.currency} ${item.amount.toFixed(2)}</td>
+    </tr>`).join("");
+
+  const emptyRows = Math.max(0, 5 - lineItems.length);
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  @page { size: A4; margin: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9.5pt;
+    color: #111;
+    background: white;
+    width: 210mm;
+    height: 297mm;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .lh { display: flex; align-items: center; padding: 10px 18px 8px; border-bottom: 2.5px solid ${ORANGE}; background: white; flex-shrink: 0; }
+  .lh-logo { display: flex; align-items: center; padding-right: 14px; border-right: 2.5px solid ${ORANGE}; min-width: 70px; height: 46px; }
+  .lh-logo img { height: 40px; width: auto; object-fit: contain; }
+  .lh-center { flex: 1; padding: 0 14px; }
+  .lh-title { font-size: 11pt; font-weight: 900; color: ${NAVY}; }
+  .lh-sub { font-size: 6.5pt; color: #888; margin-top: 1px; }
+  .lh-ar { font-size: 9pt; font-weight: bold; color: ${NAVY}; direction: rtl; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
+  .contact-row { display: flex; align-items: center; padding: 3px 18px; gap: 14px; font-size: 5.5pt; color: #666; border-bottom: 1px solid #eee; flex-shrink: 0; }
+  .ci { display: flex; align-items: center; gap: 3px; }
+  .ci-dot { width: 10px; height: 10px; border-radius: 50%; background: ${ORANGE}; display: inline-flex; align-items: center; justify-content: center; font-size: 6px; color: white; flex-shrink: 0; }
+  .inv-title-row { display: flex; align-items: stretch; background: ${NAVY}; padding: 10px 18px; flex-shrink: 0; }
+  .inv-title { flex: 1; }
+  .inv-title-main { font-size: 20pt; font-weight: 900; color: white; letter-spacing: 2px; }
+  .inv-title-sub { font-size: 7.5pt; color: rgba(255,255,255,0.6); margin-top: 2px; letter-spacing: 1px; }
+  .inv-meta { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+  .inv-meta-row { display: flex; gap: 8px; align-items: baseline; }
+  .inv-meta-lbl { font-size: 6.5pt; color: rgba(255,255,255,0.55); text-transform: uppercase; letter-spacing: 0.4px; min-width: 70px; }
+  .inv-meta-val { font-size: 9pt; font-weight: 700; color: white; }
+  .bill-row { display: flex; gap: 0; border: 1px solid ${BORDER}; margin: 10px 18px 0; flex-shrink: 0; }
+  .bill-col { flex: 1; padding: 10px 14px; border-right: 1px solid ${BORDER}; }
+  .bill-col:last-child { border-right: none; }
+  .bill-label { font-size: 6.5pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: ${ORANGE}; border-bottom: 1px solid #ffe0c8; padding-bottom: 3px; margin-bottom: 6px; }
+  .bill-name { font-size: 11pt; font-weight: 900; color: ${NAVY}; margin-bottom: 3px; }
+  .bill-line { font-size: 8.5pt; color: #555; line-height: 1.65; }
+  .body { flex: 1; display: flex; flex-direction: column; padding: 10px 18px 6px; gap: 8px; overflow: hidden; }
+  .tbl-wrap { flex: 1; border: 1px solid ${BORDER}; overflow: hidden; }
+  .tbl { width: 100%; border-collapse: collapse; }
+  .th { background: ${NAVY}; color: white; font-size: 7.5pt; font-weight: 800; text-transform: uppercase; padding: 6px 8px; text-align: center; border-right: 1px solid rgba(255,255,255,0.12); letter-spacing: 0.4px; }
+  .th:nth-child(2) { text-align: left; }
+  .td { border: 1px solid ${BORDER}; padding: 5px 8px; font-size: 9pt; vertical-align: middle; }
+  .ctr { text-align: center; }
+  .num { font-size: 8pt; color: #999; }
+  tr:nth-child(even) .td { background: #f9f9f9; }
+  .totals { flex-shrink: 0; border: 1px solid ${BORDER}; align-self: flex-end; min-width: 260px; }
+  .tot-row { display: flex; justify-content: space-between; padding: 6px 12px; border-bottom: 1px solid ${BORDER}; font-size: 9pt; }
+  .tot-row:last-child { border-bottom: none; }
+  .tot-label { color: #666; }
+  .tot-val { font-weight: 600; color: ${NAVY}; }
+  .tot-grand { background: ${NAVY}; }
+  .tot-grand .tot-label, .tot-grand .tot-val { color: white; font-weight: 800; font-size: 10pt; }
+  .payment-box { flex-shrink: 0; padding: 8px 12px; background: #f8fafc; border: 1px solid ${BORDER}; font-size: 8pt; color: #555; line-height: 1.6; }
+  .payment-title { font-size: 7pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: ${NAVY}; margin-bottom: 4px; }
+  .inv-footer-bar { display: flex; justify-content: space-between; padding: 3px 18px; font-size: 6.5pt; color: #aaa; border-top: 1px solid #eee; flex-shrink: 0; }
+  .footer { display: flex; justify-content: space-between; align-items: center; background: ${NAVY}; padding: 6px 14px; flex-shrink: 0; }
+  .f-left { display: flex; align-items: center; gap: 6px; }
+  .f-right { display: flex; align-items: center; gap: 6px; }
+  .fpin { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid ${ORANGE}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .fpin span { font-size: 9px; color: ${ORANGE}; }
+  .f-co { font-size: 6.5pt; font-weight: bold; color: white; }
+  .f-ad { font-size: 5pt; color: #AAA; margin-top: 1px; }
+  .f-ar { font-size: 7.5pt; font-weight: bold; color: white; text-align: right; direction: rtl; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
+  .f-ad-ar { font-size: 5pt; color: #AAA; text-align: right; direction: rtl; margin-top: 1px; font-family: 'Noto Naskh Arabic', Arial, sans-serif; }
+</style>
+</head>
+<body>
+
+<!-- Letterhead -->
+<div class="lh">
+  <div class="lh-logo">${logoDataUrl ? `<img src="${logoDataUrl}" alt="YASAI">` : ""}</div>
+  <div class="lh-center">
+    <div class="lh-title">YASAI LOGISTICS COMPANY</div>
+    <div class="lh-sub">Freight &amp; Logistics Solutions</div>
+  </div>
+  <div class="lh-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1575;&#1578; &#1588;.&#1584;.&#1605;.&#1605;</div>
+</div>
+<div class="contact-row">
+  <div class="ci"><span class="ci-dot">&#9679;</span> H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
+  <div class="ci"><span class="ci-dot">&#9990;</span> +966 55 932 6687</div>
+  <div class="ci"><span class="ci-dot">&#9993;</span> info@yasailogistics.com</div>
+  <div class="ci"><span class="ci-dot">&#8853;</span> www.yasailogistics.com</div>
+</div>
+
+<!-- Invoice title + meta -->
+<div class="inv-title-row">
+  <div class="inv-title">
+    <div class="inv-title-main">TAX INVOICE</div>
+    <div class="inv-title-sub">YASAI LOGISTICS COMPANY — KSA &amp; UAE OPERATIONS</div>
+  </div>
+  <div class="inv-meta">
+    <div class="inv-meta-row"><span class="inv-meta-lbl">Invoice No</span><span class="inv-meta-val">${esc(invoice.invoice_number)}</span></div>
+    <div class="inv-meta-row"><span class="inv-meta-lbl">Issue Date</span><span class="inv-meta-val">${fmtDate(invoice.issued_at)}</span></div>
+    <div class="inv-meta-row"><span class="inv-meta-lbl">Due Date</span><span class="inv-meta-val">${fmtDate(invoice.due_date)}</span></div>
+    <div class="inv-meta-row"><span class="inv-meta-lbl">Currency</span><span class="inv-meta-val">${esc(invoice.currency)}</span></div>
+  </div>
+</div>
+
+<!-- Bill To -->
+<div class="bill-row">
+  <div class="bill-col">
+    <div class="bill-label">Bill To</div>
+    <div class="bill-name">${esc(invoice.customer_name)}</div>
+    ${invoice.customer_address ? `<div class="bill-line">${esc(invoice.customer_address).replace(/\n/g, "<br>")}</div>` : ""}
+    ${invoice.customer_email ? `<div class="bill-line">${esc(invoice.customer_email)}</div>` : ""}
+  </div>
+  <div class="bill-col">
+    <div class="bill-label">Bill From</div>
+    <div class="bill-name">YASAI LOGISTICS COMPANY</div>
+    <div class="bill-line">H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
+    <div class="bill-line">info@yasailogistics.com &nbsp;|&nbsp; +966 55 932 6687</div>
+  </div>
+</div>
+
+<!-- Body -->
+<div class="body">
+  <!-- Line items -->
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th class="th" style="width:5%">No</th>
+          <th class="th">Description</th>
+          <th class="th" style="width:8%">QTY</th>
+          <th class="th" style="width:16%">Unit Price</th>
+          <th class="th" style="width:16%">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${itemRows}
+        ${Array.from({ length: emptyRows }, () => `<tr style="height:24px"><td class="td"></td><td class="td"></td><td class="td"></td><td class="td"></td><td class="td"></td></tr>`).join("")}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Totals -->
+  <div class="totals">
+    <div class="tot-row"><span class="tot-label">Subtotal</span><span class="tot-val">${invoice.currency} ${invoice.subtotal.toFixed(2)}</span></div>
+    ${invoice.tax_rate > 0 ? `<div class="tot-row"><span class="tot-label">VAT (${invoice.tax_rate}%)</span><span class="tot-val">${invoice.currency} ${invoice.tax_amount.toFixed(2)}</span></div>` : ""}
+    <div class="tot-row tot-grand"><span class="tot-label">TOTAL DUE</span><span class="tot-val">${invoice.currency} ${invoice.total_amount.toFixed(2)}</span></div>
+  </div>
+
+  <!-- Payment instructions -->
+  <div class="payment-box">
+    <div class="payment-title">Payment Instructions</div>
+    <div>${invoice.payment_notes || "Please transfer the total amount to the bank account details provided separately. Reference: " + esc(invoice.invoice_number)}</div>
+  </div>
+</div>
+
+<div class="inv-footer-bar">
+  <span>Invoice No: ${esc(invoice.invoice_number)}</span>
+  <span>This is a computer-generated document. No signature required.</span>
+  <span>Generated ${format(new Date(), "dd/MM/yyyy")}</span>
+</div>
+
+<div class="footer">
+  <div class="f-left">
+    <div class="fpin"><span>&#9679;</span></div>
+    <div><div class="f-co">YASAI LOGISTICS COMPANY</div><div class="f-ad">H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div></div>
+  </div>
+  <div class="f-right">
+    <div><div class="f-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1577;</div><div class="f-ad-ar">&#1607;&#1607; &#1575;&#1604;&#1588;&#1610;&#1582; &#1587;&#1593;&#1608;&#1583; &#1576;&#1606; &#1589;&#1602;&#1585;&#1548; &#1583;&#1576;&#1610; &#8211; &#1575;&#1604;&#1573;&#1605;&#1575;&#1585;&#1575;&#1578;</div></div>
+    <div class="fpin"><span>&#9679;</span></div>
+  </div>
+</div>
+
+</body>
+</html>`;
+}
+
+export async function generateInvoicePDF(invoice: Invoice, logoDataUrl?: string): Promise<Buffer> {
+  const html = buildInvoiceHtml(invoice, logoDataUrl);
   return renderHtmlToPdf(html);
 }
