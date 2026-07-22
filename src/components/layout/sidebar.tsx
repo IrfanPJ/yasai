@@ -10,8 +10,6 @@ import {
   LogOut,
   PlusCircle,
   Activity,
-  Truck,
-  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { YasaiLogo } from "./logo";
@@ -34,16 +32,6 @@ const navItems = [
     label: "Collections",
     href: "/collections",
     icon: FileText,
-  },
-  {
-    label: "Job Orders",
-    href: "/jobs",
-    icon: Truck,
-  },
-  {
-    label: "Invoices",
-    href: "/invoices",
-    icon: Receipt,
   },
   {
     label: "Records",
