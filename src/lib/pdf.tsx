@@ -1097,10 +1097,10 @@ function buildDeliveryNoteHtml(dn: DeliveryNote, logoDataUrl?: string): string {
     border-bottom: 1px solid #e5e7eb;
     flex-shrink: 0;
   }
-  .top-hdr-left { display: flex; align-items: center; gap: 10px; }
-  .logo-wrap { width: 40px; height: 40px; flex-shrink: 0; }
-  .logo-wrap img { width: 100%; height: 100%; object-fit: contain; }
-  .logo-sep { width: 1px; height: 36px; background: #ddd; flex-shrink: 0; }
+  .top-hdr-left { display: flex; align-items: center; gap: 14px; }
+  .logo-wrap { width: 140px; height: 80px; flex-shrink: 0; }
+  .logo-wrap img { width: 100%; height: 100%; object-fit: contain; object-position: left center; }
+  .logo-sep { width: 1px; height: 72px; background: #ddd; flex-shrink: 0; }
   .co-en { font-size: 13pt; font-weight: 900; color: ${NAVY}; letter-spacing: 0.3px; }
   .co-sub { font-size: 7pt; color: #888; margin-top: 1px; }
   .co-ar {
