@@ -17,7 +17,7 @@ export async function POST(_: unknown, { params }: RouteParams) {
     serviceClient
       .from("job_orders")
       .update({
-        status: "customs_clearance",
+        status: "uae_customs_clearance",
         customs_cleared_at: now,
         customs_cleared_by: user.id,
         updated_by: user.id,

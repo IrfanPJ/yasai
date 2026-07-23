@@ -21,7 +21,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     serviceClient
       .from("job_orders")
       .update({
-        status: "out_for_delivery",
+        status: "in_transit_saudi",
         delivery_scheduled_at,
         delivery_driver,
         updated_by: user.id,

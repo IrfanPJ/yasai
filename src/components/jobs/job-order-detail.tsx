@@ -35,6 +35,61 @@ import {
   TRUCK_STATUS_LABELS, TRUCK_STATUS_COLORS,
   MANUAL_STATUS_OPTIONS,
 } from "@/types";
+import type { JobOrderStatus } from "@/types";
+
+const JOB_STATUS_ORDER: JobOrderStatus[] = [
+  "draft",
+  "ready_for_collection",
+  "goods_collected",
+  "export_documentation_complete",
+  "uae_customs_clearance",
+  "border_exit",
+  "saudi_customs_clearance",
+  "in_transit_saudi",
+  "delivered",
+  "closed",
+];
+
+function JobStatusStepper({ status }: { status: JobOrderStatus }) {
+  const currentIdx = JOB_STATUS_ORDER.indexOf(status);
+  return (
+    <Card className="border-none shadow-sm">
+      <CardContent className="pt-4 pb-3">
+        <div className="overflow-x-auto">
+          <div className="flex items-center min-w-max gap-0">
+            {JOB_STATUS_ORDER.map((s, i) => {
+              const done = i < currentIdx;
+              const current = i === currentIdx;
+              return (
+                <div key={s} className="flex items-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold transition-all ${
+                      current ? "bg-[#E67A32] text-white ring-4 ring-[#E67A32]/20" :
+                      done    ? "bg-green-500 text-white" :
+                               "bg-gray-200 dark:bg-gray-700 text-gray-400"
+                    }`}>
+                      {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span>{i + 1}</span>}
+                    </div>
+                    <span className={`text-[10px] text-center w-16 leading-tight ${
+                      current ? "text-[#E67A32] font-semibold" :
+                      done    ? "text-green-600 dark:text-green-400" :
+                               "text-muted-foreground"
+                    }`}>
+                      {JOB_STATUS_LABELS[s]}
+                    </span>
+                  </div>
+                  {i < JOB_STATUS_ORDER.length - 1 && (
+                    <div className={`h-0.5 w-6 mb-4 flex-shrink-0 ${done ? "bg-green-400" : "bg-gray-200 dark:bg-gray-700"}`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 interface JobOrderDetailProps {
   job: JobOrder;
@@ -420,6 +475,9 @@ export function JobOrderDetail({
           </Button>
         </div>
       </div>
+
+      {/* Status stepper */}
+      <JobStatusStepper status={job.status} />
 
       {/* Capacity */}
       <Card className="border-none shadow-sm">

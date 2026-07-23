@@ -18,8 +18,8 @@ export async function POST(_: unknown, { params }: RouteParams) {
     .single();
 
   if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (job.status !== "loading") {
-    return NextResponse.json({ error: "Job must be in loading state before dispatch" }, { status: 400 });
+  if (job.status !== "goods_collected") {
+    return NextResponse.json({ error: "Job must have goods collected before dispatch" }, { status: 400 });
   }
 
   const now = new Date().toISOString();
@@ -28,7 +28,7 @@ export async function POST(_: unknown, { params }: RouteParams) {
     serviceClient
       .from("job_orders")
       .update({
-        status: "dispatched",
+        status: "export_documentation_complete",
         dispatched_by: user.id,
         dispatched_at: now,
         updated_by: user.id,

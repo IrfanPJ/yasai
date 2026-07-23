@@ -19,14 +19,13 @@ export async function POST(_: unknown, { params }: RouteParams) {
     .single();
 
   if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!["draft", "pending_approval"].includes(job.status)) {
-    return NextResponse.json({ error: "Job cannot be submitted in its current state" }, { status: 400 });
+  if (job.status !== "draft") {
+    return NextResponse.json({ error: "Only draft job orders can be submitted for approval" }, { status: 400 });
   }
 
   const { data, error } = await serviceClient
     .from("job_orders")
     .update({
-      status: "pending_approval",
       gm_approval_status: "pending",
       submitted_by: user.id,
       submitted_at: new Date().toISOString(),

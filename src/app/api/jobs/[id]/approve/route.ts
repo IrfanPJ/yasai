@@ -26,7 +26,7 @@ export async function POST(_: unknown, { params }: RouteParams) {
   const { data, error } = await serviceClient
     .from("job_orders")
     .update({
-      status: "approved",
+      status: "ready_for_collection",
       gm_approval_status: "approved",
       gm_approved_by: user.id,
       gm_approved_at: new Date().toISOString(),

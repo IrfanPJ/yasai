@@ -27,7 +27,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const { data, error } = await serviceClient
     .from("job_orders")
     .update({
-      status: "loading",
+      status: "goods_collected",
       loaded_by: user.id,
       loaded_at: new Date().toISOString(),
       driver_signature_received: Boolean(body.driver_signature_received),
