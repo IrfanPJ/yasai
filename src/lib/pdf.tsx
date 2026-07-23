@@ -649,7 +649,7 @@ function buildPdfHtml(
         <div class="lh-title-en">YASAI LOGISTICS COMPANY</div>
         <div class="lh-subtitle">Freight &amp; Logistics Solutions</div>
       </div>
-      <div class="lh-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1575;&#1578; &#1588;.&#1584;.&#1605;.&#1605;</div>
+      <div class="lh-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1575;&#1578;</div>
     </div>
 
     <!-- Contact Row -->
@@ -1567,7 +1567,7 @@ function buildPackingListHtml(job: JobOrder, gcns: GoodsCollectionNote[], logoDa
   <div class="hdr">
     <div class="hdr-top">
       <div><div class="hdr-company">YASAI LOGISTICS COMPANY</div><div class="hdr-sub">Freight &amp; Logistics Solutions</div></div>
-      <div class="hdr-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1575;&#1578; &#1588;.&#1584;.&#1605;.&#1605;</div>
+      <div class="hdr-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1575;&#1578;</div>
     </div>
     <div class="hdr-contact">
       <div class="hdr-ci"><span class="hdr-dot">&#9679;</span> H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
@@ -1767,7 +1767,7 @@ function buildInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string {
     <div class="lh-title">YASAI LOGISTICS COMPANY</div>
     <div class="lh-sub">Freight &amp; Logistics Solutions</div>
   </div>
-  <div class="lh-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1575;&#1578; &#1588;.&#1584;.&#1605;.&#1605;</div>
+  <div class="lh-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1575;&#1578;</div>
 </div>
 <div class="contact-row">
   <div class="ci"><span class="ci-dot">&#9679;</span> H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
