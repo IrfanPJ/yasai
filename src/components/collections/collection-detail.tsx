@@ -7,6 +7,7 @@ import {
   Download, Mail, MessageCircle, Pencil, Printer,
   Trash2, ExternalLink, Copy, Package, MapPin,
   Layers, Info, ChevronDown, Share2, Loader2,
+  Upload, FileText, Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +53,7 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
   const [deleting, setDeleting] = useState(false);
   const [sending, setSending] = useState(false);
   const [savingPDF, setSavingPDF] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ||
     (typeof window !== "undefined" ? window.location.origin : "");
@@ -110,6 +112,26 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
       toast.error("Failed to send email");
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleDocUpload(type: "commercial_invoice" | "country_of_origin", file: File) {
+    setUploadingDoc(type);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("type", type);
+      const res = await fetch(`/api/collections/${collection.id}/upload`, {
+        method: "POST",
+        body: form,
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast.success("Document uploaded");
+      router.refresh();
+    } catch {
+      toast.error("Failed to upload document");
+    } finally {
+      setUploadingDoc(null);
     }
   }
 
@@ -418,6 +440,70 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
 
       {/* ── Warehouse Receiving ── */}
       <WarehouseReceivingPanel collection={collection} userRole={userRole} />
+
+      {/* ── Shipment Documents ── */}
+      <Card className="border-none shadow-sm mt-6">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base text-[#071A3A] dark:text-white flex items-center gap-2">
+            <FileText className="h-4 w-4" /> Shipment Documents
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {(
+            [
+              { type: "commercial_invoice", label: "Commercial Invoice", url: collection.commercial_invoice_url },
+              { type: "country_of_origin", label: "Country of Origin", url: collection.country_of_origin_url },
+            ] as const
+          ).map(({ type, label, url }) => (
+            <div key={type} className="flex items-center justify-between rounded-lg border px-4 py-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{label}</p>
+                  {url ? (
+                    <p className="text-xs text-green-600 dark:text-green-400">Uploaded</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Not uploaded</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {url && (
+                  <Button size="sm" variant="outline" className="gap-1.5 h-8" asChild>
+                    <a href={url} target="_blank" rel="noopener noreferrer">
+                      <Eye className="h-3.5 w-3.5" /> View
+                    </a>
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 h-8 relative overflow-hidden"
+                  disabled={uploadingDoc === type}
+                >
+                  {uploadingDoc === type ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Upload className="h-3.5 w-3.5" />
+                  )}
+                  {url ? "Replace" : "Upload"}
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    disabled={uploadingDoc === type}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleDocUpload(type, file);
+                      e.target.value = "";
+                    }}
+                  />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       {/* ── Delivery Note ── */}
       <DeliveryNoteSection collectionId={collection.id} deliveryNote={deliveryNote} />
