@@ -30,28 +30,38 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "type must be commercial_invoice or country_of_origin" }, { status: 400 });
   }
 
-  const ext = file.name.split(".").pop() || "pdf";
-  const path = `documents/${id}/${docType}.${ext}`;
-  const bytes = await file.arrayBuffer();
+  const ext = file.name.split(".").pop()?.toLowerCase() || "pdf";
+  const storagePath = `documents/${id}/${docType}.${ext}`;
+  const contentType = file.type || "application/octet-stream";
+
+  // Convert to Buffer for reliable Supabase storage upload
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
 
   const { error: uploadError } = await serviceClient.storage
     .from("goods-collection-notes")
-    .upload(path, bytes, { contentType: file.type, upsert: true });
+    .upload(storagePath, buffer, { contentType, upsert: true });
 
-  if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 });
+  if (uploadError) {
+    console.error("[upload] storage error:", uploadError);
+    return NextResponse.json({ error: `Storage upload failed: ${uploadError.message}` }, { status: 500 });
+  }
 
   const { data: { publicUrl } } = serviceClient.storage
     .from("goods-collection-notes")
-    .getPublicUrl(path);
+    .getPublicUrl(storagePath);
 
-  const { data, error } = await serviceClient
+  const { data, error: dbError } = await serviceClient
     .from("goods_collection_notes")
     .update({ [FIELD_MAP[docType as DocType]]: publicUrl, updated_by: user.id })
     .eq("id", id)
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (dbError) {
+    console.error("[upload] db error:", dbError);
+    return NextResponse.json({ error: `Database update failed: ${dbError.message}` }, { status: 500 });
+  }
 
   await serviceClient.from("activity_logs").insert({
     user_id: user.id,
