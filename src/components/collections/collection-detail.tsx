@@ -7,7 +7,7 @@ import {
   Download, Mail, MessageCircle, Pencil, Printer,
   Trash2, ExternalLink, Copy, Package, MapPin,
   Layers, Info, ChevronDown, Share2, Loader2,
-  Upload, FileText, Eye,
+  Upload, FileText, Eye, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,6 +54,7 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
   const [sending, setSending] = useState(false);
   const [savingPDF, setSavingPDF] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
+  const [deletingDoc, setDeletingDoc] = useState<string | null>(null);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ||
     (typeof window !== "undefined" ? window.location.origin : "");
@@ -132,6 +133,22 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
       toast.error("Failed to upload document");
     } finally {
       setUploadingDoc(null);
+    }
+  }
+
+  async function handleDocDelete(type: "commercial_invoice" | "country_of_origin") {
+    setDeletingDoc(type);
+    try {
+      const res = await fetch(`/api/collections/${collection.id}/upload?type=${type}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast.success("Document removed");
+      router.refresh();
+    } catch {
+      toast.error("Failed to remove document");
+    } finally {
+      setDeletingDoc(null);
     }
   }
 
@@ -469,11 +486,23 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 {url && (
-                  <Button size="sm" variant="outline" className="gap-1.5 h-8" asChild>
-                    <a href={url} target="_blank" rel="noopener noreferrer">
-                      <Eye className="h-3.5 w-3.5" /> View
-                    </a>
-                  </Button>
+                  <>
+                    <Button size="sm" variant="outline" className="gap-1.5 h-8" asChild>
+                      <a href={url} target="_blank" rel="noopener noreferrer">
+                        <Eye className="h-3.5 w-3.5" /> View
+                      </a>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 w-8 p-0 border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300"
+                      disabled={deletingDoc === type}
+                      onClick={() => handleDocDelete(type)}
+                      title="Remove document"
+                    >
+                      {deletingDoc === type ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                    </Button>
+                  </>
                 )}
                 <Button
                   size="sm"

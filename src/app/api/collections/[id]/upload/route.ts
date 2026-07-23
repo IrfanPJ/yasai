@@ -73,3 +73,57 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   return NextResponse.json({ url: publicUrl, record: data });
 }
+
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const serviceClient = createServiceClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { searchParams } = new URL(request.url);
+  const docType = searchParams.get("type") as string | null;
+
+  if (!docType || !ALLOWED_TYPES.includes(docType as DocType)) {
+    return NextResponse.json({ error: "type must be commercial_invoice or country_of_origin" }, { status: 400 });
+  }
+
+  // Fetch current record to get the existing URL so we can remove from storage
+  const { data: current } = await serviceClient
+    .from("goods_collection_notes")
+    .select("commercial_invoice_url, country_of_origin_url")
+    .eq("id", id)
+    .single();
+
+  // Remove from storage (best-effort — don't fail if already gone)
+  const existingUrl = current?.[FIELD_MAP[docType as DocType] as keyof typeof current] as string | null;
+  if (existingUrl) {
+    // Extract the storage path from the public URL
+    const marker = "/object/public/goods-collection-notes/";
+    const markerIdx = existingUrl.indexOf(marker);
+    if (markerIdx !== -1) {
+      const storagePath = existingUrl.slice(markerIdx + marker.length);
+      await serviceClient.storage.from("goods-collection-notes").remove([storagePath]);
+    }
+  }
+
+  const { data, error } = await serviceClient
+    .from("goods_collection_notes")
+    .update({ [FIELD_MAP[docType as DocType]]: null, updated_by: user.id })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await serviceClient.from("activity_logs").insert({
+    user_id: user.id,
+    action: "DOCUMENT_DELETED",
+    entity_type: "goods_collection_notes",
+    entity_id: id,
+    details: { type: docType },
+  });
+
+  return NextResponse.json({ record: data });
+}
