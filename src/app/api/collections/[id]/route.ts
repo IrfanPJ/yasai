@@ -35,6 +35,23 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   // Remove read-only fields
   const { id: _, collection_number, created_at, created_by, ...updateData } = body;
 
+  // Append to status_history when status changes
+  if (updateData.status) {
+    const { data: current } = await serviceClient
+      .from("goods_collection_notes")
+      .select("status, status_history")
+      .eq("id", id)
+      .single();
+
+    if (current && updateData.status !== current.status) {
+      const prev: { status: string; changed_at: string }[] = current.status_history || [];
+      updateData.status_history = [
+        ...prev,
+        { status: updateData.status, changed_at: new Date().toISOString() },
+      ];
+    }
+  }
+
   const { data, error } = await serviceClient
     .from("goods_collection_notes")
     .update({ ...updateData, updated_by: user.id })

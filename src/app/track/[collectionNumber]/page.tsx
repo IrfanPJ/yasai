@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { GoodsCollectionNote, CollectionStatus } from "@/types";
 import { STATUS_LABELS, CARGO_TYPE_LABELS } from "@/types";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatDateTime } from "@/lib/utils";
 import { YasaiLogo } from "@/components/layout/logo";
 import { CheckCircle2, Circle, MapPin, Package, Weight, Truck } from "lucide-react";
 
@@ -37,7 +37,7 @@ export default async function TrackingPage({ params }: PageProps) {
   const { data, error } = await supabase
     .from("goods_collection_notes")
     .select(
-      "collection_number, shipper_name, consignee_name, destination, weight_kg, cargo_type, status, created_at, updated_at"
+      "collection_number, shipper_name, consignee_name, destination, weight_kg, cargo_type, status, status_history, created_at, updated_at"
     )
     .eq("collection_number", collectionNumber.toUpperCase())
     .is("deleted_at", null)
@@ -54,11 +54,20 @@ export default async function TrackingPage({ params }: PageProps) {
     | "weight_kg"
     | "cargo_type"
     | "status"
+    | "status_history"
     | "created_at"
     | "updated_at"
   >;
 
   const currentStep = STATUS_STEPS.indexOf(gcn.status);
+
+  // Build a map of status → timestamp from status_history
+  const historyMap: Partial<Record<CollectionStatus, string>> = {};
+  // First entry is always "collected" at created_at
+  historyMap["collected"] = gcn.created_at;
+  for (const entry of gcn.status_history ?? []) {
+    historyMap[entry.status as CollectionStatus] = entry.changed_at;
+  }
 
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
@@ -87,6 +96,11 @@ export default async function TrackingPage({ params }: PageProps) {
               <p className="text-sm text-muted-foreground mt-1">
                 {STATUS_DESCRIPTIONS[gcn.status]}
               </p>
+              {gcn.updated_at && (
+                <p className="text-xs text-[#E67A32] mt-1">
+                  Updated {formatDateTime(gcn.updated_at)}
+                </p>
+              )}
             </div>
             {gcn.status === "delivered" ? (
               <div className="bg-green-100 p-3 rounded-xl">
@@ -105,6 +119,7 @@ export default async function TrackingPage({ params }: PageProps) {
               const isPast = index < currentStep;
               const isCurrent = index === currentStep;
               const isFuture = index > currentStep;
+              const timestamp = historyMap[step];
 
               return (
                 <div key={step} className="flex items-start gap-3">
@@ -132,7 +147,7 @@ export default async function TrackingPage({ params }: PageProps) {
                       />
                     )}
                   </div>
-                  <div className="pt-1.5 pb-6">
+                  <div className="pt-1 pb-6">
                     <p
                       className={`text-sm font-semibold ${
                         isFuture ? "text-muted-foreground" : "text-foreground"
@@ -143,6 +158,11 @@ export default async function TrackingPage({ params }: PageProps) {
                     {isCurrent && (
                       <p className="text-xs text-[#E67A32] mt-0.5">
                         {STATUS_DESCRIPTIONS[step]}
+                      </p>
+                    )}
+                    {(isPast || isCurrent) && timestamp && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formatDateTime(timestamp)}
                       </p>
                     )}
                   </div>

@@ -83,6 +83,11 @@ export interface GoodsCollectionNote {
   // Files
   pdf_url?: string;
   qr_url?: string;
+  commercial_invoice_url?: string | null;
+  country_of_origin_url?: string | null;
+
+  // Status timeline
+  status_history?: { status: CollectionStatus; changed_at: string }[];
 
   // Metadata
   created_by?: string;
