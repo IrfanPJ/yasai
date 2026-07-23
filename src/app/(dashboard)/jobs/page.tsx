@@ -1,21 +1,28 @@
 import { Header } from "@/components/layout/header";
 import { JobOrderTable } from "@/components/jobs/job-order-table";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient, createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { PlusCircle } from "lucide-react";
-import type { JobOrder } from "@/types";
+import type { JobOrder, UserRole } from "@/types";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Job Orders" };
 
 export default async function JobsPage() {
-  const supabase = createServiceClient();
-  const { data } = await supabase
-    .from("job_orders")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(200);
+  const serviceClient = createServiceClient();
+  const supabase = await createClient();
+
+  const [{ data }, { data: { user } }] = await Promise.all([
+    serviceClient.from("job_orders").select("*").order("created_at", { ascending: false }).limit(200),
+    supabase.auth.getUser(),
+  ]);
+
+  let userRole: UserRole = "viewer";
+  if (user) {
+    const { data: profile } = await serviceClient.from("user_profiles").select("role").eq("id", user.id).single();
+    if (profile) userRole = profile.role as UserRole;
+  }
 
   return (
     <>
@@ -29,7 +36,7 @@ export default async function JobsPage() {
             </Link>
           </Button>
         </div>
-        <JobOrderTable jobs={(data || []) as JobOrder[]} />
+        <JobOrderTable jobs={(data || []) as JobOrder[]} userRole={userRole} />
       </div>
     </>
   );

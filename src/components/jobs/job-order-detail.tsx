@@ -8,7 +8,7 @@ import {
   Loader2, CheckCircle2, XCircle, Truck, Package, MapPin,
   Download, Clock, ChevronDown, ChevronUp,
   Send, ClipboardCheck, Navigation, Plus, User, Phone,
-  FileText, History,
+  FileText, History, Trash2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -400,6 +400,8 @@ export function JobOrderDetail({
 
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [transitText, setTransitText] = useState("");
   const [deliveryScheduledAt, setDeliveryScheduledAt] = useState(job.delivery_scheduled_at?.slice(0, 16) || "");
   const [deliveryDriver, setDeliveryDriver] = useState(job.delivery_driver || "");
@@ -426,6 +428,20 @@ export function JobOrderDetail({
       toast.error(err instanceof Error ? err.message : "Action failed");
     } finally {
       setLoading(null);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const res = await fetch(base, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json()).error || "Delete failed");
+      toast.success("Job order deleted");
+      router.push("/jobs");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed");
+      setDeleting(false);
     }
   }
 
@@ -472,6 +488,16 @@ export function JobOrderDetail({
           <Button size="sm" variant="outline" className="gap-1.5" onClick={() => window.open(`${base}/packing-list/pdf`, "_blank")}>
             <Download className="h-3.5 w-3.5" /> Packing List PDF
           </Button>
+          {isOps && job.status === "draft" && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Delete
+            </Button>
+          )}
         </div>
       </div>
 
@@ -820,6 +846,29 @@ export function JobOrderDetail({
           </CardContent>
         </Card>
       )}
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Job Order</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <span className="font-semibold">{job.job_number}</span>? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting}>Cancel</Button>
+            <Button
+              className="gap-1.5 bg-red-600 hover:bg-red-700"
+              disabled={deleting}
+              onClick={handleDelete}
+            >
+              {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reject Dialog */}
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
