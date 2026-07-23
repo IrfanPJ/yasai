@@ -30,7 +30,7 @@ export function InvoiceForm({ preselectedJobId }: InvoiceFormProps) {
   const [currency, setCurrency] = useState("SAR");
   const [taxRate, setTaxRate] = useState(15);
   const [dueDate, setDueDate] = useState("");
-  const [jobOrderId, setJobOrderId] = useState(preselectedJobId || "");
+  const [jobOrderId, setJobOrderId] = useState(preselectedJobId || "none");
   const [jobs, setJobs] = useState<JobOrder[]>([]);
   const [lineItems, setLineItems] = useState<InvoiceLineItem[]>([{ ...EMPTY_LINE }]);
 
@@ -74,7 +74,7 @@ export function InvoiceForm({ preselectedJobId }: InvoiceFormProps) {
           currency,
           tax_rate: taxRate,
           due_date: dueDate || null,
-          job_order_id: jobOrderId || null,
+          job_order_id: jobOrderId === "none" ? null : jobOrderId,
           line_items: lineItems,
         }),
       });
@@ -151,7 +151,7 @@ export function InvoiceForm({ preselectedJobId }: InvoiceFormProps) {
                 <SelectValue placeholder="None" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {jobs.map((j) => (
                   <SelectItem key={j.id} value={j.id}>{j.job_number} — {j.destination}</SelectItem>
                 ))}
