@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -8,18 +8,20 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { formatDateTime } from "@/lib/utils";
-import type { GoodsCollectionNote, UserRole } from "@/types";
+import type { GoodsCollectionNote, UserRole, Warehouse as WarehouseType } from "@/types";
 
 interface WarehouseReceivingPanelProps {
   collection: GoodsCollectionNote;
@@ -47,8 +49,16 @@ export function WarehouseReceivingPanel({ collection, userRole }: WarehouseRecei
   const canManageWarehouse = WAREHOUSE_ROLES.includes(userRole);
   const canApprove = APPROVER_ROLES.includes(userRole);
 
+  const [warehouses, setWarehouses] = useState<WarehouseType[]>([]);
   const [storageLocation, setStorageLocation] = useState(collection.storage_location || "");
   const [palletized, setPalletized] = useState(collection.palletized);
+
+  useEffect(() => {
+    fetch("/api/warehouses")
+      .then((r) => r.json())
+      .then((data: WarehouseType[]) => setWarehouses(data.filter((w) => w.is_active)))
+      .catch(() => {});
+  }, []);
   const [notes, setNotes] = useState(collection.warehouse_report_notes || "");
   const [rejectReason, setRejectReason] = useState("");
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -234,11 +244,22 @@ export function WarehouseReceivingPanel({ collection, userRole }: WarehouseRecei
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label className="text-xs uppercase tracking-wide">Storage Location</Label>
-                      <Input
-                        value={storageLocation}
-                        onChange={(e) => setStorageLocation(e.target.value)}
-                        placeholder="e.g. Zone B - Rack 4"
-                      />
+                      <Select value={storageLocation} onValueChange={setStorageLocation}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select warehouse" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(["UAE", "KSA"] as const).map((country) => {
+                            const group = warehouses.filter((w) => w.country === country);
+                            if (group.length === 0) return null;
+                            return group.map((w) => (
+                              <SelectItem key={w.id} value={w.code}>
+                                {w.code} — {w.name}
+                              </SelectItem>
+                            ));
+                          })}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="flex items-center gap-2 pt-6">
                       <Checkbox
@@ -276,11 +297,22 @@ export function WarehouseReceivingPanel({ collection, userRole }: WarehouseRecei
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs uppercase tracking-wide">Storage Location</Label>
-                  <Input
-                    value={storageLocation}
-                    onChange={(e) => setStorageLocation(e.target.value)}
-                    placeholder="e.g. Zone B - Rack 4"
-                  />
+                  <Select value={storageLocation} onValueChange={setStorageLocation}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select warehouse" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(["UAE", "KSA"] as const).map((country) => {
+                        const group = warehouses.filter((w) => w.country === country);
+                        if (group.length === 0) return null;
+                        return group.map((w) => (
+                          <SelectItem key={w.id} value={w.code}>
+                            {w.code} — {w.name}
+                          </SelectItem>
+                        ));
+                      })}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex items-center gap-2 pt-6">
                   <Checkbox

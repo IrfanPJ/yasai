@@ -57,6 +57,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     updates.is_active = body.is_active;
   }
 
+  // warehouse_id (nullable)
+  if ("warehouse_id" in body) {
+    updates.warehouse_id = body.warehouse_id || null;
+  }
+
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }

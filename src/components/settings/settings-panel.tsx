@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -17,11 +17,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import type { UserProfile, UserRole } from "@/types";
+import type { UserProfile, UserRole, Warehouse } from "@/types";
 import { useTheme } from "next-themes";
 import {
   Loader2, Shield, User, Building2, Sun, Users,
-  UserCheck, UserX, Crown, Eye, Wrench, Warehouse, Calculator,
+  UserCheck, UserX, Crown, Eye, Wrench, Warehouse as WarehouseIcon, Calculator,
+  Plus, MapPin, Pencil, Check, X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -42,7 +43,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
 const ROLE_ICONS: Record<UserRole, typeof Crown> = {
   admin: Crown,
   operations: Wrench,
-  warehouse: Warehouse,
+  warehouse: WarehouseIcon,
   warehouse_supervisor: UserCheck,
   finance: Calculator,
   viewer: Eye,
@@ -69,6 +70,90 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
   const [updatingUser, setUpdatingUser] = useState<string | null>(null);
 
   const isAdmin = currentUser?.role === "admin";
+
+  // Warehouses state
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [newWhCode, setNewWhCode] = useState("");
+  const [newWhName, setNewWhName] = useState("");
+  const [newWhCountry, setNewWhCountry] = useState<"UAE" | "KSA">("UAE");
+  const [savingWarehouse, setSavingWarehouse] = useState(false);
+  const [editingWh, setEditingWh] = useState<string | null>(null);
+  const [editWhName, setEditWhName] = useState("");
+
+  useEffect(() => {
+    fetch("/api/warehouses")
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setWarehouses(data); })
+      .catch(() => {});
+  }, []);
+
+  async function handleAddWarehouse() {
+    if (!newWhCode.trim() || !newWhName.trim()) return;
+    setSavingWarehouse(true);
+    try {
+      const res = await fetch("/api/warehouses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: newWhCode, name: newWhName, country: newWhCountry }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const wh = await res.json();
+      setWarehouses((prev) => [...prev, wh]);
+      setNewWhCode(""); setNewWhName(""); setNewWhCountry("UAE");
+      toast.success("Warehouse added");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add warehouse");
+    } finally {
+      setSavingWarehouse(false);
+    }
+  }
+
+  async function handleToggleWarehouse(id: string, isActive: boolean) {
+    try {
+      const res = await fetch(`/api/warehouses/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: isActive }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setWarehouses((prev) => prev.map((w) => w.id === id ? { ...w, is_active: isActive } : w));
+      toast.success(isActive ? "Warehouse activated" : "Warehouse deactivated");
+    } catch { toast.error("Failed to update warehouse"); }
+  }
+
+  async function handleRenameWarehouse(id: string) {
+    if (!editWhName.trim()) return;
+    try {
+      const res = await fetch(`/api/warehouses/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editWhName }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const updated = await res.json();
+      setWarehouses((prev) => prev.map((w) => w.id === id ? updated : w));
+      setEditingWh(null);
+      toast.success("Warehouse renamed");
+    } catch { toast.error("Failed to rename warehouse"); }
+  }
+
+  async function handleUpdateUserWarehouse(userId: string, warehouseId: string) {
+    setUpdatingUser(userId);
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ warehouse_id: warehouseId || null }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast.success("Warehouse assigned");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to assign warehouse");
+    } finally {
+      setUpdatingUser(null);
+    }
+  }
 
   async function handleSaveProfile() {
     setSavingProfile(true);
@@ -173,6 +258,12 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
             <TabsTrigger value="users" className="gap-2">
               <Shield className="h-4 w-4" />
               Users & Roles
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="warehouses" className="gap-2">
+              <WarehouseIcon className="h-4 w-4" />
+              Warehouses
             </TabsTrigger>
           )}
         </TabsList>
@@ -367,6 +458,7 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
                       <TableHead className="font-semibold">User</TableHead>
                       <TableHead className="font-semibold">Current Role</TableHead>
                       <TableHead className="font-semibold">Change Role</TableHead>
+                      <TableHead className="font-semibold">Warehouse</TableHead>
                       <TableHead className="font-semibold text-center">Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -436,6 +528,30 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
                                 </Select>
                                 {isUpdating && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                               </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {["warehouse", "warehouse_supervisor"].includes(u.role) ? (
+                              <Select
+                                value={u.warehouse_id || "none"}
+                                onValueChange={(v) => handleUpdateUserWarehouse(u.id, v === "none" ? "" : v)}
+                                disabled={isUpdating}
+                              >
+                                <SelectTrigger className="h-8 text-xs w-36">
+                                  <SelectValue placeholder="Assign..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">— Not assigned —</SelectItem>
+                                  {warehouses.filter((w) => w.is_active).map((w) => (
+                                    <SelectItem key={w.id} value={w.id}>
+                                      <span className="font-mono font-semibold">{w.code}</span>
+                                      <span className="ml-1.5 text-muted-foreground">{w.name}</span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
                             )}
                           </TableCell>
                           <TableCell className="text-center">
@@ -555,6 +671,129 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+        )}
+
+        {/* ── Warehouses (Admin only) ── */}
+        {isAdmin && (
+          <TabsContent value="warehouses" className="space-y-6">
+            {/* Add warehouse */}
+            <Card className="border-none shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Plus className="h-4 w-4 text-[#E67A32]" /> Add Warehouse
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wide">Code</Label>
+                    <Input
+                      value={newWhCode}
+                      onChange={(e) => setNewWhCode(e.target.value.toUpperCase())}
+                      placeholder="e.g. UW04"
+                      className="font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label className="text-xs uppercase tracking-wide">Name</Label>
+                    <Input
+                      value={newWhName}
+                      onChange={(e) => setNewWhName(e.target.value)}
+                      placeholder="e.g. UAE Warehouse 4"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wide">Country</Label>
+                    <Select value={newWhCountry} onValueChange={(v) => setNewWhCountry(v as "UAE" | "KSA")}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="UAE">UAE</SelectItem>
+                        <SelectItem value="KSA">KSA</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button
+                  className="mt-3 gap-1.5 bg-[#071A3A] hover:bg-[#0d2550]"
+                  disabled={savingWarehouse || !newWhCode.trim() || !newWhName.trim()}
+                  onClick={handleAddWarehouse}
+                >
+                  {savingWarehouse ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  Add Warehouse
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Warehouse list grouped by country */}
+            {(["UAE", "KSA"] as const).map((country) => {
+              const list = warehouses.filter((w) => w.country === country);
+              if (list.length === 0) return null;
+              return (
+                <Card key={country} className="border-none shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider">
+                      <MapPin className="h-3.5 w-3.5" /> {country} Warehouses
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-50/50 dark:bg-gray-900/50">
+                          <TableHead className="font-semibold w-24">Code</TableHead>
+                          <TableHead className="font-semibold">Name</TableHead>
+                          <TableHead className="font-semibold text-center w-24">Active</TableHead>
+                          <TableHead className="w-24" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {list.map((w) => (
+                          <TableRow key={w.id} className={w.is_active ? "" : "opacity-50"}>
+                            <TableCell className="font-mono font-bold text-[#071A3A] dark:text-white">{w.code}</TableCell>
+                            <TableCell>
+                              {editingWh === w.id ? (
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    className="h-7 text-sm"
+                                    value={editWhName}
+                                    onChange={(e) => setEditWhName(e.target.value)}
+                                    autoFocus
+                                  />
+                                  <button onClick={() => handleRenameWarehouse(w.id)} className="text-green-600 hover:text-green-700">
+                                    <Check className="h-4 w-4" />
+                                  </button>
+                                  <button onClick={() => setEditingWh(null)} className="text-muted-foreground hover:text-red-500">
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <span>{w.name}</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Switch
+                                checked={w.is_active}
+                                onCheckedChange={(v) => handleToggleWarehouse(w.id, v)}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              {editingWh !== w.id && (
+                                <button
+                                  onClick={() => { setEditingWh(w.id); setEditWhName(w.name); }}
+                                  className="text-muted-foreground hover:text-[#071A3A] dark:hover:text-white"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </TabsContent>
         )}
       </Tabs>

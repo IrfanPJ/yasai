@@ -14,6 +14,16 @@ export type CollectionStatus =
   | "out_for_delivery"
   | "delivered";
 
+export interface Warehouse {
+  id: string;
+  code: string;
+  name: string;
+  country: "UAE" | "KSA";
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface UserProfile {
   id: string;
   full_name: string;
@@ -21,6 +31,8 @@ export interface UserProfile {
   role: UserRole;
   avatar_url?: string;
   is_active: boolean;
+  warehouse_id?: string | null;
+  warehouse?: Warehouse;
   created_at: string;
   updated_at: string;
 }
