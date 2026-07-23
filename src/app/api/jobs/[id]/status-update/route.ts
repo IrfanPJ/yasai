@@ -3,6 +3,19 @@ import { requireRole } from "@/lib/auth-role";
 
 export const dynamic = "force-dynamic";
 
+const VALID_JOB_STATUSES = [
+  "draft",
+  "ready_for_collection",
+  "goods_collected",
+  "export_documentation_complete",
+  "uae_customs_clearance",
+  "border_exit",
+  "saudi_customs_clearance",
+  "in_transit_saudi",
+  "delivered",
+  "closed",
+] as const;
+
 interface RouteParams { params: Promise<{ id: string }> }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
@@ -15,6 +28,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const status = typeof body.status === "string" ? body.status.trim() : "";
   if (!status) return NextResponse.json({ error: "status is required" }, { status: 400 });
 
+  if (!VALID_JOB_STATUSES.includes(status as typeof VALID_JOB_STATUSES[number])) {
+    return NextResponse.json({ error: `Invalid status: ${status}` }, { status: 400 });
+  }
+
+  // Update the job order status
+  const { error: jobError } = await serviceClient
+    .from("job_orders")
+    .update({ status, updated_by: user.id, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (jobError) return NextResponse.json({ error: jobError.message }, { status: 500 });
+
+  // Log the status change
   const { data, error } = await serviceClient
     .from("job_status_updates")
     .insert({

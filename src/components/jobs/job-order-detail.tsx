@@ -33,7 +33,6 @@ import type {
 import {
   JOB_STATUS_LABELS, JOB_STATUS_COLORS,
   TRUCK_STATUS_LABELS, TRUCK_STATUS_COLORS,
-  MANUAL_STATUS_OPTIONS,
 } from "@/types";
 import type { JobOrderStatus } from "@/types";
 
@@ -406,7 +405,7 @@ export function JobOrderDetail({
   const [deliveryDriver, setDeliveryDriver] = useState(job.delivery_driver || "");
   const [driverSig, setDriverSig] = useState(false);
   const [gcnsOpen, setGcnsOpen] = useState(false);
-  const [manualStatus, setManualStatus] = useState<string>("");
+  const [manualStatus, setManualStatus] = useState("");
   const [manualNote, setManualNote] = useState("");
   const [postingUpdate, setPostingUpdate] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
@@ -435,12 +434,12 @@ export function JobOrderDetail({
     setPostingUpdate(true);
     try {
       await postAction(`${base}/status-update`, { status: manualStatus, notes: manualNote || undefined });
-      toast.success("Status update logged");
+      toast.success(`Stage updated to "${JOB_STATUS_LABELS[manualStatus as JobOrderStatus] ?? manualStatus}"`);
       setManualStatus("");
       setManualNote("");
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to log update");
+      toast.error(err instanceof Error ? err.message : "Failed to update stage");
     } finally {
       setPostingUpdate(false);
     }
@@ -770,11 +769,11 @@ export function JobOrderDetail({
                   <Label className="text-xs uppercase tracking-wide">Status</Label>
                   <Select value={manualStatus} onValueChange={setManualStatus}>
                     <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Select status..." />
+                      <SelectValue placeholder="Select stage..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {MANUAL_STATUS_OPTIONS.map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      {JOB_STATUS_ORDER.map((s) => (
+                        <SelectItem key={s} value={s}>{JOB_STATUS_LABELS[s]}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -797,7 +796,9 @@ export function JobOrderDetail({
                 <div key={u.id} className="flex items-start gap-3 text-sm border-b last:border-0 pb-2 last:pb-0">
                   <div className="w-2 h-2 rounded-full bg-[#E67A32] flex-shrink-0 mt-1.5" />
                   <div className="flex-1 min-w-0">
-                    <span className="font-semibold">{u.status}</span>
+                    <span className="font-semibold">
+                      {JOB_STATUS_LABELS[u.status as JobOrderStatus] ?? u.status}
+                    </span>
                     {u.notes && <p className="text-muted-foreground text-xs mt-0.5">{u.notes}</p>}
                     <p className="text-xs text-muted-foreground mt-0.5">{formatDateTime(u.created_at)}</p>
                   </div>
