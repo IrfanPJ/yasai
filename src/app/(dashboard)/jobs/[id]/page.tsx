@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { Header } from "@/components/layout/header";
 import { JobOrderDetail } from "@/components/jobs/job-order-detail";
-import type { JobOrder, GoodsCollectionNote, JobTransitUpdate } from "@/types";
+import type { JobOrder, GoodsCollectionNote, JobTransitUpdate, JobOrderTruck, JobStatusUpdate } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +25,7 @@ export default async function JobDetailPage({ params }: PageProps) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [{ data: profile }, { data: gcnLinks }, { data: updates }] = await Promise.all([
+  const [{ data: profile }, { data: gcnLinks }, { data: updates }, { data: trucks }, { data: statusUpdates }] = await Promise.all([
     user
       ? service.from("user_profiles").select("role").eq("id", user.id).single()
       : Promise.resolve({ data: null }),
@@ -38,6 +38,16 @@ export default async function JobDetailPage({ params }: PageProps) {
       .select("*")
       .eq("job_order_id", id)
       .order("created_at", { ascending: true }),
+    service
+      .from("job_order_trucks")
+      .select("*")
+      .eq("job_order_id", id)
+      .order("created_at", { ascending: true }),
+    service
+      .from("job_status_updates")
+      .select("*")
+      .eq("job_order_id", id)
+      .order("created_at", { ascending: false }),
   ]);
 
   const gcns = (gcnLinks || [])
@@ -52,6 +62,8 @@ export default async function JobDetailPage({ params }: PageProps) {
           job={job as JobOrder}
           gcns={gcns}
           transitUpdates={(updates || []) as JobTransitUpdate[]}
+          trucks={(trucks || []) as JobOrderTruck[]}
+          statusUpdates={(statusUpdates || []) as JobStatusUpdate[]}
           userRole={profile?.role || "viewer"}
         />
       </div>

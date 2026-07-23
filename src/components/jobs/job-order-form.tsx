@@ -3,26 +3,43 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Plus, X, Search } from "lucide-react";
+import { Loader2, Plus, X, Search, Truck, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import type { GoodsCollectionNote } from "@/types";
+
+interface TruckDraft {
+  key: string;
+  truck_number: string;
+  trailer_number: string;
+  driver_name: string;
+  driver_phone: string;
+}
+
+function emptyTruck(): TruckDraft {
+  return { key: crypto.randomUUID(), truck_number: "", trailer_number: "", driver_name: "", driver_phone: "" };
+}
 
 export function JobOrderForm() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+
+  // Shipment details
   const [destination, setDestination] = useState("");
-  const [truckNumber, setTruckNumber] = useState("");
-  const [driverName, setDriverName] = useState("");
-  const [driverPhone, setDriverPhone] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [consigneeName, setConsigneeName] = useState("");
   const [transporterName, setTransporterName] = useState("");
   const [departureDate, setDepartureDate] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Trucks
+  const [trucks, setTrucks] = useState<TruckDraft[]>([emptyTruck()]);
+
+  // GCN linking
   const [gcnSearch, setGcnSearch] = useState("");
   const [searchResults, setSearchResults] = useState<GoodsCollectionNote[]>([]);
   const [linkedGcns, setLinkedGcns] = useState<GoodsCollectionNote[]>([]);
@@ -60,22 +77,26 @@ export function JobOrderForm() {
     setSearchResults([]);
   }
 
-  function removeGcn(id: string) {
-    setLinkedGcns((prev) => prev.filter((g) => g.id !== id));
+  function updateTruck(key: string, field: keyof TruckDraft, value: string) {
+    setTrucks((prev) => prev.map((t) => t.key === key ? { ...t, [field]: value } : t));
+  }
+
+  function removeTruck(key: string) {
+    setTrucks((prev) => prev.filter((t) => t.key !== key));
   }
 
   async function handleSubmit() {
     if (!destination.trim()) { toast.error("Destination is required"); return; }
     setSaving(true);
     try {
+      // Create job order
       const res = await fetch("/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           destination: destination.trim(),
-          truck_number: truckNumber || null,
-          driver_name: driverName || null,
-          driver_phone: driverPhone || null,
+          customer_name: customerName || null,
+          consignee_name: consigneeName || null,
           transporter_name: transporterName || null,
           departure_date: departureDate || null,
           notes: notes || null,
@@ -87,12 +108,27 @@ export function JobOrderForm() {
       }
       const job = await res.json();
 
-      // Link all GCNs
+      // Link GCNs
       for (const gcn of linkedGcns) {
         await fetch(`/api/jobs/${job.id}/gcns`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ gcn_id: gcn.id }),
+        });
+      }
+
+      // Add trucks
+      const validTrucks = trucks.filter((t) => t.truck_number || t.driver_name);
+      for (const truck of validTrucks) {
+        await fetch(`/api/jobs/${job.id}/trucks`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            truck_number: truck.truck_number || null,
+            trailer_number: truck.trailer_number || null,
+            driver_name: truck.driver_name || null,
+            driver_phone: truck.driver_phone || null,
+          }),
         });
       }
 
@@ -107,10 +143,10 @@ export function JobOrderForm() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      {/* Basic Info */}
+      {/* Shipment Details */}
       <Card className="border-none shadow-sm">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base text-[#071A3A] dark:text-white">Job Order Details</CardTitle>
+          <CardTitle className="text-base text-[#071A3A] dark:text-white">Shipment Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
@@ -119,24 +155,20 @@ export function JobOrderForm() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wide">Truck Number</Label>
-              <Input value={truckNumber} onChange={(e) => setTruckNumber(e.target.value)} placeholder="e.g. ABC-1234" />
+              <Label className="text-xs uppercase tracking-wide">Customer Name</Label>
+              <Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Shipper / customer" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-wide">Consignee Name</Label>
+              <Input value={consigneeName} onChange={(e) => setConsigneeName(e.target.value)} placeholder="Consignee in KSA" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-wide">Transporter Company</Label>
+              <Input value={transporterName} onChange={(e) => setTransporterName(e.target.value)} placeholder="Transporter name" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wide">Departure Date</Label>
               <Input type="date" value={departureDate} onChange={(e) => setDepartureDate(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wide">Driver Name</Label>
-              <Input value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="Driver full name" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wide">Driver Phone</Label>
-              <Input value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} placeholder="+966..." />
-            </div>
-            <div className="space-y-1.5 col-span-2">
-              <Label className="text-xs uppercase tracking-wide">Transporter Company</Label>
-              <Input value={transporterName} onChange={(e) => setTransporterName(e.target.value)} placeholder="Transporter name" />
             </div>
           </div>
           <div className="space-y-1.5">
@@ -146,13 +178,61 @@ export function JobOrderForm() {
         </CardContent>
       </Card>
 
+      {/* Trucks */}
+      <Card className="border-none shadow-sm">
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <CardTitle className="text-base text-[#071A3A] dark:text-white flex items-center gap-2">
+            <Truck className="h-4 w-4" />
+            Trucks
+          </CardTitle>
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setTrucks((p) => [...p, emptyTruck()])}>
+            <Plus className="h-3.5 w-3.5" /> Add Truck
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {trucks.map((truck, i) => (
+            <div key={truck.key}>
+              {i > 0 && <Separator className="mb-4" />}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Truck {i + 1}</span>
+                  {trucks.length > 1 && (
+                    <button onClick={() => removeTruck(truck.key)} className="text-muted-foreground hover:text-red-500">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wide">Truck Number</Label>
+                    <Input value={truck.truck_number} onChange={(e) => updateTruck(truck.key, "truck_number", e.target.value)} placeholder="e.g. ABC-1234" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wide">Trailer Number</Label>
+                    <Input value={truck.trailer_number} onChange={(e) => updateTruck(truck.key, "trailer_number", e.target.value)} placeholder="Trailer plate" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wide">Driver Name</Label>
+                    <Input value={truck.driver_name} onChange={(e) => updateTruck(truck.key, "driver_name", e.target.value)} placeholder="Full name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wide">Driver Phone</Label>
+                    <Input value={truck.driver_phone} onChange={(e) => updateTruck(truck.key, "driver_phone", e.target.value)} placeholder="+971..." />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+          <p className="text-xs text-muted-foreground">Driver passport, ID, and document uploads can be added after the job order is created.</p>
+        </CardContent>
+      </Card>
+
       {/* Link GCNs */}
       <Card className="border-none shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-base text-[#071A3A] dark:text-white">Link GCNs (Warehouse-Approved)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Capacity bar */}
           {linkedGcns.length > 0 && (
             <div className="space-y-2">
               <div>
@@ -176,7 +256,6 @@ export function JobOrderForm() {
             </div>
           )}
 
-          {/* Linked GCN list */}
           {linkedGcns.length > 0 && (
             <div className="space-y-2">
               {linkedGcns.map((gcn) => (
@@ -185,10 +264,10 @@ export function JobOrderForm() {
                     <span className="font-semibold text-sm text-[#071A3A] dark:text-white">{gcn.collection_number}</span>
                     <span className="text-muted-foreground text-xs ml-2">{gcn.consignee_name}</span>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      {gcn.weight_kg ? `${gcn.weight_kg} kg` : ""} {gcn.volume_cbm ? `· ${gcn.volume_cbm} m³` : ""}
+                      {gcn.weight_kg ? `${gcn.weight_kg} kg` : ""}{gcn.volume_cbm ? ` · ${gcn.volume_cbm} m³` : ""}
                     </div>
                   </div>
-                  <button onClick={() => removeGcn(gcn.id)} className="text-muted-foreground hover:text-red-500 ml-2">
+                  <button onClick={() => setLinkedGcns((prev) => prev.filter((g) => g.id !== gcn.id))} className="text-muted-foreground hover:text-red-500 ml-2">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
@@ -196,7 +275,6 @@ export function JobOrderForm() {
             </div>
           )}
 
-          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -220,7 +298,7 @@ export function JobOrderForm() {
                     <span className="font-semibold text-sm">{gcn.collection_number}</span>
                     <span className="text-muted-foreground text-xs ml-2">{gcn.consignee_name}</span>
                     <div className="text-xs text-muted-foreground">
-                      {gcn.commodity} · {gcn.weight_kg ? `${gcn.weight_kg} kg` : ""} {gcn.volume_cbm ? `· ${gcn.volume_cbm} m³` : ""}
+                      {gcn.commodity} · {gcn.weight_kg ? `${gcn.weight_kg} kg` : ""}{gcn.volume_cbm ? ` · ${gcn.volume_cbm} m³` : ""}
                     </div>
                   </div>
                   <Plus className="h-4 w-4 text-[#E67A32]" />
@@ -230,7 +308,7 @@ export function JobOrderForm() {
           )}
 
           {linkedGcns.length === 0 && (
-            <p className="text-xs text-muted-foreground">Search and add GCNs with warehouse-approved status. Capacity bars will update automatically.</p>
+            <p className="text-xs text-muted-foreground">Search and add GCNs with warehouse-approved status.</p>
           )}
         </CardContent>
       </Card>
@@ -240,9 +318,7 @@ export function JobOrderForm() {
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
           Create Job Order
         </Button>
-        <Button variant="outline" onClick={() => router.back()} disabled={saving}>
-          Cancel
-        </Button>
+        <Button variant="outline" onClick={() => router.back()} disabled={saving}>Cancel</Button>
       </div>
     </div>
   );

@@ -216,16 +216,71 @@ export const WAREHOUSE_REPORT_LABELS: Record<WarehouseReportStatus, string> = {
 
 export type JobOrderStatus =
   | "draft"
-  | "pending_approval"
-  | "approved"
-  | "loading"
-  | "dispatched"
-  | "in_transit"
-  | "customs_clearance"
-  | "out_for_delivery"
-  | "delivered";
+  | "ready_for_collection"
+  | "goods_collected"
+  | "export_documentation_complete"
+  | "uae_customs_clearance"
+  | "border_exit"
+  | "saudi_customs_clearance"
+  | "in_transit_saudi"
+  | "delivered"
+  | "closed";
+
+export type TruckStatus =
+  | "created"
+  | "goods_collected"
+  | "documents_uploaded"
+  | "uae_customs_submitted"
+  | "naql_foc_received"
+  | "bayan_received"
+  | "fazza_generated"
+  | "fazza_sent_to_driver"
+  | "reached_saudi_border"
+  | "inspection"
+  | "duty_payment"
+  | "entered_saudi_arabia"
+  | "delivered"
+  | "completed";
 
 export type GmApprovalStatus = "pending" | "approved" | "rejected";
+
+export interface JobOrderTruck {
+  id: string;
+  job_order_id: string;
+  truck_number?: string;
+  trailer_number?: string;
+  driver_name?: string;
+  driver_phone?: string;
+  driver_passport_url?: string;
+  driver_id_url?: string;
+  status: TruckStatus;
+  border_status?: string;
+  fazza_token?: string;
+  customs_duty_amount?: number;
+  customs_duty_paid_at?: string;
+  naql_foc_received_at?: string;
+  bayan_received_at?: string;
+  fazza_generated_at?: string;
+  fazza_sent_at?: string;
+  reached_border_at?: string;
+  entered_saudi_at?: string;
+  delivered_at?: string;
+  notes?: string;
+  created_by?: string;
+  updated_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JobStatusUpdate {
+  id: string;
+  job_order_id: string;
+  truck_id?: string;
+  status: string;
+  notes?: string;
+  created_by?: string;
+  created_at: string;
+}
 
 export interface JobOrder {
   id: string;
@@ -233,14 +288,24 @@ export interface JobOrder {
   destination: string;
   status: JobOrderStatus;
 
-  // Truck
+  // Shipment parties
+  customer_name?: string;
+  consignee_name?: string;
+
+  // Documents
+  commercial_invoice_url?: string;
+  packing_list_url?: string;
+  country_of_origin_url?: string;
+  other_documents_urls?: string[];
+
+  // Legacy single-truck fields (kept for backwards compat)
   truck_number?: string;
   driver_name?: string;
   driver_phone?: string;
   transporter_name?: string;
   departure_date?: string;
 
-  // Capacity
+  // Capacity (derived from linked GCNs)
   total_weight_kg?: number;
   total_cbm?: number;
 
@@ -281,9 +346,11 @@ export interface JobOrder {
   created_at: string;
   updated_at: string;
 
-  // Joined (when fetched with GCNs)
+  // Joined
   gcns?: GoodsCollectionNote[];
   transit_updates?: JobTransitUpdate[];
+  trucks?: JobOrderTruck[];
+  status_updates?: JobStatusUpdate[];
 }
 
 export interface JobOrderGcn {
@@ -304,27 +371,78 @@ export interface JobTransitUpdate {
 
 export const JOB_STATUS_LABELS: Record<JobOrderStatus, string> = {
   draft: "Draft",
-  pending_approval: "Pending Approval",
-  approved: "Approved",
-  loading: "Loading",
-  dispatched: "Dispatched",
-  in_transit: "In Transit",
-  customs_clearance: "Customs Clearance",
-  out_for_delivery: "Out for Delivery",
+  ready_for_collection: "Ready for Collection",
+  goods_collected: "Goods Collected",
+  export_documentation_complete: "Export Docs Complete",
+  uae_customs_clearance: "UAE Customs Clearance",
+  border_exit: "Border Exit",
+  saudi_customs_clearance: "Saudi Customs Clearance",
+  in_transit_saudi: "In Transit (Saudi)",
   delivered: "Delivered",
+  closed: "Closed",
 };
 
 export const JOB_STATUS_COLORS: Record<JobOrderStatus, string> = {
   draft: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  pending_approval: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  approved: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  loading: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
-  dispatched: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  in_transit: "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200",
-  customs_clearance: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  out_for_delivery: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
+  ready_for_collection: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  goods_collected: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  export_documentation_complete: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
+  uae_customs_clearance: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+  border_exit: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+  saudi_customs_clearance: "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200",
+  in_transit_saudi: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
   delivered: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  closed: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
 };
+
+export const TRUCK_STATUS_LABELS: Record<TruckStatus, string> = {
+  created: "Created",
+  goods_collected: "Goods Collected",
+  documents_uploaded: "Documents Uploaded",
+  uae_customs_submitted: "UAE Customs Submitted",
+  naql_foc_received: "NAQL FOC Received",
+  bayan_received: "Bayan Received",
+  fazza_generated: "FAZZA Generated",
+  fazza_sent_to_driver: "FAZZA Sent to Driver",
+  reached_saudi_border: "Reached Saudi Border",
+  inspection: "Under Inspection",
+  duty_payment: "Duty Payment",
+  entered_saudi_arabia: "Entered Saudi Arabia",
+  delivered: "Delivered",
+  completed: "Completed",
+};
+
+export const TRUCK_STATUS_COLORS: Record<TruckStatus, string> = {
+  created: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+  goods_collected: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  documents_uploaded: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
+  uae_customs_submitted: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  naql_foc_received: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+  bayan_received: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+  fazza_generated: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+  fazza_sent_to_driver: "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200",
+  reached_saudi_border: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
+  inspection: "bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200",
+  duty_payment: "bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200",
+  entered_saudi_arabia: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
+  delivered: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  completed: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
+};
+
+export const MANUAL_STATUS_OPTIONS = [
+  "Collected",
+  "Not Collected",
+  "Documents Submitted",
+  "Token Received",
+  "Waiting for Reply",
+  "UAE Customs Clearance",
+  "Saudi Customs Clearance",
+  "Customs Duty Pending",
+  "Customs Duty Paid",
+  "In Transit",
+  "Delivered",
+  "Completed",
+] as const;
 
 // ── Finance Invoices (Stage 7) ──────────────────────────────────
 

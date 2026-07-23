@@ -14,7 +14,7 @@ export async function GET(_: NextRequest, { params }: RouteParams) {
 
   const serviceClient = createServiceClient();
 
-  const [{ data: job, error }, { data: gcnLinks }, { data: updates }] = await Promise.all([
+  const [{ data: job, error }, { data: gcnLinks }, { data: updates }, { data: trucks }, { data: statusUpdates }] = await Promise.all([
     serviceClient.from("job_orders").select("*").eq("id", id).single(),
     serviceClient
       .from("job_order_gcns")
@@ -25,6 +25,16 @@ export async function GET(_: NextRequest, { params }: RouteParams) {
       .select("*")
       .eq("job_order_id", id)
       .order("created_at", { ascending: true }),
+    serviceClient
+      .from("job_order_trucks")
+      .select("*")
+      .eq("job_order_id", id)
+      .order("created_at", { ascending: true }),
+    serviceClient
+      .from("job_status_updates")
+      .select("*")
+      .eq("job_order_id", id)
+      .order("created_at", { ascending: false }),
   ]);
 
   if (error || !job) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -33,6 +43,8 @@ export async function GET(_: NextRequest, { params }: RouteParams) {
     ...job,
     gcns: (gcnLinks || []).map((r: { gcn: unknown }) => r.gcn),
     transit_updates: updates || [],
+    trucks: trucks || [],
+    status_updates: statusUpdates || [],
   });
 }
 
@@ -43,7 +55,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   const { user, serviceClient } = auth;
 
   const body = await request.json();
-  const allowed = ["destination","truck_number","driver_name","driver_phone","transporter_name","departure_date","notes","total_weight_kg","total_cbm"];
+  const allowed = [
+    "destination","customer_name","consignee_name",
+    "truck_number","driver_name","driver_phone","transporter_name","departure_date",
+    "commercial_invoice_url","packing_list_url","country_of_origin_url","other_documents_urls",
+    "notes","total_weight_kg","total_cbm",
+  ];
   const updates: Record<string, unknown> = { updated_by: user.id };
   for (const key of allowed) {
     if (key in body) updates[key] = body[key] ?? null;

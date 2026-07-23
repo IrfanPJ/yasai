@@ -38,9 +38,8 @@ export async function POST(request: NextRequest) {
     .insert({
       job_number: jobNumber as string,
       destination,
-      truck_number: body.truck_number || null,
-      driver_name: body.driver_name || null,
-      driver_phone: body.driver_phone || null,
+      customer_name: body.customer_name || null,
+      consignee_name: body.consignee_name || null,
       transporter_name: body.transporter_name || null,
       departure_date: body.departure_date || null,
       notes: body.notes || null,
