@@ -60,7 +60,6 @@ export function JobOrderForm() {
           const data = await res.json();
           const available = (data.data || data || []).filter(
             (g: GoodsCollectionNote) =>
-              g.warehouse_report_status === "approved" &&
               !linkedGcns.find((l) => l.id === g.id)
           );
           setSearchResults(available.slice(0, 8));
@@ -230,7 +229,7 @@ export function JobOrderForm() {
       {/* Link GCNs */}
       <Card className="border-none shadow-sm">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base text-[#071A3A] dark:text-white">Link GCNs (Warehouse-Approved)</CardTitle>
+          <CardTitle className="text-base text-[#071A3A] dark:text-white">Link GCNs</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {linkedGcns.length > 0 && (
@@ -308,7 +307,7 @@ export function JobOrderForm() {
           )}
 
           {linkedGcns.length === 0 && (
-            <p className="text-xs text-muted-foreground">Search and add GCNs with warehouse-approved status.</p>
+            <p className="text-xs text-muted-foreground">Search and add GCNs by collection number or consignee name.</p>
           )}
         </CardContent>
       </Card>
