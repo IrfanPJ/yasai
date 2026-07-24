@@ -8,7 +8,7 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-const VALID_ROLES: UserRole[] = ["admin", "operations", "warehouse", "warehouse_supervisor", "viewer"];
+const VALID_ROLES: UserRole[] = ["admin", "operations", "warehouse", "warehouse_supervisor", "finance", "viewer"];
 
 // Admin-only: Update a user's role or active status
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
@@ -55,6 +55,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "is_active must be a boolean" }, { status: 400 });
     }
     updates.is_active = body.is_active;
+  }
+
+  // warehouse_id (nullable)
+  if ("warehouse_id" in body) {
+    updates.warehouse_id = body.warehouse_id || null;
   }
 
   if (Object.keys(updates).length === 0) {

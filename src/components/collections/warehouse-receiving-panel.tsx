@@ -1,25 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Loader2, Warehouse, CheckCircle2, XCircle, Download, MapPin,
+  Loader2, Warehouse, CheckCircle2, XCircle, Download, MapPin, Pencil, RotateCcw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { formatDateTime } from "@/lib/utils";
-import type { GoodsCollectionNote, UserRole } from "@/types";
+import type { GoodsCollectionNote, UserRole, Warehouse as WarehouseType } from "@/types";
 
 interface WarehouseReceivingPanelProps {
   collection: GoodsCollectionNote;
@@ -47,12 +49,24 @@ export function WarehouseReceivingPanel({ collection, userRole }: WarehouseRecei
   const canManageWarehouse = WAREHOUSE_ROLES.includes(userRole);
   const canApprove = APPROVER_ROLES.includes(userRole);
 
+  const [warehouses, setWarehouses] = useState<WarehouseType[]>([]);
   const [storageLocation, setStorageLocation] = useState(collection.storage_location || "");
   const [palletized, setPalletized] = useState(collection.palletized);
+
+  useEffect(() => {
+    fetch("/api/warehouses")
+      .then((r) => r.json())
+      .then((data: WarehouseType[]) => setWarehouses(data.filter((w) => w.is_active)))
+      .catch(() => {});
+  }, []);
   const [notes, setNotes] = useState(collection.warehouse_report_notes || "");
   const [rejectReason, setRejectReason] = useState("");
   const [rejectOpen, setRejectOpen] = useState(false);
 
+  const [editingReceiving, setEditingReceiving] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [undoing, setUndoing] = useState(false);
+  const [recalling, setRecalling] = useState(false);
   const [receiving, setReceiving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [approving, setApproving] = useState(false);
@@ -74,6 +88,50 @@ export function WarehouseReceivingPanel({ collection, userRole }: WarehouseRecei
       toast.error(err instanceof Error ? err.message : "Failed to mark as received");
     } finally {
       setReceiving(false);
+    }
+  }
+
+  async function handleUndoReceiving() {
+    setUndoing(true);
+    try {
+      await postAction(`${base}/undo-receiving`);
+      toast.success("Receiving undone — status reset to Collected");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to undo receiving");
+    } finally {
+      setUndoing(false);
+    }
+  }
+
+  async function handleRecallReport() {
+    setRecalling(true);
+    try {
+      await postAction(`${base}/recall-report`);
+      toast.success("Report recalled — you can now edit and resubmit");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to recall report");
+    } finally {
+      setRecalling(false);
+    }
+  }
+
+  async function handleSaveReceiving() {
+    if (!storageLocation.trim()) {
+      toast.error("Storage location is required");
+      return;
+    }
+    setSaving(true);
+    try {
+      await postAction(`${base}/update-receiving`, { storage_location: storageLocation, palletized });
+      toast.success("Receiving details updated");
+      setEditingReceiving(false);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -140,30 +198,121 @@ export function WarehouseReceivingPanel({ collection, userRole }: WarehouseRecei
         <CardContent className="space-y-4">
           {/* ── Receiving ── */}
           {collection.warehouse_received_at ? (
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 gap-1">
-                <CheckCircle2 className="h-3 w-3" />
-                Received
-              </Badge>
-              <span className="text-muted-foreground">{formatDateTime(collection.warehouse_received_at)}</span>
-              <span className="text-muted-foreground">·</span>
-              <span className="flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                {collection.storage_location}
-              </span>
-              <span className="text-muted-foreground">·</span>
-              <span>{collection.palletized ? "Palletized" : "Not palletized"}</span>
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Received
+                </Badge>
+                <span className="text-muted-foreground">{formatDateTime(collection.warehouse_received_at)}</span>
+                <span className="text-muted-foreground">·</span>
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                  {collection.storage_location}
+                </span>
+                <span className="text-muted-foreground">·</span>
+                <span>{collection.palletized ? "Palletized" : "Not palletized"}</span>
+                {canManageWarehouse && reportStatus !== "approved" && !editingReceiving && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                      onClick={() => setEditingReceiving(true)}
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Edit
+                    </Button>
+                    {reportStatus === "not_submitted" && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-xs gap-1 text-muted-foreground hover:text-red-600"
+                        onClick={handleUndoReceiving}
+                        disabled={undoing}
+                      >
+                        {undoing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                        Undo
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {editingReceiving && (
+                <div className="space-y-3 rounded-md border p-3 bg-muted/30">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs uppercase tracking-wide">Storage Location</Label>
+                      <Select value={storageLocation} onValueChange={setStorageLocation}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select warehouse" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(["UAE", "KSA"] as const).map((country) => {
+                            const group = warehouses.filter((w) => w.country === country);
+                            if (group.length === 0) return null;
+                            return group.map((w) => (
+                              <SelectItem key={w.id} value={w.code}>
+                                {w.code} — {w.name}
+                              </SelectItem>
+                            ));
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2 pt-6">
+                      <Checkbox
+                        id="palletized-edit"
+                        checked={palletized}
+                        onCheckedChange={(v) => setPalletized(Boolean(v))}
+                      />
+                      <Label htmlFor="palletized-edit" className="text-sm font-normal cursor-pointer">
+                        Goods palletized
+                      </Label>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={handleSaveReceiving} disabled={saving} size="sm" className="gap-1.5">
+                      {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                      Save Changes
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setStorageLocation(collection.storage_location || "");
+                        setPalletized(collection.palletized);
+                        setEditingReceiving(false);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : canManageWarehouse ? (
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs uppercase tracking-wide">Storage Location</Label>
-                  <Input
-                    value={storageLocation}
-                    onChange={(e) => setStorageLocation(e.target.value)}
-                    placeholder="e.g. Zone B - Rack 4"
-                  />
+                  <Select value={storageLocation} onValueChange={setStorageLocation}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select warehouse" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(["UAE", "KSA"] as const).map((country) => {
+                        const group = warehouses.filter((w) => w.country === country);
+                        if (group.length === 0) return null;
+                        return group.map((w) => (
+                          <SelectItem key={w.id} value={w.code}>
+                            {w.code} — {w.name}
+                          </SelectItem>
+                        ));
+                      })}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex items-center gap-2 pt-6">
                   <Checkbox
@@ -217,18 +366,26 @@ export function WarehouseReceivingPanel({ collection, userRole }: WarehouseRecei
                     <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 gap-1">
                       Pending Approval
                     </Badge>
-                    {canApprove && (
-                      <div className="flex flex-wrap gap-2">
-                        <Button onClick={handleApprove} disabled={approving} size="sm" className="gap-1.5 bg-green-600 hover:bg-green-700">
-                          {approving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                          Approve
+                    <div className="flex flex-wrap gap-2">
+                      {canApprove && (
+                        <>
+                          <Button onClick={handleApprove} disabled={approving} size="sm" className="gap-1.5 bg-green-600 hover:bg-green-700">
+                            {approving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                            Approve
+                          </Button>
+                          <Button onClick={() => setRejectOpen(true)} disabled={rejecting} size="sm" variant="outline" className="gap-1.5 border-red-300 text-red-600 hover:bg-red-50">
+                            <XCircle className="h-3.5 w-3.5" />
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                      {canManageWarehouse && (
+                        <Button onClick={handleRecallReport} disabled={recalling} size="sm" variant="outline" className="gap-1.5">
+                          {recalling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Pencil className="h-3.5 w-3.5" />}
+                          Recall Report
                         </Button>
-                        <Button onClick={() => setRejectOpen(true)} disabled={rejecting} size="sm" variant="outline" className="gap-1.5 border-red-300 text-red-600 hover:bg-red-50">
-                          <XCircle className="h-3.5 w-3.5" />
-                          Reject
-                        </Button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 )}
 
