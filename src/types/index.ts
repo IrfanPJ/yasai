@@ -84,6 +84,7 @@ export interface GoodsCollectionNote {
   pdf_url?: string;
   qr_url?: string;
   commercial_invoice_url?: string | null;
+  packing_list_url?: string | null;
   country_of_origin_url?: string | null;
 
   // Status timeline

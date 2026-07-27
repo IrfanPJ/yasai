@@ -21,7 +21,7 @@ import type { UserProfile, UserRole } from "@/types";
 import { useTheme } from "next-themes";
 import {
   Loader2, Shield, User, Building2, Sun, Users,
-  UserCheck, UserX, Crown, Eye, Wrench, Warehouse, Calculator,
+  UserCheck, UserX, Crown, Eye, Wrench, Warehouse, Calculator, KeyRound,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -67,6 +67,7 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [updatingUser, setUpdatingUser] = useState<string | null>(null);
+  const [resettingPassword, setResettingPassword] = useState<string | null>(null);
 
   const isAdmin = currentUser?.role === "admin";
 
@@ -147,6 +148,20 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
       toast.error(err instanceof Error ? err.message : "Failed to update user");
     } finally {
       setUpdatingUser(null);
+    }
+  }
+
+  async function handleResetPassword(userId: string) {
+    setResettingPassword(userId);
+    try {
+      const res = await fetch(`/api/users/${userId}/reset-password`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send reset email");
+      toast.success(`Password reset email sent to ${data.email}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send reset email");
+    } finally {
+      setResettingPassword(null);
     }
   }
 
@@ -368,6 +383,7 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
                       <TableHead className="font-semibold">Current Role</TableHead>
                       <TableHead className="font-semibold">Change Role</TableHead>
                       <TableHead className="font-semibold text-center">Status</TableHead>
+                      <TableHead className="font-semibold text-center">Password</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -450,6 +466,23 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
                                 onCheckedChange={(v) => handleToggleActive(u.id, v)}
                                 disabled={isUpdating}
                               />
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {!isSelf && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-orange-600"
+                                disabled={resettingPassword === u.id}
+                                onClick={() => handleResetPassword(u.id)}
+                                title="Send password reset email"
+                              >
+                                {resettingPassword === u.id
+                                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  : <KeyRound className="h-3.5 w-3.5" />}
+                                Reset
+                              </Button>
                             )}
                           </TableCell>
                         </TableRow>
