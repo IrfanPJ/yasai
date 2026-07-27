@@ -17,6 +17,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import type { UserProfile, UserRole } from "@/types";
 import { useTheme } from "next-themes";
 import {
@@ -67,7 +71,9 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [updatingUser, setUpdatingUser] = useState<string | null>(null);
-  const [resettingPassword, setResettingPassword] = useState<string | null>(null);
+  const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null);
+  const [newPasswordAdmin, setNewPasswordAdmin] = useState("");
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   const isAdmin = currentUser?.role === "admin";
 
@@ -151,17 +157,24 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
     }
   }
 
-  async function handleResetPassword(userId: string) {
-    setResettingPassword(userId);
+  async function handleResetPassword() {
+    if (!resetTarget || !newPasswordAdmin) return;
+    setResettingPassword(true);
     try {
-      const res = await fetch(`/api/users/${userId}/reset-password`, { method: "POST" });
+      const res = await fetch(`/api/users/${resetTarget.id}/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPasswordAdmin }),
+      });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to send reset email");
-      toast.success(`Password reset email sent to ${data.email}`);
+      if (!res.ok) throw new Error(data.error || "Failed to reset password");
+      toast.success(`Password updated for ${resetTarget.name}`);
+      setResetTarget(null);
+      setNewPasswordAdmin("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send reset email");
+      toast.error(err instanceof Error ? err.message : "Failed to reset password");
     } finally {
-      setResettingPassword(null);
+      setResettingPassword(false);
     }
   }
 
@@ -474,13 +487,10 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
                                 size="sm"
                                 variant="ghost"
                                 className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-orange-600"
-                                disabled={resettingPassword === u.id}
-                                onClick={() => handleResetPassword(u.id)}
-                                title="Send password reset email"
+                                onClick={() => { setResetTarget({ id: u.id, name: u.full_name || u.email }); setNewPasswordAdmin(""); }}
+                                title="Reset password"
                               >
-                                {resettingPassword === u.id
-                                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  : <KeyRound className="h-3.5 w-3.5" />}
+                                <KeyRound className="h-3.5 w-3.5" />
                                 Reset
                               </Button>
                             )}
@@ -591,6 +601,50 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* ── Reset Password Dialog ── */}
+      <Dialog
+        open={!!resetTarget}
+        onOpenChange={(o) => { if (!o) { setResetTarget(null); setNewPasswordAdmin(""); } }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              Set a new password for <strong>{resetTarget?.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5 py-2">
+            <Label>New Password</Label>
+            <Input
+              type="password"
+              value={newPasswordAdmin}
+              onChange={(e) => setNewPasswordAdmin(e.target.value)}
+              placeholder="Minimum 6 characters"
+              onKeyDown={(e) => { if (e.key === "Enter") handleResetPassword(); }}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setResetTarget(null); setNewPasswordAdmin(""); }}
+              disabled={resettingPassword}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={resettingPassword || newPasswordAdmin.length < 6}
+              onClick={handleResetPassword}
+              className="gap-1.5"
+            >
+              {resettingPassword
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <KeyRound className="h-3.5 w-3.5" />}
+              Set Password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
