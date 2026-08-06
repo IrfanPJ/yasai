@@ -1871,35 +1871,35 @@ export async function generateInvoicePDF(invoice: Invoice, logoDataUrl?: string)
 
 function buildWaybillHtml(wb: Waybill, logoDataUrl?: string): string {
   const logoTag = logoDataUrl
-    ? `<img src="${logoDataUrl}" style="height:44px;object-fit:contain;" />`
-    : `<div style="font-size:14pt;font-weight:800;color:${NAVY};">YASAI</div>`;
+    ? `<img src="${logoDataUrl}" style="height:40px;object-fit:contain;" />`
+    : `<div style="font-size:13pt;font-weight:800;color:${NAVY};">YASAI</div>`;
 
-  const shipDate = wb.shipment_date
-    ? (() => { try { return format(new Date(wb.shipment_date), "dd/MM/yyyy"); } catch { return wb.shipment_date; } })()
-    : "—";
-
-  const issueDate = wb.issue_date
-    ? (() => { try { return format(new Date(wb.issue_date), "dd/MM/yyyy"); } catch { return wb.issue_date; } })()
-    : shipDate;
+  const fmtD = (d?: string | null) => {
+    if (!d) return "—";
+    try { return format(new Date(d), "dd/MM/yyyy"); } catch { return d; }
+  };
 
   const modeLabel = wb.mode_of_transport === "road" ? "Road"
     : wb.mode_of_transport === "air" ? "Air" : "Sea";
 
   const items: WaybillCargoItem[] = Array.isArray(wb.cargo_items) ? wb.cargo_items : [];
 
-  const cargoRows = items.length > 0
-    ? items.map((item) => `
-      <tr>
-        <td>${esc(item.truck_number)}</td>
-        <td>${esc(item.seal_no)}</td>
-        <td>${esc(item.invoice_number)}</td>
-        <td style="text-align:right;">${esc(item.invoice_currency || "AED")}&nbsp;${esc(item.invoice_value)}</td>
-        <td style="text-align:center;">${esc(item.num_packages)}</td>
-        <td>${esc(item.description)}</td>
-        <td style="text-align:right;">${esc(item.weight)}</td>
-        <td style="text-align:right;">${esc(item.measurement)}</td>
-      </tr>`).join("")
-    : `<tr><td colspan="8" style="text-align:center;color:#999;padding:18px 0;">No cargo items</td></tr>`;
+  // Pad to at least 6 rows so the table body fills the section
+  const MIN_ROWS = 6;
+  const padded = [...items];
+  while (padded.length < MIN_ROWS) padded.push({});
+
+  const cargoRows = padded.map((item) => `
+    <tr>
+      <td>${esc(item.truck_number)}</td>
+      <td>${esc(item.seal_no)}</td>
+      <td>${esc(item.invoice_number)}</td>
+      <td>${esc(item.invoice_currency || (item.invoice_value ? "AED" : ""))}&nbsp;${esc(item.invoice_value)}</td>
+      <td style="text-align:center;">${esc(item.num_packages)}</td>
+      <td>${esc(item.description)}</td>
+      <td>${esc(item.weight)}</td>
+      <td>${esc(item.measurement)}</td>
+    </tr>`).join("");
 
   return `<!DOCTYPE html>
 <html>
@@ -1907,202 +1907,349 @@ function buildWaybillHtml(wb: Waybill, logoDataUrl?: string): string {
 <meta charset="utf-8"/>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, Helvetica, sans-serif; font-size: 8pt; color: #1a1a1a; background: white; }
-  .page { width: 210mm; min-height: 297mm; padding: 10mm 12mm; }
+  html, body { width: 210mm; height: 297mm; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 8pt;
+    color: #111;
+    background: white;
+  }
+  .page {
+    width: 210mm;
+    height: 297mm;
+    display: flex;
+    flex-direction: column;
+    padding: 6mm 7mm;
+  }
 
-  /* Header */
-  .header { display: flex; align-items: stretch; border: 1.5px solid #222; margin-bottom: 0; }
-  .header-logo { width: 52mm; border-right: 1.5px solid #222; padding: 8px 10px; display: flex; align-items: center; justify-content: center; }
-  .header-title { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 10px; }
-  .header-title .doc-type { font-size: 14pt; font-weight: 800; color: ${NAVY}; letter-spacing: 0.5px; }
-  .header-title .sub { font-size: 7.5pt; color: #555; margin-top: 2px; }
-  .header-wb { width: 52mm; border-left: 1.5px solid #222; padding: 8px 10px; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 4px; }
-  .header-wb .wb-label { font-size: 7pt; color: #555; }
-  .header-wb .wb-number { font-size: 13pt; font-weight: 800; color: ${ORANGE}; letter-spacing: 1px; }
+  /* ── Header ── */
+  .hdr {
+    display: flex;
+    align-items: stretch;
+    border: 1.5px solid #222;
+    flex-shrink: 0;
+  }
+  .hdr-logo {
+    width: 48mm;
+    border-right: 1.5px solid #222;
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hdr-title {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 8px;
+    border-right: 1.5px solid #222;
+  }
+  .hdr-title .dt { font-size: 13pt; font-weight: 800; color: ${NAVY}; letter-spacing: 0.3px; }
+  .hdr-title .sub { font-size: 7pt; color: #666; margin-top: 1px; }
+  .hdr-wb {
+    width: 50mm;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-end;
+  }
+  .hdr-wb .lbl { font-size: 6.5pt; color: #777; }
+  .hdr-wb .num { font-size: 12pt; font-weight: 800; color: ${ORANGE}; letter-spacing: 0.5px; margin-top: 1px; }
 
-  /* Info grid */
-  .info-grid { display: flex; border: 1.5px solid #222; border-top: none; }
-  .info-col { flex: 1; }
-  .info-col + .info-col { border-left: 1.5px solid #222; }
-  .info-block { padding: 5px 8px; border-bottom: 1px solid #ddd; }
-  .info-block:last-child { border-bottom: none; }
-  .info-label { font-size: 6.5pt; text-transform: uppercase; letter-spacing: 0.4px; color: #888; margin-bottom: 2px; }
-  .info-value { font-size: 8pt; font-weight: 600; color: ${NAVY}; }
-  .info-value.large { font-size: 9pt; }
+  /* ── Info grid (Shipper | Consignee | Routing) ── */
+  .info-row {
+    display: flex;
+    border: 1.5px solid #222;
+    border-top: none;
+    flex-shrink: 0;
+  }
+  .info-party {
+    flex: 1.1;
+    border-right: 1.5px solid #222;
+    display: flex;
+    flex-direction: column;
+  }
+  .info-party + .info-party { border-right: 1.5px solid #222; }
+  .party-block {
+    flex: 1;
+    padding: 5px 7px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+  .party-block:last-child { border-bottom: none; }
+  .info-routing {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .r-cell {
+    padding: 4px 7px;
+    border-bottom: 1px solid #e0e0e0;
+    border-right: 1px solid #e0e0e0;
+  }
+  .r-cell:nth-child(2n) { border-right: none; }
+  .r-cell:nth-last-child(-n+2) { border-bottom: none; }
 
-  /* Section header */
-  .section-header { background: ${NAVY}; color: white; font-size: 7pt; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.5px; padding: 4px 8px; border: 1.5px solid ${NAVY}; border-top: none; }
+  .lbl-sm { font-size: 6pt; text-transform: uppercase; letter-spacing: 0.4px; color: #888; margin-bottom: 1px; }
+  .val { font-size: 8pt; font-weight: 600; color: ${NAVY}; }
+  .val-lg { font-size: 8.5pt; font-weight: 700; color: ${NAVY}; }
+  .val-sub { font-size: 7pt; color: #444; margin-top: 1px; white-space: pre-line; }
+  .orange { color: ${ORANGE}; }
 
-  /* Cargo table */
-  .cargo-wrap { border: 1.5px solid #222; border-top: none; overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
+  /* ── Cargo table ── */
+  .cargo-section {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    border: 1.5px solid #222;
+    border-top: none;
+    overflow: hidden;
+  }
+  .cargo-hdr {
+    background: ${NAVY};
+    color: white;
+    font-size: 6.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 7px;
+    flex-shrink: 0;
+  }
+  .cargo-table-wrap { flex: 1; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 7.5pt; height: 100%; }
   thead tr { background: ${HDR_BG}; }
-  thead th { padding: 5px 6px; text-align: left; font-size: 6.5pt; text-transform: uppercase;
-    letter-spacing: 0.3px; color: #555; border-bottom: 1.5px solid #bbb; border-right: 1px solid #ddd; font-weight: 700; }
+  thead th {
+    padding: 4px 5px;
+    text-align: left;
+    font-size: 6.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: #555;
+    border-bottom: 1.5px solid #bbb;
+    border-right: 1px solid #ddd;
+  }
   thead th:last-child { border-right: none; }
-  tbody td { padding: 5px 6px; border-bottom: 1px solid #eee; border-right: 1px solid #eee; vertical-align: top; }
+  tbody { height: 100%; }
+  tbody tr { height: 1%; } /* equal share */
+  tbody td {
+    padding: 4px 5px;
+    border-bottom: 1px solid #eee;
+    border-right: 1px solid #eee;
+    vertical-align: top;
+  }
   tbody td:last-child { border-right: none; }
   tbody tr:last-child td { border-bottom: none; }
 
-  /* Footer grid */
-  .footer-grid { display: flex; border: 1.5px solid #222; border-top: none; }
-  .footer-cell { flex: 1; padding: 6px 8px; border-right: 1px solid #ddd; }
-  .footer-cell:last-child { border-right: none; }
-  .footer-label { font-size: 6pt; text-transform: uppercase; letter-spacing: 0.3px; color: #999; margin-bottom: 2px; }
-  .footer-value { font-size: 8pt; font-weight: 600; color: ${NAVY}; }
+  /* ── Footer info row ── */
+  .foot-row {
+    display: flex;
+    border: 1.5px solid #222;
+    border-top: none;
+    flex-shrink: 0;
+  }
+  .foot-cell {
+    flex: 1;
+    padding: 4px 6px;
+    border-right: 1px solid #ddd;
+  }
+  .foot-cell:last-child { border-right: none; }
 
-  /* Signature strip */
-  .sig-strip { display: flex; border: 1.5px solid #222; border-top: none; }
-  .sig-cell { flex: 1; padding: 16px 8px 8px; border-right: 1px solid #ddd; }
+  /* ── Signature strip ── */
+  .sig-row {
+    display: flex;
+    border: 1.5px solid #222;
+    border-top: none;
+    flex-shrink: 0;
+  }
+  .sig-cell {
+    flex: 1;
+    padding: 5px 7px 5px;
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 18mm;
+  }
   .sig-cell:last-child { border-right: none; }
-  .sig-line { border-top: 1px solid #333; margin-top: 14px; }
-  .sig-label { font-size: 6pt; color: #777; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .sig-lbl { font-size: 6.5pt; color: #555; }
+  .sig-line { border-top: 1px solid #555; margin-top: auto; padding-top: 2px; }
+  .sig-note { font-size: 5.5pt; color: #888; text-transform: uppercase; letter-spacing: 0.3px; }
 
-  /* Bottom bar */
-  .bottom-bar { background: ${NAVY}; color: white; text-align: center; font-size: 6.5pt; padding: 5px 0; margin-top: 0;
-    border: 1.5px solid ${NAVY}; border-top: none; letter-spacing: 0.3px; }
-  .terms-note { text-align: center; font-size: 6pt; color: #666; padding: 4px 0; border: 1.5px solid #222; border-top: none; }
-  .orange { color: ${ORANGE}; }
+  /* ── Terms + bottom bar ── */
+  .terms {
+    text-align: center;
+    font-size: 6pt;
+    color: #555;
+    padding: 3px 0;
+    border: 1.5px solid #222;
+    border-top: none;
+    flex-shrink: 0;
+    font-style: italic;
+  }
+  .bot {
+    background: ${NAVY};
+    color: white;
+    text-align: center;
+    font-size: 6.5pt;
+    padding: 4px 0;
+    border: 1.5px solid ${NAVY};
+    border-top: none;
+    flex-shrink: 0;
+    letter-spacing: 0.2px;
+  }
 </style>
 </head>
 <body>
 <div class="page">
 
-  <!-- Header -->
-  <div class="header">
-    <div class="header-logo">${logoTag}</div>
-    <div class="header-title">
-      <div class="doc-type">SHIPMENT WAYBILL</div>
-      <div class="sub">(Non-negotiable)</div>
+  <!-- ── Header ── -->
+  <div class="hdr">
+    <div class="hdr-logo">${logoTag}</div>
+    <div class="hdr-title">
+      <div class="dt">SHIPMENT WAYBILL</div>
+      <div class="sub">(Non-Negotiable)</div>
     </div>
-    <div class="header-wb">
-      <div class="wb-label">Way Bill Number</div>
-      <div class="wb-number">${esc(wb.waybill_number)}</div>
-    </div>
-  </div>
-
-  <!-- Main Info Grid -->
-  <div class="info-grid">
-    <!-- Left column: Shipper + Consignee -->
-    <div class="info-col" style="flex:1.2;">
-      <div class="info-block" style="min-height:28mm;">
-        <div class="info-label">Shipper</div>
-        <div class="info-value large">${esc(wb.shipper_name)}</div>
-        ${wb.shipper_address ? `<div style="font-size:7.5pt;color:#444;margin-top:3px;white-space:pre-line;">${esc(wb.shipper_address)}</div>` : ""}
-      </div>
-      <div class="info-block" style="min-height:24mm;">
-        <div class="info-label">Consignee</div>
-        <div class="info-value large">${esc(wb.consignee_name)}</div>
-        ${wb.consignee_address ? `<div style="font-size:7.5pt;color:#444;margin-top:3px;white-space:pre-line;">${esc(wb.consignee_address)}</div>` : ""}
-      </div>
-    </div>
-    <!-- Right column: Routing details -->
-    <div class="info-col">
-      <div class="info-block">
-        <div class="info-label">Port of Loading</div>
-        <div class="info-value">${esc(wb.port_of_loading)}</div>
-      </div>
-      <div class="info-block">
-        <div class="info-label">Port of Discharge</div>
-        <div class="info-value">${esc(wb.port_of_discharge)}</div>
-      </div>
-      <div class="info-block">
-        <div class="info-label">Shipment Date</div>
-        <div class="info-value">${esc(shipDate)}</div>
-      </div>
-      <div class="info-block">
-        <div class="info-label">Mode of Transport</div>
-        <div class="info-value">${esc(modeLabel)}</div>
-      </div>
-      <div class="info-block">
-        <div class="info-label">Remarks</div>
-        <div class="info-value">${esc(wb.remarks) || "—"}</div>
-      </div>
-      <div class="info-block">
-        <div class="info-label">JOB Number</div>
-        <div class="info-value orange">${esc(wb.job_number) || "—"}</div>
-      </div>
-      ${wb.final_destination ? `
-      <div class="info-block">
-        <div class="info-label">Final Destination</div>
-        <div class="info-value">${esc(wb.final_destination)}</div>
-      </div>` : ""}
+    <div class="hdr-wb">
+      <div class="lbl">Way Bill Number</div>
+      <div class="num">${esc(wb.waybill_number)}</div>
     </div>
   </div>
 
-  <!-- Cargo Section Header -->
-  <div class="section-header">Cargo Details</div>
-
-  <!-- Cargo Table -->
-  <div class="cargo-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th style="width:12%;">Truck No.</th>
-          <th style="width:10%;">Seal No &amp; Marks</th>
-          <th style="width:13%;">Invoice No.</th>
-          <th style="width:13%;">Invoice Value</th>
-          <th style="width:8%;text-align:center;">Pkg(s)</th>
-          <th>Description of Goods</th>
-          <th style="width:10%;text-align:right;">Weight</th>
-          <th style="width:10%;text-align:right;">Measurement</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${cargoRows}
-      </tbody>
-    </table>
+  <!-- ── Parties + Routing ── -->
+  <div class="info-row">
+    <!-- Shipper -->
+    <div class="info-party" style="max-width:54mm;">
+      <div class="party-block" style="min-height:22mm;">
+        <div class="lbl-sm">Shipper</div>
+        <div class="val-lg">${esc(wb.shipper_name)}</div>
+        ${wb.shipper_address ? `<div class="val-sub">${esc(wb.shipper_address)}</div>` : ""}
+      </div>
+    </div>
+    <!-- Consignee -->
+    <div class="info-party" style="max-width:54mm;">
+      <div class="party-block" style="min-height:22mm;">
+        <div class="lbl-sm">Consignee</div>
+        <div class="val-lg">${esc(wb.consignee_name)}</div>
+        ${wb.consignee_address ? `<div class="val-sub">${esc(wb.consignee_address)}</div>` : ""}
+      </div>
+    </div>
+    <!-- Routing details 2-column grid -->
+    <div class="info-routing">
+      <div class="r-cell">
+        <div class="lbl-sm">Port of Loading</div>
+        <div class="val">${esc(wb.port_of_loading || "—")}</div>
+      </div>
+      <div class="r-cell">
+        <div class="lbl-sm">Port of Discharge</div>
+        <div class="val">${esc(wb.port_of_discharge || "—")}</div>
+      </div>
+      <div class="r-cell">
+        <div class="lbl-sm">Shipment Date</div>
+        <div class="val">${fmtD(wb.shipment_date)}</div>
+      </div>
+      <div class="r-cell">
+        <div class="lbl-sm">Mode of Transport</div>
+        <div class="val">${esc(modeLabel)}</div>
+      </div>
+      <div class="r-cell">
+        <div class="lbl-sm">Remarks</div>
+        <div class="val">${esc(wb.remarks) || "—"}</div>
+      </div>
+      <div class="r-cell">
+        <div class="lbl-sm">JOB Number</div>
+        <div class="val orange">${esc(wb.job_number) || "—"}</div>
+      </div>
+      <div class="r-cell" style="grid-column:1/-1;border-bottom:none;">
+        <div class="lbl-sm">Final Destination &nbsp;<span style="font-style:italic;font-weight:400;color:#888;">(for the merchant's reference only)</span></div>
+        <div class="val">${esc(wb.final_destination) || "—"}</div>
+      </div>
+    </div>
   </div>
 
-  <!-- Footer Info -->
-  <div class="footer-grid">
-    <div class="footer-cell">
-      <div class="footer-label">Prepared By</div>
-      <div class="footer-value">${esc(wb.prepared_by) || "—"}</div>
-    </div>
-    <div class="footer-cell">
-      <div class="footer-label">Number of Originals</div>
-      <div class="footer-value">${esc(wb.num_originals ?? 1)} SET</div>
-    </div>
-    <div class="footer-cell">
-      <div class="footer-label">For Delivery Please Contact</div>
-      <div class="footer-value">${esc(wb.delivery_contact) || "—"}</div>
-    </div>
-    <div class="footer-cell">
-      <div class="footer-label">Place of Issue</div>
-      <div class="footer-value">${esc(wb.place_of_issue) || "—"}</div>
-    </div>
-    <div class="footer-cell">
-      <div class="footer-label">Date</div>
-      <div class="footer-value">${esc(issueDate)}</div>
+  <!-- ── Cargo ── -->
+  <div class="cargo-section">
+    <div class="cargo-hdr">Cargo Details</div>
+    <div class="cargo-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:11%;">Truck No.</th>
+            <th style="width:10%;">Seal No &amp; Marks</th>
+            <th style="width:13%;">Invoice No.</th>
+            <th style="width:14%;">Invoice Value</th>
+            <th style="width:9%;text-align:center;">No. of Pkg's</th>
+            <th>Kind of Pkg's &amp; Description of Goods</th>
+            <th style="width:10%;">Weight</th>
+            <th style="width:10%;">Measurement</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${cargoRows}
+        </tbody>
+      </table>
     </div>
   </div>
 
-  <!-- Signature Strip -->
-  <div class="sig-strip">
+  <!-- ── Document footer info ── -->
+  <div class="foot-row">
+    <div class="foot-cell">
+      <div class="lbl-sm">Prepared By</div>
+      <div class="val">${esc(wb.prepared_by) || "—"}</div>
+    </div>
+    <div class="foot-cell">
+      <div class="lbl-sm">Number of Originals</div>
+      <div class="val">${esc(wb.num_originals ?? 1)} SET</div>
+    </div>
+    <div class="foot-cell" style="flex:1.4;">
+      <div class="lbl-sm">For Delivery Please Contact</div>
+      <div class="val">${esc(wb.delivery_contact) || "—"}</div>
+    </div>
+    <div class="foot-cell">
+      <div class="lbl-sm">Place of Issue</div>
+      <div class="val">${esc(wb.place_of_issue) || "—"}</div>
+    </div>
+    <div class="foot-cell">
+      <div class="lbl-sm">Date</div>
+      <div class="val">${fmtD(wb.issue_date || wb.shipment_date)}</div>
+    </div>
+  </div>
+
+  <!-- ── Signature strip ── -->
+  <div class="sig-row">
     <div class="sig-cell">
-      <div style="font-size:6.5pt;color:#555;">Shipper's Signature &amp; Stamp</div>
-      <div class="sig-line"></div>
-      <div class="sig-label">Authorized Signature</div>
+      <div class="sig-lbl">Shipper's Signature &amp; Stamp</div>
+      <div>
+        <div class="sig-line"></div>
+        <div class="sig-note">Authorized Signature</div>
+      </div>
     </div>
     <div class="sig-cell">
-      <div style="font-size:6.5pt;color:#555;">Carrier's Signature &amp; Stamp</div>
-      <div class="sig-line"></div>
-      <div class="sig-label">Authorized Signature</div>
+      <div class="sig-lbl">Carrier's Signature &amp; Stamp</div>
+      <div>
+        <div class="sig-line"></div>
+        <div class="sig-note">Authorized Signature</div>
+      </div>
     </div>
     <div class="sig-cell">
-      <div style="font-size:6.5pt;color:#555;">Consignee's Signature &amp; Stamp</div>
-      <div class="sig-line"></div>
-      <div class="sig-label">Authorized Signature</div>
+      <div class="sig-lbl">Consignee's Signature &amp; Stamp</div>
+      <div>
+        <div class="sig-line"></div>
+        <div class="sig-note">Authorized Signature</div>
+      </div>
     </div>
   </div>
 
-  <!-- Terms Note -->
-  <div class="terms-note">TERMS &amp; CONDITIONS CONTINUED ON BACK HEREOF</div>
+  <!-- ── Terms note ── -->
+  <div class="terms">TERMS &amp; CONDITIONS CONTINUED ON BACK HEREOF</div>
 
-  <!-- Bottom Bar -->
-  <div class="bottom-bar">
+  <!-- ── Bottom bar ── -->
+  <div class="bot">
     YASAI Logistics Company &nbsp;|&nbsp; Tel: +966 55 932 6687 &nbsp;|&nbsp; info@yasailogistics.com &nbsp;|&nbsp; www.yasailogistics.com
   </div>
 

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import {
   FileDown, Pencil, Trash2, Loader2,
-  Ship, MapPin, Calendar, Truck, Package,
+  Ship, MapPin, Calendar, Truck, Package, Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +41,23 @@ export function WaybillDetail({ waybill }: Props) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [printing, setPrinting] = useState(false);
+
+  async function handlePrint() {
+    setPrinting(true);
+    try {
+      const res = await fetch(`/api/waybills/${waybill.id}/pdf`);
+      if (!res.ok) throw new Error("Failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, "_blank");
+      if (win) win.addEventListener("load", () => win.print());
+    } catch {
+      toast.error("Failed to open print dialog");
+    } finally {
+      setPrinting(false);
+    }
+  }
 
   async function handleDownloadPdf() {
     setDownloadingPdf(true);
@@ -100,6 +117,10 @@ export function WaybillDetail({ waybill }: Props) {
         >
           {downloadingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
           Download PDF
+        </Button>
+        <Button size="sm" variant="outline" onClick={handlePrint} disabled={printing} className="gap-2">
+          {printing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+          Print
         </Button>
         <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="gap-2">
           <Pencil className="h-4 w-4" /> Edit
