@@ -1,4 +1,4 @@
-import type { GoodsCollectionNote, DeliveryNote, DeliveryNoteItem, JobOrder, Invoice, InvoiceLineItem } from "@/types";
+import type { GoodsCollectionNote, DeliveryNote, DeliveryNoteItem, JobOrder, Invoice, InvoiceLineItem, Waybill, WaybillCargoItem } from "@/types";
 import { format } from "date-fns";
 
 const NAVY         = "#0B1F3F";
@@ -1864,5 +1864,254 @@ function buildInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string {
 
 export async function generateInvoicePDF(invoice: Invoice, logoDataUrl?: string): Promise<Buffer> {
   const html = buildInvoiceHtml(invoice, logoDataUrl);
+  return renderHtmlToPdf(html);
+}
+
+// ── Waybill PDF ──────────────────────────────────────────────────
+
+function buildWaybillHtml(wb: Waybill, logoDataUrl?: string): string {
+  const logoTag = logoDataUrl
+    ? `<img src="${logoDataUrl}" style="height:44px;object-fit:contain;" />`
+    : `<div style="font-size:14pt;font-weight:800;color:${NAVY};">YASAI</div>`;
+
+  const shipDate = wb.shipment_date
+    ? (() => { try { return format(new Date(wb.shipment_date), "dd/MM/yyyy"); } catch { return wb.shipment_date; } })()
+    : "—";
+
+  const issueDate = wb.issue_date
+    ? (() => { try { return format(new Date(wb.issue_date), "dd/MM/yyyy"); } catch { return wb.issue_date; } })()
+    : shipDate;
+
+  const modeLabel = wb.mode_of_transport === "road" ? "Road"
+    : wb.mode_of_transport === "air" ? "Air" : "Sea";
+
+  const items: WaybillCargoItem[] = Array.isArray(wb.cargo_items) ? wb.cargo_items : [];
+
+  const cargoRows = items.length > 0
+    ? items.map((item) => `
+      <tr>
+        <td>${esc(item.truck_number)}</td>
+        <td>${esc(item.seal_no)}</td>
+        <td>${esc(item.invoice_number)}</td>
+        <td style="text-align:right;">${esc(item.invoice_currency || "AED")}&nbsp;${esc(item.invoice_value)}</td>
+        <td style="text-align:center;">${esc(item.num_packages)}</td>
+        <td>${esc(item.description)}</td>
+        <td style="text-align:right;">${esc(item.weight)}</td>
+        <td style="text-align:right;">${esc(item.measurement)}</td>
+      </tr>`).join("")
+    : `<tr><td colspan="8" style="text-align:center;color:#999;padding:18px 0;">No cargo items</td></tr>`;
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 8pt; color: #1a1a1a; background: white; }
+  .page { width: 210mm; min-height: 297mm; padding: 10mm 12mm; }
+
+  /* Header */
+  .header { display: flex; align-items: stretch; border: 1.5px solid #222; margin-bottom: 0; }
+  .header-logo { width: 52mm; border-right: 1.5px solid #222; padding: 8px 10px; display: flex; align-items: center; justify-content: center; }
+  .header-title { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 10px; }
+  .header-title .doc-type { font-size: 14pt; font-weight: 800; color: ${NAVY}; letter-spacing: 0.5px; }
+  .header-title .sub { font-size: 7.5pt; color: #555; margin-top: 2px; }
+  .header-wb { width: 52mm; border-left: 1.5px solid #222; padding: 8px 10px; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 4px; }
+  .header-wb .wb-label { font-size: 7pt; color: #555; }
+  .header-wb .wb-number { font-size: 13pt; font-weight: 800; color: ${ORANGE}; letter-spacing: 1px; }
+
+  /* Info grid */
+  .info-grid { display: flex; border: 1.5px solid #222; border-top: none; }
+  .info-col { flex: 1; }
+  .info-col + .info-col { border-left: 1.5px solid #222; }
+  .info-block { padding: 5px 8px; border-bottom: 1px solid #ddd; }
+  .info-block:last-child { border-bottom: none; }
+  .info-label { font-size: 6.5pt; text-transform: uppercase; letter-spacing: 0.4px; color: #888; margin-bottom: 2px; }
+  .info-value { font-size: 8pt; font-weight: 600; color: ${NAVY}; }
+  .info-value.large { font-size: 9pt; }
+
+  /* Section header */
+  .section-header { background: ${NAVY}; color: white; font-size: 7pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 4px 8px; border: 1.5px solid ${NAVY}; border-top: none; }
+
+  /* Cargo table */
+  .cargo-wrap { border: 1.5px solid #222; border-top: none; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
+  thead tr { background: ${HDR_BG}; }
+  thead th { padding: 5px 6px; text-align: left; font-size: 6.5pt; text-transform: uppercase;
+    letter-spacing: 0.3px; color: #555; border-bottom: 1.5px solid #bbb; border-right: 1px solid #ddd; font-weight: 700; }
+  thead th:last-child { border-right: none; }
+  tbody td { padding: 5px 6px; border-bottom: 1px solid #eee; border-right: 1px solid #eee; vertical-align: top; }
+  tbody td:last-child { border-right: none; }
+  tbody tr:last-child td { border-bottom: none; }
+
+  /* Footer grid */
+  .footer-grid { display: flex; border: 1.5px solid #222; border-top: none; }
+  .footer-cell { flex: 1; padding: 6px 8px; border-right: 1px solid #ddd; }
+  .footer-cell:last-child { border-right: none; }
+  .footer-label { font-size: 6pt; text-transform: uppercase; letter-spacing: 0.3px; color: #999; margin-bottom: 2px; }
+  .footer-value { font-size: 8pt; font-weight: 600; color: ${NAVY}; }
+
+  /* Signature strip */
+  .sig-strip { display: flex; border: 1.5px solid #222; border-top: none; }
+  .sig-cell { flex: 1; padding: 16px 8px 8px; border-right: 1px solid #ddd; }
+  .sig-cell:last-child { border-right: none; }
+  .sig-line { border-top: 1px solid #333; margin-top: 14px; }
+  .sig-label { font-size: 6pt; color: #777; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+
+  /* Bottom bar */
+  .bottom-bar { background: ${NAVY}; color: white; text-align: center; font-size: 6.5pt; padding: 5px 0; margin-top: 0;
+    border: 1.5px solid ${NAVY}; border-top: none; letter-spacing: 0.3px; }
+  .terms-note { text-align: center; font-size: 6pt; color: #666; padding: 4px 0; border: 1.5px solid #222; border-top: none; }
+  .orange { color: ${ORANGE}; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-logo">${logoTag}</div>
+    <div class="header-title">
+      <div class="doc-type">SHIPMENT WAYBILL</div>
+      <div class="sub">(Non-negotiable)</div>
+    </div>
+    <div class="header-wb">
+      <div class="wb-label">Way Bill Number</div>
+      <div class="wb-number">${esc(wb.waybill_number)}</div>
+    </div>
+  </div>
+
+  <!-- Main Info Grid -->
+  <div class="info-grid">
+    <!-- Left column: Shipper + Consignee -->
+    <div class="info-col" style="flex:1.2;">
+      <div class="info-block" style="min-height:28mm;">
+        <div class="info-label">Shipper</div>
+        <div class="info-value large">${esc(wb.shipper_name)}</div>
+        ${wb.shipper_address ? `<div style="font-size:7.5pt;color:#444;margin-top:3px;white-space:pre-line;">${esc(wb.shipper_address)}</div>` : ""}
+      </div>
+      <div class="info-block" style="min-height:24mm;">
+        <div class="info-label">Consignee</div>
+        <div class="info-value large">${esc(wb.consignee_name)}</div>
+        ${wb.consignee_address ? `<div style="font-size:7.5pt;color:#444;margin-top:3px;white-space:pre-line;">${esc(wb.consignee_address)}</div>` : ""}
+      </div>
+    </div>
+    <!-- Right column: Routing details -->
+    <div class="info-col">
+      <div class="info-block">
+        <div class="info-label">Port of Loading</div>
+        <div class="info-value">${esc(wb.port_of_loading)}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">Port of Discharge</div>
+        <div class="info-value">${esc(wb.port_of_discharge)}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">Shipment Date</div>
+        <div class="info-value">${esc(shipDate)}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">Mode of Transport</div>
+        <div class="info-value">${esc(modeLabel)}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">Remarks</div>
+        <div class="info-value">${esc(wb.remarks) || "—"}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">JOB Number</div>
+        <div class="info-value orange">${esc(wb.job_number) || "—"}</div>
+      </div>
+      ${wb.final_destination ? `
+      <div class="info-block">
+        <div class="info-label">Final Destination</div>
+        <div class="info-value">${esc(wb.final_destination)}</div>
+      </div>` : ""}
+    </div>
+  </div>
+
+  <!-- Cargo Section Header -->
+  <div class="section-header">Cargo Details</div>
+
+  <!-- Cargo Table -->
+  <div class="cargo-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:12%;">Truck No.</th>
+          <th style="width:10%;">Seal No &amp; Marks</th>
+          <th style="width:13%;">Invoice No.</th>
+          <th style="width:13%;">Invoice Value</th>
+          <th style="width:8%;text-align:center;">Pkg(s)</th>
+          <th>Description of Goods</th>
+          <th style="width:10%;text-align:right;">Weight</th>
+          <th style="width:10%;text-align:right;">Measurement</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${cargoRows}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Footer Info -->
+  <div class="footer-grid">
+    <div class="footer-cell">
+      <div class="footer-label">Prepared By</div>
+      <div class="footer-value">${esc(wb.prepared_by) || "—"}</div>
+    </div>
+    <div class="footer-cell">
+      <div class="footer-label">Number of Originals</div>
+      <div class="footer-value">${esc(wb.num_originals ?? 1)} SET</div>
+    </div>
+    <div class="footer-cell">
+      <div class="footer-label">For Delivery Please Contact</div>
+      <div class="footer-value">${esc(wb.delivery_contact) || "—"}</div>
+    </div>
+    <div class="footer-cell">
+      <div class="footer-label">Place of Issue</div>
+      <div class="footer-value">${esc(wb.place_of_issue) || "—"}</div>
+    </div>
+    <div class="footer-cell">
+      <div class="footer-label">Date</div>
+      <div class="footer-value">${esc(issueDate)}</div>
+    </div>
+  </div>
+
+  <!-- Signature Strip -->
+  <div class="sig-strip">
+    <div class="sig-cell">
+      <div style="font-size:6.5pt;color:#555;">Shipper's Signature &amp; Stamp</div>
+      <div class="sig-line"></div>
+      <div class="sig-label">Authorized Signature</div>
+    </div>
+    <div class="sig-cell">
+      <div style="font-size:6.5pt;color:#555;">Carrier's Signature &amp; Stamp</div>
+      <div class="sig-line"></div>
+      <div class="sig-label">Authorized Signature</div>
+    </div>
+    <div class="sig-cell">
+      <div style="font-size:6.5pt;color:#555;">Consignee's Signature &amp; Stamp</div>
+      <div class="sig-line"></div>
+      <div class="sig-label">Authorized Signature</div>
+    </div>
+  </div>
+
+  <!-- Terms Note -->
+  <div class="terms-note">TERMS &amp; CONDITIONS CONTINUED ON BACK HEREOF</div>
+
+  <!-- Bottom Bar -->
+  <div class="bottom-bar">
+    YASAI Logistics Company &nbsp;|&nbsp; Tel: +966 55 932 6687 &nbsp;|&nbsp; info@yasailogistics.com &nbsp;|&nbsp; www.yasailogistics.com
+  </div>
+
+</div>
+</body>
+</html>`;
+}
+
+export async function generateWaybillPDF(waybill: Waybill, logoDataUrl?: string): Promise<Buffer> {
+  const html = buildWaybillHtml(waybill, logoDataUrl);
   return renderHtmlToPdf(html);
 }

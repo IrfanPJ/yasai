@@ -10,6 +10,7 @@ import {
   LogOut,
   PlusCircle,
   Activity,
+  FileCheck2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { YasaiLogo } from "./logo";
@@ -37,6 +38,11 @@ const navItems = [
     label: "Records",
     href: "/records",
     icon: Archive,
+  },
+  {
+    label: "Waybills",
+    href: "/waybills",
+    icon: FileCheck2,
   },
   {
     label: "Audit Logs",
