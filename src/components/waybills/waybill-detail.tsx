@@ -40,42 +40,18 @@ export function WaybillDetail({ waybill }: Props) {
   const [editing, setEditing] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const [printing, setPrinting] = useState(false);
+  const [downloadingPdf] = useState(false);
+  const [printing] = useState(false);
 
-  async function handlePrint() {
-    setPrinting(true);
-    try {
-      const res = await fetch(`/api/waybills/${waybill.id}/pdf`);
-      if (!res.ok) throw new Error("Failed");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const win = window.open(url, "_blank");
-      if (win) win.addEventListener("load", () => win.print());
-    } catch {
-      toast.error("Failed to open print dialog");
-    } finally {
-      setPrinting(false);
-    }
+  function handlePrint() {
+    window.open(`/api/waybills/${waybill.id}/pdf`, "_blank");
   }
 
-  async function handleDownloadPdf() {
-    setDownloadingPdf(true);
-    try {
-      const res = await fetch(`/api/waybills/${waybill.id}/pdf`);
-      if (!res.ok) throw new Error("Failed to generate PDF");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `waybill-${waybill.waybill_number}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      toast.error("Failed to download PDF");
-    } finally {
-      setDownloadingPdf(false);
-    }
+  function handleDownloadPdf() {
+    const a = document.createElement("a");
+    a.href = `/api/waybills/${waybill.id}/pdf?download=1`;
+    a.download = `Waybill-${waybill.waybill_number}.pdf`;
+    a.click();
   }
 
   async function handleDelete() {
