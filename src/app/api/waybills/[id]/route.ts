@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth-role";
 import { createClient } from "@/lib/supabase/server";
+import { generateWaybillPDF } from "@/lib/pdf";
+import { getLogoDataUrl } from "@/lib/logo";
+import type { Waybill } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +31,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   const { user, serviceClient } = auth;
 
   const body = await request.json();
-  const { waybill_number, created_by, created_at, ...rest } = body;
+  const { waybill_number, created_by, created_at, pdf_url: _pdf, ...rest } = body;
   void waybill_number; void created_by; void created_at;
 
   const { data, error } = await serviceClient
@@ -38,7 +41,33 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error || !data) return NextResponse.json({ error: error?.message || "Update failed" }, { status: 500 });
+
+  // Regenerate PDF and overwrite in storage
+  try {
+    const logoDataUrl = getLogoDataUrl();
+    const pdfBuffer = await generateWaybillPDF(data as Waybill, logoDataUrl);
+    const storagePath = `waybills/${id}.pdf`;
+
+    const { error: uploadError } = await serviceClient.storage
+      .from("goods-collection-notes")
+      .upload(storagePath, new Uint8Array(pdfBuffer), { contentType: "application/pdf", upsert: true });
+
+    if (!uploadError) {
+      const { data: urlData } = serviceClient.storage
+        .from("goods-collection-notes")
+        .getPublicUrl(storagePath);
+
+      await serviceClient
+        .from("waybills")
+        .update({ pdf_url: urlData.publicUrl })
+        .eq("id", id);
+
+      data.pdf_url = urlData.publicUrl;
+    }
+  } catch (pdfErr) {
+    console.error("[waybill] PDF regeneration failed:", pdfErr);
+  }
 
   await serviceClient.from("activity_logs").insert({
     user_id: user.id,

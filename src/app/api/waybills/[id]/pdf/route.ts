@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { generateWaybillPDF } from "@/lib/pdf";
 import { getLogoDataUrl } from "@/lib/logo";
+import type { Waybill } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +25,20 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   if (error || !data) return NextResponse.json({ error: "Waybill not found" }, { status: 404 });
 
+  // Serve from stored URL if available
+  if (data.pdf_url && !isDownload) {
+    return NextResponse.redirect(data.pdf_url);
+  }
+  if (data.pdf_url && isDownload) {
+    return NextResponse.redirect(
+      `${data.pdf_url}?download=1`
+    );
+  }
+
+  // Fallback: generate on demand
   try {
     const logoDataUrl = getLogoDataUrl();
-    const pdfBuffer = await generateWaybillPDF(data, logoDataUrl);
+    const pdfBuffer = await generateWaybillPDF(data as Waybill, logoDataUrl);
     const filename = `Waybill-${data.waybill_number}.pdf`;
 
     return new NextResponse(new Uint8Array(pdfBuffer), {

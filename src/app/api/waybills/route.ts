@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth-role";
 import { createClient } from "@/lib/supabase/server";
+import { generateWaybillPDF } from "@/lib/pdf";
+import { getLogoDataUrl } from "@/lib/logo";
+import type { Waybill } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -39,16 +42,39 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await serviceClient
     .from("waybills")
-    .insert({
-      ...body,
-      waybill_number: waybillNumber,
-      created_by: user.id,
-      updated_by: user.id,
-    })
+    .insert({ ...body, waybill_number: waybillNumber, created_by: user.id, updated_by: user.id })
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error || !data) return NextResponse.json({ error: error?.message || "Insert failed" }, { status: 500 });
+
+  // Generate PDF and store in Supabase Storage
+  let pdfUrl: string | undefined;
+  try {
+    const logoDataUrl = getLogoDataUrl();
+    const pdfBuffer = await generateWaybillPDF(data as Waybill, logoDataUrl);
+    const storagePath = `waybills/${data.id}.pdf`;
+
+    const { error: uploadError } = await serviceClient.storage
+      .from("goods-collection-notes")
+      .upload(storagePath, new Uint8Array(pdfBuffer), { contentType: "application/pdf", upsert: true });
+
+    if (!uploadError) {
+      const { data: urlData } = serviceClient.storage
+        .from("goods-collection-notes")
+        .getPublicUrl(storagePath);
+      pdfUrl = urlData.publicUrl;
+    }
+  } catch (pdfErr) {
+    console.error("[waybill] PDF generation failed:", pdfErr);
+  }
+
+  const { data: updated } = await serviceClient
+    .from("waybills")
+    .update({ pdf_url: pdfUrl })
+    .eq("id", data.id)
+    .select()
+    .single();
 
   await serviceClient.from("activity_logs").insert({
     user_id: user.id,
@@ -58,5 +84,5 @@ export async function POST(request: NextRequest) {
     details: { waybill_number: waybillNumber },
   });
 
-  return NextResponse.json(data, { status: 201 });
+  return NextResponse.json(updated || data, { status: 201 });
 }
