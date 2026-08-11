@@ -1871,7 +1871,7 @@ export async function generateInvoicePDF(invoice: Invoice, logoDataUrl?: string)
 
 function buildWaybillHtml(wb: Waybill, logoDataUrl?: string): string {
   const logoTag = logoDataUrl
-    ? `<img src="${logoDataUrl}" style="height:40px;object-fit:contain;" />`
+    ? `<img src="${logoDataUrl}" style="width:100%;max-height:58px;object-fit:contain;object-position:center;" />`
     : `<div style="font-size:13pt;font-weight:800;color:${NAVY};">YASAI</div>`;
 
   const fmtD = (d?: string | null) => {
