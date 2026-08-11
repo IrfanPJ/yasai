@@ -26,13 +26,27 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   if (error || !data) return NextResponse.json({ error: "Waybill not found" }, { status: 404 });
 
   // Serve from stored URL if available
-  if (data.pdf_url && !isDownload) {
-    return NextResponse.redirect(data.pdf_url);
-  }
-  if (data.pdf_url && isDownload) {
-    return NextResponse.redirect(
-      `${data.pdf_url}?download=1`
-    );
+  if (data.pdf_url) {
+    const filename = `Waybill-${data.waybill_number}.pdf`;
+    if (!isDownload) {
+      return NextResponse.redirect(data.pdf_url);
+    }
+    // For download: proxy the stored PDF so we can set Content-Disposition: attachment
+    try {
+      const stored = await fetch(data.pdf_url);
+      if (stored.ok) {
+        const bytes = await stored.arrayBuffer();
+        return new NextResponse(new Uint8Array(bytes), {
+          headers: {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": `attachment; filename="${filename}"`,
+            "Cache-Control": "no-store",
+          },
+        });
+      }
+    } catch {
+      // fall through to on-demand generation
+    }
   }
 
   // Fallback: generate on demand
