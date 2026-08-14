@@ -5,12 +5,13 @@ export const dynamic = "force-dynamic";
 
 interface RouteParams { params: Promise<{ id: string }> }
 
-const ALLOWED_TYPES = ["commercial_invoice", "country_of_origin"] as const;
+const ALLOWED_TYPES = ["commercial_invoice", "country_of_origin", "packing_list"] as const;
 type DocType = typeof ALLOWED_TYPES[number];
 
 const FIELD_MAP: Record<DocType, string> = {
   commercial_invoice: "commercial_invoice_url",
   country_of_origin: "country_of_origin_url",
+  packing_list: "packing_list_url",
 };
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   if (!file) return NextResponse.json({ error: "file is required" }, { status: 400 });
   if (!docType || !ALLOWED_TYPES.includes(docType as DocType)) {
-    return NextResponse.json({ error: "type must be commercial_invoice or country_of_origin" }, { status: 400 });
+    return NextResponse.json({ error: "type must be commercial_invoice, country_of_origin, or packing_list" }, { status: 400 });
   }
 
   const ext = file.name.split(".").pop()?.toLowerCase() || "pdf";
@@ -86,13 +87,13 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const docType = searchParams.get("type") as string | null;
 
   if (!docType || !ALLOWED_TYPES.includes(docType as DocType)) {
-    return NextResponse.json({ error: "type must be commercial_invoice or country_of_origin" }, { status: 400 });
+    return NextResponse.json({ error: "type must be commercial_invoice, country_of_origin, or packing_list" }, { status: 400 });
   }
 
   // Fetch current record to get the existing URL so we can remove from storage
   const { data: current } = await serviceClient
     .from("goods_collection_notes")
-    .select("commercial_invoice_url, country_of_origin_url")
+    .select("commercial_invoice_url, country_of_origin_url, packing_list_url")
     .eq("id", id)
     .single();
 

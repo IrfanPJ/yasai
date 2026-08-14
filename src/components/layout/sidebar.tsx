@@ -12,6 +12,7 @@ import {
   Activity,
   Truck,
   Receipt,
+  FileCheck2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { YasaiLogo } from "./logo";
@@ -49,6 +50,11 @@ const navItems = [
     label: "Records",
     href: "/records",
     icon: Archive,
+  },
+  {
+    label: "Waybills",
+    href: "/waybills",
+    icon: FileCheck2,
   },
   {
     label: "Audit Logs",
@@ -125,31 +131,50 @@ export function Sidebar() {
 // Mobile sidebar item list (same nav items, used in Sheet)
 export function MobileNav({ onClose }: { onClose: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createClient();
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
-    <nav className="flex flex-col gap-1 py-4">
-      {navItems.map((item) => {
-        const isActive =
-          item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onClose}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
-              item.highlight && !isActive
-                ? "bg-[#E67A32] text-white"
-                : isActive
-                ? "bg-[#071A3A] text-white"
-                : "text-[#4A5568] hover:bg-[#F7F0EA]"
-            )}
-          >
-            <item.icon size={18} />
-            {item.label}
-          </Link>
-        );
-      })}
-    </nav>
+    <div className="flex flex-col h-full">
+      <nav className="flex flex-col gap-1 py-4 flex-1">
+        {navItems.map((item) => {
+          const isActive =
+            item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onClose}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                item.highlight && !isActive
+                  ? "bg-[#E67A32] text-white"
+                  : isActive
+                  ? "bg-[#071A3A] text-white"
+                  : "text-[#4A5568] hover:bg-[#F7F0EA]"
+              )}
+            >
+              <item.icon size={18} />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="border-t border-gray-100 py-4">
+        <button
+          onClick={handleSignOut}
+          className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm font-medium text-[#4A5568] hover:bg-red-50 hover:text-red-600 transition-all"
+        >
+          <LogOut size={18} />
+          Sign Out
+        </button>
+      </div>
+    </div>
   );
 }

@@ -116,7 +116,7 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
     }
   }
 
-  async function handleDocUpload(type: "commercial_invoice" | "country_of_origin", file: File) {
+  async function handleDocUpload(type: "commercial_invoice" | "country_of_origin" | "packing_list", file: File) {
     setUploadingDoc(type);
     try {
       const form = new FormData();
@@ -136,7 +136,7 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
     }
   }
 
-  async function handleDocDelete(type: "commercial_invoice" | "country_of_origin") {
+  async function handleDocDelete(type: "commercial_invoice" | "country_of_origin" | "packing_list") {
     setDeletingDoc(type);
     try {
       const res = await fetch(`/api/collections/${collection.id}/upload?type=${type}`, {
@@ -470,6 +470,7 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
             [
               { type: "commercial_invoice", label: "Commercial Invoice", url: collection.commercial_invoice_url },
               { type: "country_of_origin", label: "Country of Origin", url: collection.country_of_origin_url },
+              { type: "packing_list", label: "Packing List", url: collection.packing_list_url },
             ] as const
           ).map(({ type, label, url }) => (
             <div key={type} className="flex items-center justify-between rounded-lg border px-4 py-3">

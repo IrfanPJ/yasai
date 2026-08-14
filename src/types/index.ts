@@ -96,6 +96,7 @@ export interface GoodsCollectionNote {
   pdf_url?: string;
   qr_url?: string;
   commercial_invoice_url?: string | null;
+  packing_list_url?: string | null;
   country_of_origin_url?: string | null;
 
   // Status timeline
@@ -513,4 +514,61 @@ export const INVOICE_STATUS_COLORS: Record<InvoiceStatus, string> = {
   paid: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   overdue: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
   cancelled: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
+};
+
+// ── Waybills ────────────────────────────────────────────────────
+
+export type WaybillTransportMode = "road" | "air" | "sea";
+
+export interface WaybillCargoItem {
+  truck_number?: string;
+  seal_no?: string;
+  invoice_number?: string;
+  invoice_value?: string;
+  invoice_currency?: string;
+  num_packages?: string;
+  description?: string;
+  weight?: string;
+  measurement?: string;
+}
+
+export interface Waybill {
+  id: string;
+  waybill_number: string;
+
+  shipper_name: string;
+  shipper_address?: string;
+
+  consignee_name: string;
+  consignee_address?: string;
+
+  port_of_loading: string;
+  port_of_discharge: string;
+  shipment_date: string;
+  mode_of_transport: WaybillTransportMode;
+  remarks?: string;
+  job_number?: string;
+  final_destination?: string;
+
+  cargo_items: WaybillCargoItem[];
+
+  prepared_by?: string;
+  num_originals?: number;
+  place_of_issue?: string;
+  issue_date?: string;
+  delivery_contact?: string;
+
+  pdf_url?: string;
+
+  created_by?: string;
+  updated_by?: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string;
+}
+
+export const WAYBILL_TRANSPORT_LABELS: Record<WaybillTransportMode, string> = {
+  road: "Road",
+  air: "Air",
+  sea: "Sea",
 };
