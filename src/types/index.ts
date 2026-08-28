@@ -500,6 +500,127 @@ export interface Invoice {
   job_order?: JobOrder;
 }
 
+// ─── Finance Module Types ──────────────────────────────────────
+
+export type FundCollectionStatus = "pending" | "approved" | "verified";
+export type FundCollectionPaymentMode = "cash" | "bank_transfer";
+export type FundTransferMode = "cash_third_party" | "bank_transfer";
+export type FundTransferStatus = "initiated" | "in_transit" | "delivered" | "confirmed";
+export type SupplierPaymentMode = "bank_transfer" | "cdm" | "cash_hand";
+export type SupplierPaymentStatus = "pending" | "paid" | "confirmed";
+export type BackupDocType = "pi" | "po";
+
+export interface FundCollection {
+  id: string;
+  collection_number: string;
+  invoice_id?: string;
+  customer_name: string;
+  amount: number;
+  currency: string;
+  payment_mode: FundCollectionPaymentMode;
+  collection_date: string;
+  transfer_rate?: number;
+  bank_reference?: string;
+  destination_account?: string;
+  status: FundCollectionStatus;
+  sales_manager_approved_by?: string;
+  sales_manager_approved_at?: string;
+  accounts_verified_by?: string;
+  accounts_verified_at?: string;
+  notes?: string;
+  created_by?: string;
+  updated_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FundTransfer {
+  id: string;
+  transfer_number: string;
+  fund_collection_id?: string;
+  transfer_mode: FundTransferMode;
+  amount: number;
+  currency: string;
+  source_region: string;
+  destination_region: string;
+  third_party_name?: string;
+  third_party_location?: string;
+  third_party_scheduled_at?: string;
+  third_party_receipt_url?: string;
+  destination_bank_account?: string;
+  bank_reference?: string;
+  backup_document_url?: string;
+  status: FundTransferStatus;
+  transferred_by?: string;
+  transferred_at?: string;
+  confirmed_by?: string;
+  confirmed_at?: string;
+  received_amount?: number;
+  receipt_date?: string;
+  receipt_url?: string;
+  notes?: string;
+  created_by?: string;
+  updated_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupplierPayment {
+  id: string;
+  payment_number: string;
+  fund_transfer_id?: string;
+  supplier_name: string;
+  amount: number;
+  currency: string;
+  payment_mode: SupplierPaymentMode;
+  payment_date: string;
+  bank_reference?: string;
+  cdm_account?: string;
+  messenger_name?: string;
+  proof_url?: string;
+  status: SupplierPaymentStatus;
+  operations_notified: boolean;
+  operations_notified_at?: string;
+  notes?: string;
+  created_by?: string;
+  updated_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BackupDocument {
+  id: string;
+  doc_number: string;
+  doc_type: BackupDocType;
+  fund_transfer_id?: string;
+  supplier_name: string;
+  amount: number;
+  currency: string;
+  doc_url?: string;
+  notes?: string;
+  created_by?: string;
+  created_at: string;
+}
+
+export const FUND_COLLECTION_STATUS_LABELS: Record<FundCollectionStatus, string> = {
+  pending: "Pending Approval",
+  approved: "Approved",
+  verified: "Verified",
+};
+
+export const FUND_TRANSFER_STATUS_LABELS: Record<FundTransferStatus, string> = {
+  initiated: "Initiated",
+  in_transit: "In Transit",
+  delivered: "Delivered",
+  confirmed: "Confirmed",
+};
+
+export const SUPPLIER_PAYMENT_STATUS_LABELS: Record<SupplierPaymentStatus, string> = {
+  pending: "Pending",
+  paid: "Paid",
+  confirmed: "Confirmed",
+};
+
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
   draft: "Draft",
   sent: "Sent",
