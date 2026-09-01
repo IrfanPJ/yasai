@@ -2262,3 +2262,203 @@ export async function generateWaybillPDF(waybill: Waybill, logoDataUrl?: string)
   const html = buildWaybillHtml(waybill, logoDataUrl);
   return renderHtmlToPdf(html);
 }
+
+// ─── Fund Collection Receipt ──────────────────────────────────
+
+interface CollectionReceiptData {
+  collection_number: string;
+  customer_name: string;
+  amount: number;
+  currency: string;
+  payment_mode: string;
+  collection_date: string;
+  transfer_rate?: number;
+  bank_reference?: string;
+  destination_account?: string;
+  status: string;
+  sales_manager_approved_at?: string;
+  accounts_verified_at?: string;
+  notes?: string;
+  created_at: string;
+}
+
+function buildCollectionReceiptHtml(c: CollectionReceiptData, logoDataUrl?: string): string {
+  const NAVY = "#071A3A";
+  const ORANGE = "#E67A32";
+  const logoTag = logoDataUrl
+    ? `<img src="${logoDataUrl}" style="max-height:60px;object-fit:contain;" />`
+    : `<span style="font-size:14pt;font-weight:700;color:${NAVY};">YASAI LOGISTICS</span>`;
+
+  function fmtD(d?: string) {
+    if (!d) return "—";
+    try {
+      return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    } catch { return d; }
+  }
+
+  const modeLabel = c.payment_mode === "bank_transfer" ? "Bank Transfer" : "Cash";
+  const statusLabel = c.status.charAt(0).toUpperCase() + c.status.slice(1);
+  const amountFmt = `${c.currency} ${Number(c.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const statusColor = c.status === "verified" ? "#16a34a" : c.status === "approved" ? "#2563eb" : "#d97706";
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; background: #fff; color: #1a1a1a; font-size: 9pt; line-height: 1.4; }
+  .page { width: 190mm; min-height: 250mm; margin: 10mm auto; display: flex; flex-direction: column; gap: 0; }
+
+  /* Header */
+  .hdr { display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 2.5px solid ${NAVY}; margin-bottom: 16px; }
+  .hdr-title { text-align: right; }
+  .hdr-title .doc-type { font-size: 16pt; font-weight: 700; color: ${NAVY}; letter-spacing: 0.5px; }
+  .hdr-title .doc-num { font-size: 11pt; font-weight: 600; color: ${ORANGE}; font-family: monospace; margin-top: 2px; }
+  .hdr-title .doc-date { font-size: 8pt; color: #555; margin-top: 2px; }
+
+  /* Status badge */
+  .status-badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 9pt; font-weight: 700; border: 1.5px solid; margin-bottom: 14px; }
+
+  /* Section */
+  .section { margin-bottom: 14px; }
+  .section-title { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: ${NAVY}; padding-bottom: 4px; border-bottom: 1px solid #ddd; margin-bottom: 8px; }
+
+  /* Grid rows */
+  .row { display: flex; gap: 0; margin-bottom: 5px; }
+  .lbl { font-size: 8pt; color: #666; width: 140px; flex-shrink: 0; }
+  .val { font-size: 9pt; font-weight: 600; color: #111; flex: 1; }
+  .val.mono { font-family: monospace; }
+
+  /* Amount highlight */
+  .amount-box { background: #f0f4ff; border: 1.5px solid ${NAVY}; border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+  .amount-label { font-size: 8pt; color: #444; }
+  .amount-value { font-size: 15pt; font-weight: 700; color: ${NAVY}; font-family: monospace; }
+
+  /* Timeline */
+  .timeline { display: flex; gap: 16px; }
+  .timeline-item { flex: 1; background: #f8f9fa; border-radius: 5px; padding: 8px 10px; }
+  .timeline-item .tl-label { font-size: 7pt; text-transform: uppercase; letter-spacing: 0.5px; color: #666; margin-bottom: 2px; }
+  .timeline-item .tl-val { font-size: 8.5pt; font-weight: 600; }
+
+  /* Notes */
+  .notes-box { background: #fffbf0; border-left: 3px solid ${ORANGE}; padding: 8px 10px; font-size: 8.5pt; border-radius: 0 4px 4px 0; }
+
+  /* Footer */
+  .footer { margin-top: auto; padding-top: 12px; border-top: 2px solid ${NAVY}; text-align: center; }
+  .footer-main { font-size: 8pt; color: ${NAVY}; font-weight: 600; margin-bottom: 3px; }
+  .footer-sub { font-size: 7.5pt; color: #666; }
+  .footer-note { font-size: 7pt; color: #888; margin-top: 6px; font-style: italic; }
+
+  /* Sig strip */
+  .sig-strip { display: flex; gap: 20px; margin-top: 24px; padding-top: 12px; border-top: 1px solid #ddd; }
+  .sig-block { flex: 1; }
+  .sig-block .sig-line { border-bottom: 1px solid #333; height: 28px; margin-bottom: 4px; }
+  .sig-block .sig-lbl { font-size: 7.5pt; color: #555; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div>${logoTag}</div>
+    <div class="hdr-title">
+      <div class="doc-type">FUND COLLECTION RECEIPT</div>
+      <div class="doc-num">${esc(c.collection_number)}</div>
+      <div class="doc-date">Issued: ${fmtD(c.created_at)}</div>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div>
+    <span class="status-badge" style="color:${statusColor};border-color:${statusColor};">&#10003; ${statusLabel}</span>
+  </div>
+
+  <!-- Amount highlight -->
+  <div class="amount-box">
+    <div>
+      <div class="amount-label">Amount Received</div>
+      <div class="amount-label" style="margin-top:3px;">From: <strong>${esc(c.customer_name)}</strong></div>
+    </div>
+    <div class="amount-value">${amountFmt}</div>
+  </div>
+
+  <!-- Collection details -->
+  <div class="section">
+    <div class="section-title">Collection Details</div>
+    <div class="row"><div class="lbl">Customer / Payer</div><div class="val">${esc(c.customer_name)}</div></div>
+    <div class="row"><div class="lbl">Collection Date</div><div class="val">${fmtD(c.collection_date)}</div></div>
+    <div class="row"><div class="lbl">Payment Mode</div><div class="val">${modeLabel}</div></div>
+    ${c.transfer_rate ? `<div class="row"><div class="lbl">Transfer Rate</div><div class="val mono">${c.transfer_rate}</div></div>` : ""}
+  </div>
+
+  ${(c.bank_reference || c.destination_account) ? `
+  <!-- Bank details -->
+  <div class="section">
+    <div class="section-title">Bank Details</div>
+    ${c.bank_reference ? `<div class="row"><div class="lbl">Bank Reference</div><div class="val mono">${esc(c.bank_reference)}</div></div>` : ""}
+    ${c.destination_account ? `<div class="row"><div class="lbl">Destination Account</div><div class="val mono">${esc(c.destination_account)}</div></div>` : ""}
+  </div>` : ""}
+
+  <!-- Approval timeline -->
+  <div class="section">
+    <div class="section-title">Approval Trail</div>
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="tl-label">Sales Manager Approval</div>
+        <div class="tl-val">${c.sales_manager_approved_at ? fmtD(c.sales_manager_approved_at) : "Pending"}</div>
+      </div>
+      <div class="timeline-item">
+        <div class="tl-label">Accounts Verification</div>
+        <div class="tl-val">${c.accounts_verified_at ? fmtD(c.accounts_verified_at) : "Pending"}</div>
+      </div>
+    </div>
+  </div>
+
+  ${c.notes ? `
+  <div class="section">
+    <div class="section-title">Notes</div>
+    <div class="notes-box">${esc(c.notes)}</div>
+  </div>` : ""}
+
+  <!-- Signature strip -->
+  <div class="sig-strip">
+    <div class="sig-block">
+      <div class="sig-line"></div>
+      <div class="sig-lbl">Received By (Finance)</div>
+    </div>
+    <div class="sig-block">
+      <div class="sig-line"></div>
+      <div class="sig-lbl">Approved By (Sales Manager)</div>
+    </div>
+    <div class="sig-block">
+      <div class="sig-line"></div>
+      <div class="sig-lbl">Verified By (Accounts)</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-main">YASAI Logistics Company &nbsp;|&nbsp; Tel: ${process.env.COMPANY_PHONE ?? "+966 55 932 6687"} &nbsp;|&nbsp; ${process.env.COMPANY_EMAIL ?? "info@yasailogistics.com"}</div>
+    <div class="footer-sub">${process.env.COMPANY_ADDRESS_UAE ?? "H.H Shaikh Saud Bin Saqar, Al Muteena Dubai – UAE"} &nbsp;|&nbsp; ${process.env.COMPANY_ADDRESS_KSA ?? "7579 Ibn Al Mallah, Nahda, Riyadh, KSA"}</div>
+    <div class="footer-note">This document confirms receipt of funds. Please retain for your records.</div>
+  </div>
+
+</div>
+</body>
+</html>`;
+}
+
+export async function generateCollectionReceiptPDF(collection: CollectionReceiptData): Promise<Buffer> {
+  let logoDataUrl: string | undefined;
+  try {
+    const logoPath = (await import("path")).join(process.cwd(), "public", "logo.png");
+    const logoBuffer = (await import("fs")).readFileSync(logoPath);
+    logoDataUrl = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+  } catch { /* logo optional */ }
+
+  const html = buildCollectionReceiptHtml(collection, logoDataUrl);
+  return renderHtmlToPdf(html);
+}

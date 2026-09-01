@@ -527,6 +527,7 @@ export interface FundCollection {
   sales_manager_approved_at?: string;
   accounts_verified_by?: string;
   accounts_verified_at?: string;
+  proof_url?: string;
   notes?: string;
   created_by?: string;
   updated_by?: string;

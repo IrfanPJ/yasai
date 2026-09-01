@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Loader2, Pencil, CheckCircle, Bell } from "lucide-react";
+import { Loader2, Pencil, CheckCircle, Bell, Upload, X, Link2, FileText, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,13 @@ const STATUS_COLORS: Record<SupplierPaymentStatus, string> = {
   confirmed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
 };
 
+const TRANSFER_STATUS_COLORS: Record<string, string> = {
+  initiated: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+  in_transit: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  delivered: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+  confirmed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+};
+
 const MODE_LABELS: Record<string, string> = {
   bank_transfer: "Bank Transfer",
   cdm: "CDM Deposit",
@@ -31,13 +38,29 @@ function fmtDate(d?: string) {
   try { return format(new Date(d), "dd MMM yyyy"); } catch { return d; }
 }
 
-interface Props { payment: SupplierPayment }
+interface LinkedTransfer {
+  id: string;
+  transfer_number: string;
+  status: string;
+  amount: number;
+  currency: string;
+  source_region: string;
+  destination_region: string;
+}
 
-export function SupplierPaymentDetail({ payment }: Props) {
+interface Props {
+  payment: SupplierPayment;
+  linkedTransfer?: LinkedTransfer;
+}
+
+export function SupplierPaymentDetail({ payment, linkedTransfer }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [markingPaid, setMarkingPaid] = useState(false);
   const [notifyOps, setNotifyOps] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [proofUrl, setProofUrl] = useState<string | undefined>(payment.proof_url);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleMarkPaid() {
     setMarkingPaid(true);
@@ -45,13 +68,40 @@ export function SupplierPaymentDetail({ payment }: Props) {
       const res = await fetch(`/api/supplier-payments/${payment.id}/mark-paid`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notify_operations: notifyOps }),
+        body: JSON.stringify({ notify_operations: notifyOps, proof_url: proofUrl }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
       toast.success("Payment marked as paid");
       router.refresh();
     } catch { toast.error("Failed"); }
     finally { setMarkingPaid(false); }
+  }
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/supplier-payments/${payment.id}/upload`, { method: "POST", body: fd });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const { url } = await res.json();
+      setProofUrl(url);
+      toast.success("Proof uploaded");
+    } catch { toast.error("Upload failed"); }
+    finally { setUploading(false); if (fileInputRef.current) fileInputRef.current.value = ""; }
+  }
+
+  async function handleRemoveProof() {
+    setUploading(true);
+    try {
+      const res = await fetch(`/api/supplier-payments/${payment.id}/upload`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setProofUrl(undefined);
+      toast.success("Proof removed");
+    } catch { toast.error("Remove failed"); }
+    finally { setUploading(false); }
   }
 
   if (editing) return (
@@ -134,6 +184,63 @@ export function SupplierPaymentDetail({ payment }: Props) {
               </div>
               <Switch id="notify-ops" checked={notifyOps} onCheckedChange={setNotifyOps} />
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Proof upload */}
+      <Card className="border-none shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm text-[#071A3A] dark:text-white flex items-center gap-2">
+            <FileText className="h-4 w-4" /> Payment Proof
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {proofUrl ? (
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+              <FileText className="h-4 w-4 text-green-600 shrink-0" />
+              <a href={proofUrl} target="_blank" rel="noreferrer" className="text-sm text-green-700 dark:text-green-400 underline truncate flex-1">
+                View payment proof
+              </a>
+              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-600" onClick={handleRemoveProof} disabled={uploading}>
+                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">No proof uploaded yet. Upload a bank slip, CDM receipt, or cash acknowledgment.</p>
+          )}
+          <div>
+            <input ref={fileInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleUpload} />
+            <Button size="sm" variant="outline" className="gap-2" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
+              {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+              {proofUrl ? "Replace proof" : "Upload proof"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Linked transfer chain */}
+      {linkedTransfer && (
+        <Card className="border-none shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-[#071A3A] dark:text-white flex items-center gap-2">
+              <Link2 className="h-4 w-4" /> Linked Fund Transfer
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <a href={`/finance/transfers/${linkedTransfer.id}`} className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition-colors">
+              <div className="flex items-center gap-3">
+                <ArrowRightLeft className="h-4 w-4 text-blue-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-mono font-semibold text-[#E67A32]">{linkedTransfer.transfer_number}</p>
+                  <p className="text-xs text-muted-foreground">{linkedTransfer.source_region} → {linkedTransfer.destination_region}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-mono">{linkedTransfer.currency} {Number(linkedTransfer.amount).toLocaleString()}</p>
+                <Badge className={`text-[10px] px-1.5 py-0 ${TRANSFER_STATUS_COLORS[linkedTransfer.status]}`}>{linkedTransfer.status.replace("_", " ")}</Badge>
+              </div>
+            </a>
           </CardContent>
         </Card>
       )}

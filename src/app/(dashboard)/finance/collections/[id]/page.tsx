@@ -9,7 +9,11 @@ interface Props { params: Promise<{ id: string }> }
 export default async function FundCollectionDetailPage({ params }: Props) {
   const { id } = await params;
   const serviceClient = createServiceClient();
-  const { data, error } = await serviceClient.from("fund_collections").select("*").eq("id", id).single();
+
+  const [{ data, error }, { data: linkedTransfers }] = await Promise.all([
+    serviceClient.from("fund_collections").select("*").eq("id", id).single(),
+    serviceClient.from("fund_transfers").select("id, transfer_number, status, amount, currency, source_region, destination_region").eq("fund_collection_id", id),
+  ]);
   if (error || !data) notFound();
 
   return (
@@ -21,7 +25,7 @@ export default async function FundCollectionDetailPage({ params }: Props) {
         <h1 className="text-xl font-semibold text-[#071A3A] dark:text-white">{data.collection_number}</h1>
         <p className="text-sm text-muted-foreground mt-0.5">{data.customer_name}</p>
       </div>
-      <FundCollectionDetail collection={data} />
+      <FundCollectionDetail collection={data} linkedTransfers={linkedTransfers ?? []} />
     </div>
   );
 }
