@@ -35,12 +35,21 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
 
+  const nullify = (v: unknown) => (v === "" || v === undefined ? null : v);
+  const cleanBody = {
+    ...body,
+    invoice_id: nullify(body.invoice_id),
+    bank_reference: nullify(body.bank_reference),
+    destination_account: nullify(body.destination_account),
+    notes: nullify(body.notes),
+  };
+
   const { data: num, error: numErr } = await serviceClient.rpc("generate_collection_number");
   if (numErr) return NextResponse.json({ error: "Failed to generate number" }, { status: 500 });
 
   const { data, error } = await serviceClient
     .from("fund_collections")
-    .insert({ ...body, collection_number: num, created_by: user.id, updated_by: user.id })
+    .insert({ ...cleanBody, collection_number: num, created_by: user.id, updated_by: user.id })
     .select()
     .single();
 

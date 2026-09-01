@@ -24,9 +24,20 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   const { transfer_number, created_by, created_at, ...rest } = body;
   void transfer_number; void created_by; void created_at;
 
+  const nullify = (v: unknown) => (v === "" || v === undefined ? null : v);
+  const cleanRest = {
+    ...rest,
+    fund_collection_id: nullify(rest.fund_collection_id),
+    third_party_name: nullify(rest.third_party_name),
+    third_party_location: nullify(rest.third_party_location),
+    destination_bank_account: nullify(rest.destination_bank_account),
+    bank_reference: nullify(rest.bank_reference),
+    notes: nullify(rest.notes),
+  };
+
   const { data, error } = await serviceClient
     .from("fund_transfers")
-    .update({ ...rest, updated_by: user.id, updated_at: new Date().toISOString() })
+    .update({ ...cleanRest, updated_by: user.id, updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .single();

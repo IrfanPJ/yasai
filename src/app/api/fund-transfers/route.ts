@@ -31,12 +31,24 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
 
+  // Coerce empty strings to null for UUID/nullable fields
+  const nullify = (v: unknown) => (v === "" || v === undefined ? null : v);
+  const cleanBody = {
+    ...body,
+    fund_collection_id: nullify(body.fund_collection_id),
+    third_party_name: nullify(body.third_party_name),
+    third_party_location: nullify(body.third_party_location),
+    destination_bank_account: nullify(body.destination_bank_account),
+    bank_reference: nullify(body.bank_reference),
+    notes: nullify(body.notes),
+  };
+
   const { data: num, error: numErr } = await serviceClient.rpc("generate_transfer_number");
   if (numErr) return NextResponse.json({ error: "Failed to generate number" }, { status: 500 });
 
   const { data, error } = await serviceClient
     .from("fund_transfers")
-    .insert({ ...body, transfer_number: num, created_by: user.id, updated_by: user.id })
+    .insert({ ...cleanBody, transfer_number: num, created_by: user.id, updated_by: user.id })
     .select()
     .single();
 
