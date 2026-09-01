@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RecordPicker, type PickerOption } from "./record-picker";
 import type { FundTransfer } from "@/types";
 
 interface Props { initial?: FundTransfer; fundCollectionId?: string }
@@ -18,6 +19,23 @@ export function FundTransferForm({ initial, fundCollectionId }: Props) {
   const router = useRouter();
   const isEdit = !!initial;
   const [saving, setSaving] = useState(false);
+  const [collectionOptions, setCollectionOptions] = useState<PickerOption[]>([]);
+  const [loadingCollections, setLoadingCollections] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/fund-collections")
+      .then(r => r.json())
+      .then((rows: { id: string; collection_number: string; customer_name: string; amount: number; currency: string; status: string }[]) => {
+        setCollectionOptions(rows.map(c => ({
+          value: c.id,
+          label: c.collection_number,
+          sublabel: `${c.customer_name} · ${c.currency} ${Number(c.amount).toLocaleString()}`,
+          badge: c.status,
+        })));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingCollections(false));
+  }, []);
 
   const [form, setForm] = useState({
     fund_collection_id: initial?.fund_collection_id ?? fundCollectionId ?? "",
@@ -60,6 +78,16 @@ export function FundTransferForm({ initial, fundCollectionId }: Props) {
           <CardTitle className="text-sm text-[#071A3A] dark:text-white">Transfer Details</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2 space-y-1.5">
+            <Label>Linked Fund Collection <span className="text-xs font-normal text-muted-foreground">(optional)</span></Label>
+            <RecordPicker
+              options={collectionOptions}
+              value={form.fund_collection_id}
+              onChange={v => set("fund_collection_id", v)}
+              placeholder="Search and select a collection…"
+              loading={loadingCollections}
+            />
+          </div>
           <div className="space-y-1.5">
             <Label>Amount <span className="text-red-500">*</span></Label>
             <Input type="number" step="0.01" value={form.amount} onChange={e => set("amount", e.target.value)} placeholder="0.00" />

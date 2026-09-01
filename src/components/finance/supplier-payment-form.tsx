@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RecordPicker, type PickerOption } from "./record-picker";
 import type { SupplierPayment } from "@/types";
 
 interface Props { initial?: SupplierPayment; fundTransferId?: string }
@@ -18,6 +19,23 @@ export function SupplierPaymentForm({ initial, fundTransferId }: Props) {
   const router = useRouter();
   const isEdit = !!initial;
   const [saving, setSaving] = useState(false);
+  const [transferOptions, setTransferOptions] = useState<PickerOption[]>([]);
+  const [loadingTransfers, setLoadingTransfers] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/fund-transfers")
+      .then(r => r.json())
+      .then((rows: { id: string; transfer_number: string; amount: number; currency: string; status: string; source_region: string; destination_region: string }[]) => {
+        setTransferOptions(rows.map(t => ({
+          value: t.id,
+          label: t.transfer_number,
+          sublabel: `${t.source_region} → ${t.destination_region} · ${t.currency} ${Number(t.amount).toLocaleString()}`,
+          badge: t.status.replace("_", " "),
+        })));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingTransfers(false));
+  }, []);
 
   const [form, setForm] = useState({
     fund_transfer_id: initial?.fund_transfer_id ?? fundTransferId ?? "",
@@ -59,6 +77,16 @@ export function SupplierPaymentForm({ initial, fundTransferId }: Props) {
           <CardTitle className="text-sm text-[#071A3A] dark:text-white">Payment Details</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2 space-y-1.5">
+            <Label>Linked Fund Transfer <span className="text-xs font-normal text-muted-foreground">(optional)</span></Label>
+            <RecordPicker
+              options={transferOptions}
+              value={form.fund_transfer_id}
+              onChange={v => set("fund_transfer_id", v)}
+              placeholder="Search and select a transfer…"
+              loading={loadingTransfers}
+            />
+          </div>
           <div className="md:col-span-2 space-y-1.5">
             <Label>Supplier Name <span className="text-red-500">*</span></Label>
             <Input value={form.supplier_name} onChange={e => set("supplier_name", e.target.value)} placeholder="Supplier company name" />
