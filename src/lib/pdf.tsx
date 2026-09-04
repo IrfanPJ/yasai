@@ -2582,16 +2582,6 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
     border-radius: 50%; color: white; font-size: 7px; flex-shrink: 0;
   }
 
-  /* ── BADGE ── */
-  .badge-row {
-    display: flex; justify-content: flex-end;
-    padding: 0 14px; margin-top: -18px; position: relative; z-index: 2; flex-shrink: 0;
-  }
-  .doc-badge {
-    background: ${ORANGE}; color: white; font-size: 9.5pt; font-weight: 900;
-    padding: 5px 18px; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase;
-  }
-
   /* ── CONTENT AREA ── */
   .content { padding: 10px 14px 0; flex: 1; display: flex; flex-direction: column; gap: 8px; }
 
@@ -2702,16 +2692,11 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
     <div class="ci">www.yasailogistics.com</div>
   </div>
 
-  <!-- BADGE -->
-  <div class="badge-row">
-    <div class="doc-badge">Freight Invoice</div>
-  </div>
-
   <!-- CONTENT -->
   <div class="content">
 
     <!-- FREIGHT DETAILS TITLE -->
-    <div class="freight-title">FREIGHT DETAILS</div>
+    <div class="freight-title">FREIGHT INVOICE</div>
 
     <!-- CUSTOMER + META -->
     <div class="top-row">
