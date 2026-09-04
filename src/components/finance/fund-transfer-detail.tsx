@@ -45,6 +45,7 @@ interface LinkedCollection {
   amount: number;
   currency: string;
   customer_name: string;
+  transfer_rate?: number;
 }
 
 interface LinkedPayment {
@@ -66,6 +67,11 @@ export function FundTransferDetail({ transfer, linkedCollection, linkedPayments 
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [advancing, setAdvancing] = useState(false);
+
+  const expectedAmount = linkedCollection?.transfer_rate
+    ? (Number(transfer.amount) * linkedCollection.transfer_rate).toFixed(2)
+    : null;
+
   const [receivedAmount, setReceivedAmount] = useState(transfer.received_amount?.toString() ?? "");
   const [receiptDate, setReceiptDate] = useState(transfer.receipt_date ?? new Date().toISOString().slice(0, 10));
   const [uploading, setUploading] = useState<string | null>(null);
@@ -186,6 +192,18 @@ export function FundTransferDetail({ transfer, linkedCollection, linkedPayments 
               <p className="text-xs text-muted-foreground">Initiated</p>
               <p className="text-sm font-semibold">{fmtDate(transfer.created_at)}</p>
             </div>
+            {linkedCollection?.transfer_rate && (
+              <div>
+                <p className="text-xs text-muted-foreground">Transfer Rate</p>
+                <p className="text-sm font-semibold font-mono">{linkedCollection.transfer_rate}</p>
+              </div>
+            )}
+            {expectedAmount && (
+              <div>
+                <p className="text-xs text-muted-foreground">Expected at Dest.</p>
+                <p className="text-sm font-semibold font-mono text-amber-600 dark:text-amber-400">{transfer.currency} {Number(expectedAmount).toLocaleString()}</p>
+              </div>
+            )}
           </div>
           {(transfer.third_party_name || transfer.destination_bank_account || transfer.bank_reference) && (
             <>
@@ -217,8 +235,24 @@ export function FundTransferDetail({ transfer, linkedCollection, linkedPayments 
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Received Amount</Label>
-              <Input type="number" step="0.01" value={receivedAmount} onChange={e => setReceivedAmount(e.target.value)} />
+              <div className="flex items-baseline gap-2">
+                <Label>Received Amount</Label>
+                {expectedAmount && (
+                  <span className="text-xs text-muted-foreground">
+                    Expected: {transfer.currency} {Number(expectedAmount).toLocaleString()}
+                    {!receivedAmount && (
+                      <button
+                        type="button"
+                        className="ml-1 text-blue-600 dark:text-blue-400 underline"
+                        onClick={() => setReceivedAmount(expectedAmount)}
+                      >
+                        Use
+                      </button>
+                    )}
+                  </span>
+                )}
+              </div>
+              <Input type="number" step="0.01" value={receivedAmount} onChange={e => setReceivedAmount(e.target.value)} placeholder={expectedAmount ?? "0.00"} />
             </div>
             <div className="space-y-1.5">
               <Label>Receipt Date</Label>

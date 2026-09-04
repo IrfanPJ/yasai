@@ -15,7 +15,7 @@ export default async function FundTransferDetailPage({ params }: Props) {
 
   const [{ data: linkedCollection }, { data: linkedPayments }] = await Promise.all([
     data.fund_collection_id
-      ? serviceClient.from("fund_collections").select("id, collection_number, status, amount, currency, customer_name").eq("id", data.fund_collection_id).single()
+      ? serviceClient.from("fund_collections").select("id, collection_number, status, amount, currency, customer_name, transfer_rate").eq("id", data.fund_collection_id).single()
       : Promise.resolve({ data: null }),
     serviceClient.from("supplier_payments").select("id, payment_number, status, amount, currency, supplier_name").eq("fund_transfer_id", id),
   ]);

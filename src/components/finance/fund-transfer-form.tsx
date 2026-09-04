@@ -20,18 +20,20 @@ export function FundTransferForm({ initial, fundCollectionId }: Props) {
   const isEdit = !!initial;
   const [saving, setSaving] = useState(false);
   const [collectionOptions, setCollectionOptions] = useState<PickerOption[]>([]);
+  const [collectionMeta, setCollectionMeta] = useState<Map<string, { amount: number; currency: string; transfer_rate?: number }>>(new Map());
   const [loadingCollections, setLoadingCollections] = useState(true);
 
   useEffect(() => {
     fetch("/api/fund-collections")
       .then(r => r.json())
-      .then((rows: { id: string; collection_number: string; customer_name: string; amount: number; currency: string; status: string }[]) => {
+      .then((rows: { id: string; collection_number: string; customer_name: string; amount: number; currency: string; status: string; transfer_rate?: number }[]) => {
         setCollectionOptions(rows.map(c => ({
           value: c.id,
           label: c.collection_number,
           sublabel: `${c.customer_name} · ${c.currency} ${Number(c.amount).toLocaleString()}`,
           badge: c.status,
         })));
+        setCollectionMeta(new Map(rows.map(c => [c.id, { amount: c.amount, currency: c.currency, transfer_rate: c.transfer_rate }])));
       })
       .catch(() => {})
       .finally(() => setLoadingCollections(false));
@@ -52,6 +54,20 @@ export function FundTransferForm({ initial, fundCollectionId }: Props) {
   });
 
   function set(k: string, v: string) { setForm(p => ({ ...p, [k]: v })); }
+
+  function handleCollectionChange(v: string) {
+    const meta = collectionMeta.get(v);
+    setForm(p => ({
+      ...p,
+      fund_collection_id: v,
+      ...(meta && !p.amount ? { amount: meta.amount.toString(), currency: meta.currency } : {}),
+    }));
+  }
+
+  const selectedMeta = collectionMeta.get(form.fund_collection_id);
+  const expectedDestAmount = selectedMeta?.transfer_rate && form.amount
+    ? (parseFloat(form.amount) * selectedMeta.transfer_rate).toFixed(2)
+    : null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -83,7 +99,7 @@ export function FundTransferForm({ initial, fundCollectionId }: Props) {
             <RecordPicker
               options={collectionOptions}
               value={form.fund_collection_id}
-              onChange={v => set("fund_collection_id", v)}
+              onChange={handleCollectionChange}
               placeholder="Search and select a collection…"
               loading={loadingCollections}
             />
@@ -91,6 +107,11 @@ export function FundTransferForm({ initial, fundCollectionId }: Props) {
           <div className="space-y-1.5">
             <Label>Amount <span className="text-red-500">*</span></Label>
             <Input type="number" step="0.01" value={form.amount} onChange={e => set("amount", e.target.value)} placeholder="0.00" />
+            {expectedDestAmount && (
+              <p className="text-xs text-muted-foreground">
+                Expected at destination: ~{Number(expectedDestAmount).toLocaleString()} (rate {selectedMeta?.transfer_rate})
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Currency</Label>
