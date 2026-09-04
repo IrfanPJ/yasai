@@ -2462,3 +2462,372 @@ export async function generateCollectionReceiptPDF(collection: CollectionReceipt
   const html = buildCollectionReceiptHtml(collection, logoDataUrl);
   return renderHtmlToPdf(html);
 }
+
+// ─── Freight Invoice PDF ──────────────────────────────────────
+
+function freightToWords(n: number, currency = "SAR"): string {
+  if (n === 0) return `${currency} : ZERO ONLY`;
+  const ones = ["", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE",
+    "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTEEN", "NINETEEN"];
+  const tens = ["", "", "TWENTY", "THIRTY", "FORTY", "FIFTY", "SIXTY", "SEVENTY", "EIGHTY", "NINETY"];
+  function below1000(num: number): string {
+    if (num === 0) return "";
+    if (num < 20) return ones[num] + " ";
+    if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? " " + ones[num % 10] : "") + " ";
+    return ones[Math.floor(num / 100)] + " HUNDRED " + below1000(num % 100);
+  }
+  const intPart = Math.floor(n);
+  let result = "";
+  if (intPart >= 1000000) result += below1000(Math.floor(intPart / 1000000)) + "MILLION ";
+  if (intPart >= 1000) result += below1000(Math.floor((intPart % 1000000) / 1000)) + "THOUSAND ";
+  result += below1000(intPart % 1000);
+  return `${currency} : ${result.trim()} ONLY`;
+}
+
+function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string {
+  const items: InvoiceLineItem[] = Array.isArray(invoice.line_items) ? invoice.line_items : [];
+  const subtotal = items.reduce((s, i) => s + Number(i.amount), 0);
+  const totalVat = items.reduce((s, i) => s + Number(i.vat_amount ?? 0), 0);
+  const total = subtotal + totalVat;
+  const currency = invoice.currency || "SAR";
+
+  const fmtDate = (d?: string | null) => {
+    if (!d) return "—";
+    try { return format(new Date(d), "dd/MM/yyyy"); } catch { return d; }
+  };
+
+  const MIN_ROWS = 8;
+  const itemRows = items.map((item, i) => `
+    <tr>
+      <td class="c bd">${i + 1}</td>
+      <td class="bd" style="padding-left:6px;">
+        <div style="font-weight:600;">${esc(item.description)}</div>
+        ${item.model_description ? `<div style="font-size:7.5pt;color:#555;margin-top:2px;">${esc(item.model_description)}</div>` : ""}
+      </td>
+      <td class="c bd">${esc(String(item.qty))}</td>
+      <td class="r bd">${Number(item.unit_price).toFixed(2)}</td>
+      <td class="r bd">${Number(item.vat_amount ?? 0).toFixed(2)}</td>
+      <td class="r bd">${Number(item.amount).toFixed(2)}</td>
+    </tr>`).join("");
+
+  const emptyCount = Math.max(0, MIN_ROWS - items.length);
+  const emptyRows = Array.from({ length: emptyCount }, () =>
+    `<tr style="height:22px"><td class="c bd"></td><td class="bd"></td><td class="c bd"></td><td class="r bd"></td><td class="r bd"></td><td class="r bd"></td></tr>`
+  ).join("");
+
+  const shippingParts = [
+    invoice.port_of_loading ? `Port of Loading: ${esc(invoice.port_of_loading)}` : "",
+    invoice.packages_count ? `Packages: ${esc(invoice.packages_count)}` : "",
+    invoice.final_destination ? `Final Place of Delivery: ${esc(invoice.final_destination)}` : "",
+  ].filter(Boolean);
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  @page { size: A4; margin: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+    color: #111;
+    background: white;
+    width: 210mm;
+    min-height: 297mm;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── LETTERHEAD ── */
+  .lh {
+    display: flex; align-items: center;
+    padding: 8px 14px; background: white;
+    border-bottom: 3px solid ${ORANGE};
+    flex-shrink: 0;
+  }
+  .lh-logo {
+    display: flex; align-items: center;
+    padding-right: 14px; border-right: 2.5px solid ${ORANGE};
+    min-width: 110px; height: 64px;
+  }
+  .lh-logo img { height: 58px; width: auto; object-fit: contain; }
+  .lh-center { flex: 1; padding: 0 14px; }
+  .lh-title-en { font-size: 12pt; font-weight: 900; color: ${NAVY}; letter-spacing: 0.5px; }
+  .lh-subtitle { font-size: 7pt; color: #888; margin-top: 1px; }
+  .lh-ar {
+    font-size: 10pt; font-weight: bold; color: ${NAVY};
+    direction: rtl; text-align: right; min-width: 160px;
+    font-family: 'Noto Naskh Arabic', Arial, sans-serif;
+  }
+
+  /* ── CONTACT ROW ── */
+  .contact-row {
+    display: flex; align-items: center; padding: 3px 14px;
+    background: white; gap: 14px; font-size: 6pt; color: #666;
+    border-bottom: 1px solid #eee; flex-shrink: 0;
+  }
+  .contact-row .ci { display: flex; align-items: center; gap: 3px; }
+  .ci-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 12px; height: 12px; background: ${ORANGE};
+    border-radius: 50%; color: white; font-size: 7px; flex-shrink: 0;
+  }
+  .web-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 12px; height: 12px; background: ${NAVY};
+    border-radius: 50%; color: white; font-size: 7px; flex-shrink: 0;
+  }
+
+  /* ── BADGE ── */
+  .badge-row {
+    display: flex; justify-content: flex-end;
+    padding: 0 14px; margin-top: -18px; position: relative; z-index: 2; flex-shrink: 0;
+  }
+  .doc-badge {
+    background: ${ORANGE}; color: white; font-size: 9.5pt; font-weight: 900;
+    padding: 5px 18px; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase;
+  }
+
+  /* ── CONTENT AREA ── */
+  .content { padding: 10px 14px 0; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+
+  /* ── FREIGHT DETAILS TITLE ── */
+  .freight-title {
+    text-align: center; font-size: 13pt; font-weight: 900;
+    letter-spacing: 1px; color: ${NAVY};
+    padding: 4px 0 8px; border-bottom: 2px solid ${NAVY};
+  }
+
+  /* ── TOP INFO ROW ── */
+  .top-row { display: flex; gap: 12px; }
+  .cust-block {
+    flex: 1.4; font-size: 8.5pt; line-height: 1.7;
+    border: 1.5px solid ${BORDER}; border-radius: 5px;
+    padding: 8px 10px; background: white;
+  }
+  .cust-name { font-weight: 700; font-size: 9.5pt; color: ${NAVY}; }
+  .meta-box { flex: 1; border: 1.5px solid ${BORDER}; border-radius: 5px; overflow: hidden; }
+  .meta-hdr {
+    background: ${NAVY}; color: white; font-size: 7pt; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 8px;
+  }
+  .meta-row { display: flex; border-bottom: 1px solid #eee; font-size: 8.5pt; }
+  .meta-row:last-child { border-bottom: none; }
+  .meta-key { width: 85px; padding: 3px 8px; color: #666; font-weight: 600; border-right: 1px solid #eee; flex-shrink: 0; }
+  .meta-colon { padding: 3px 3px; color: #888; flex-shrink: 0; }
+  .meta-val { padding: 3px 6px; color: ${NAVY}; font-weight: 700; }
+
+  /* ── LINE ITEMS TABLE ── */
+  .tbl-wrap { flex: 1; }
+  table { width: 100%; border-collapse: collapse; }
+  .th {
+    background: ${NAVY}; color: white; font-size: 8pt; font-weight: 700;
+    text-align: center; padding: 5px 5px;
+    border-right: 1px solid rgba(255,255,255,0.15);
+  }
+  .th:last-child { border-right: none; }
+  .bd { border: 1px solid ${BORDER}; padding: 5px 6px; vertical-align: top; font-size: 8.5pt; }
+  .c { text-align: center; }
+  .r { text-align: right; font-family: monospace; }
+  tr:nth-child(even) td.bd { background: #FAFAFA; }
+
+  /* ── AMOUNT IN WORDS + TOTALS TABLE ── */
+  .words-row td { border: 1px solid ${BORDER}; padding: 6px 8px; font-size: 8.5pt; }
+  .words-bold { font-weight: 700; color: ${NAVY}; }
+  .tot-row td { border: 1px solid ${BORDER}; padding: 4px 8px; font-size: 8.5pt; }
+  .tot-lbl { font-weight: 700; text-align: center; color: #444; }
+  .tot-num { text-align: right; font-family: monospace; font-weight: 700; color: ${NAVY}; }
+  .grand-row td { background: ${NAVY}; color: white; border: 1px solid ${NAVY}; padding: 5px 8px; font-size: 8.5pt; }
+  .grand-lbl { font-weight: 800; text-align: center; }
+  .grand-num { text-align: right; font-family: monospace; font-weight: 800; color: ${ORANGE}; }
+
+  /* ── BANK DETAILS ── */
+  .bank-section {
+    border: 1.5px solid ${BORDER}; border-radius: 5px; overflow: hidden;
+  }
+  .bank-hdr {
+    background: ${LIGHT_ORANGE}; border-bottom: 1.5px solid ${ORANGE};
+    padding: 5px 10px; font-size: 8pt; font-weight: 800;
+    color: ${NAVY}; text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .bank-body { padding: 8px 12px; }
+  .bank-grid { display: grid; grid-template-columns: auto 1fr; gap: 3px 16px; font-size: 8.5pt; }
+  .bk { font-weight: 700; color: #555; white-space: nowrap; }
+  .bv { color: #111; font-family: monospace; }
+
+  /* ── SIGNATURES ── */
+  .sig-row { display: flex; gap: 30px; padding: 14px 0 8px; border-top: 1.5px solid ${BORDER}; }
+  .sig-block { flex: 1; }
+  .sig-label { font-size: 8.5pt; font-weight: 600; color: #333; margin-bottom: 2px; }
+  .sig-line { border-bottom: 1px dotted #555; margin-top: 28px; }
+
+  /* ── DOC FOOTER ── */
+  .doc-ref {
+    display: flex; justify-content: space-between;
+    font-size: 7pt; color: #888; padding: 4px 0;
+    border-top: 1px solid #ccc;
+  }
+
+  /* ── BOTTOM BAR ── */
+  .bottom-bar {
+    background: ${NAVY}; color: white;
+    text-align: center; font-size: 6.5pt; padding: 5px 14px;
+    letter-spacing: 0.2px; flex-shrink: 0; margin-top: auto;
+  }
+</style>
+</head>
+<body>
+
+  <!-- LETTERHEAD -->
+  <div class="lh">
+    <div class="lh-logo">
+      ${logoDataUrl ? `<img src="${logoDataUrl}" alt="YASAI">` : ""}
+    </div>
+    <div class="lh-center">
+      <div class="lh-title-en">YASAI LOGISTICS COMPANY</div>
+      <div class="lh-subtitle">Freight &amp; Logistics Solutions</div>
+    </div>
+    <div class="lh-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1575;&#1578;</div>
+  </div>
+
+  <!-- CONTACT ROW -->
+  <div class="contact-row">
+    <div class="ci">H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
+    <div class="ci">Tel: +966 55 932 6687</div>
+    <div class="ci">info@yasailogistics.com</div>
+    <div class="ci">www.yasailogistics.com</div>
+  </div>
+
+  <!-- BADGE -->
+  <div class="badge-row">
+    <div class="doc-badge">Freight Invoice</div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- FREIGHT DETAILS TITLE -->
+    <div class="freight-title">FREIGHT DETAILS</div>
+
+    <!-- CUSTOMER + META -->
+    <div class="top-row">
+      <div class="cust-block">
+        <div class="cust-name">M/s. ${esc(invoice.customer_name)}</div>
+        ${invoice.customer_address ? `<div style="margin-top:3px;color:#444;">${esc(invoice.customer_address).replace(/\n/g, "<br>")}</div>` : ""}
+      </div>
+      <div class="meta-box">
+        <div class="meta-hdr">Invoice Details</div>
+        <div class="meta-row">
+          <div class="meta-key">No</div><div class="meta-colon">:</div>
+          <div class="meta-val">${esc(invoice.invoice_number)}</div>
+        </div>
+        <div class="meta-row">
+          <div class="meta-key">Date</div><div class="meta-colon">:</div>
+          <div class="meta-val">${fmtDate(invoice.issued_at || invoice.created_at)}</div>
+        </div>
+        ${invoice.port_of_loading ? `<div class="meta-row">
+          <div class="meta-key">Port of Loading</div><div class="meta-colon">:</div>
+          <div class="meta-val">${esc(invoice.port_of_loading)}</div>
+        </div>` : ""}
+        ${invoice.final_destination ? `<div class="meta-row">
+          <div class="meta-key">Destination</div><div class="meta-colon">:</div>
+          <div class="meta-val">${esc(invoice.final_destination)}</div>
+        </div>` : ""}
+        ${invoice.packages_count ? `<div class="meta-row">
+          <div class="meta-key">Packages</div><div class="meta-colon">:</div>
+          <div class="meta-val">${esc(invoice.packages_count)}</div>
+        </div>` : ""}
+      </div>
+    </div>
+
+    <!-- LINE ITEMS TABLE -->
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="th" style="width:5%">No</th>
+            <th class="th">Item Description</th>
+            <th class="th" style="width:7%">Qty</th>
+            <th class="th" style="width:13%">Rate<br>(${esc(currency)})</th>
+            <th class="th" style="width:11%">VAT<br>(${esc(currency)})</th>
+            <th class="th" style="width:13%">Amount<br>(${esc(currency)})</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemRows}
+          ${emptyRows}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- WORDS + TOTALS -->
+    <table style="margin-top:0;">
+      <tr class="words-row">
+        <td colspan="3" style="width:62%;" class="words-bold">${freightToWords(total, currency)}</td>
+        <td style="width:13%;text-align:center;font-weight:700;border:1px solid ${BORDER};color:#444;">Total</td>
+        <td style="text-align:right;font-family:monospace;font-weight:700;border:1px solid ${BORDER};color:${NAVY};" colspan="2">${subtotal.toFixed(2)}</td>
+      </tr>
+      <tr class="tot-row">
+        <td colspan="3" style="border:1px solid ${BORDER};font-size:7.5pt;color:#555;padding:4px 8px;">
+          ${shippingParts.map(p => `<div>${p}</div>`).join("")}
+        </td>
+        <td class="tot-lbl" style="border:1px solid ${BORDER};">VAT</td>
+        <td class="tot-num" style="border:1px solid ${BORDER};" colspan="2">${totalVat.toFixed(2)}</td>
+      </tr>
+      <tr class="grand-row">
+        <td colspan="3" style="background:white;border:1px solid ${BORDER};"></td>
+        <td class="grand-lbl">Total ${esc(currency)}</td>
+        <td class="grand-num" colspan="2">${total.toFixed(2)}</td>
+      </tr>
+    </table>
+
+    <!-- BANK DETAILS -->
+    <div class="bank-section">
+      <div class="bank-hdr">Our Bank Details</div>
+      <div class="bank-body">
+        <div class="bank-grid">
+          <span class="bk">A/c. No</span><span class="bv">6820 63417 42000</span>
+          <span class="bk">IBAN</span><span class="bv">SA 410 50000 6820 63417 42000</span>
+          <span class="bk">A/c. Name</span><span class="bv">Altaawn Aldhhbyt Altjaryt Company</span>
+          <span class="bk">Bank</span><span class="bv">Alinma Bank</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIGNATURES -->
+    <div class="sig-row">
+      <div class="sig-block">
+        <div class="sig-label">For YASAI LOGISTICS</div>
+        <div class="sig-line"></div>
+      </div>
+      <div class="sig-block">
+        <div class="sig-label">Customer Signature &amp; Stamp</div>
+        <div class="sig-line"></div>
+      </div>
+    </div>
+
+    <!-- DOC REF -->
+    <div class="doc-ref">
+      <span>Doc No: YSI-KSA-WMS-FRM-06</span>
+      <span>Rev No. 00</span>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottom-bar">
+    YASAI Logistics Company &nbsp;|&nbsp; Tel: +966 55 932 6687 &nbsp;|&nbsp; info@yasailogistics.com &nbsp;|&nbsp; www.yasailogistics.com &nbsp;|&nbsp; Trusted Name in Cargo Consolidation
+  </div>
+
+</body>
+</html>`;
+}
+
+export async function generateFreightInvoicePDF(invoice: Invoice, logoDataUrl?: string): Promise<Buffer> {
+  const html = buildFreightInvoiceHtml(invoice, logoDataUrl);
+  return renderHtmlToPdf(html);
+}

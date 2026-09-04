@@ -468,8 +468,11 @@ export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled";
 
 export interface InvoiceLineItem {
   description: string;
+  model_description?: string;
   qty: number;
   unit_price: number;
+  country_of_origin?: string;
+  vat_amount?: number;
   amount: number;
 }
 
@@ -491,6 +494,11 @@ export interface Invoice {
   due_date?: string;
   paid_at?: string;
   payment_notes?: string;
+  invoice_type?: "standard" | "freight" | "uploaded";
+  uploaded_file_url?: string;
+  port_of_loading?: string;
+  packages_count?: string;
+  final_destination?: string;
   created_by?: string;
   updated_by?: string;
   created_at: string;

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Loader2, Download, Send, CheckCircle2, XCircle, Truck,
+  Loader2, Download, Send, CheckCircle2, XCircle, Truck, FileText, ExternalLink,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -154,21 +154,32 @@ export function InvoiceDetail({ invoice, userRole }: InvoiceDetailProps) {
             <thead>
               <tr className="border-b text-xs uppercase tracking-wide text-muted-foreground">
                 <th className="text-left pb-2">Description</th>
+                {invoice.invoice_type === "freight" && <th className="text-left pb-2 w-28">Country</th>}
                 <th className="text-right pb-2 w-16">Qty</th>
-                <th className="text-right pb-2 w-24">Unit Price</th>
+                <th className="text-right pb-2 w-24">Rate</th>
+                {invoice.invoice_type === "freight" && <th className="text-right pb-2 w-20">VAT</th>}
                 <th className="text-right pb-2 w-24">Amount</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {invoice.line_items.map((item, i) => (
                 <tr key={i}>
-                  <td className="py-2">{item.description}</td>
-                  <td className="py-2 text-right text-muted-foreground">{item.qty}</td>
-                  <td className="py-2 text-right text-muted-foreground">
-                    {invoice.currency} {Number(item.unit_price).toFixed(2)}
+                  <td className="py-2">
+                    <p>{item.description}</p>
+                    {item.model_description && <p className="text-xs text-muted-foreground">{item.model_description}</p>}
                   </td>
-                  <td className="py-2 text-right font-medium">
-                    {invoice.currency} {Number(item.amount).toFixed(2)}
+                  {invoice.invoice_type === "freight" && (
+                    <td className="py-2 text-muted-foreground text-xs">{item.country_of_origin || "—"}</td>
+                  )}
+                  <td className="py-2 text-right text-muted-foreground">{item.qty}</td>
+                  <td className="py-2 text-right text-muted-foreground font-mono">
+                    {Number(item.unit_price).toFixed(2)}
+                  </td>
+                  {invoice.invoice_type === "freight" && (
+                    <td className="py-2 text-right text-muted-foreground font-mono">{Number(item.vat_amount ?? 0).toFixed(2)}</td>
+                  )}
+                  <td className="py-2 text-right font-medium font-mono">
+                    {Number(item.amount).toFixed(2)}
                   </td>
                 </tr>
               ))}
@@ -195,6 +206,51 @@ export function InvoiceDetail({ invoice, userRole }: InvoiceDetailProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Uploaded invoice file */}
+      {invoice.invoice_type === "uploaded" && (
+        <Card className="border-none shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-[#071A3A] dark:text-white">Uploaded Invoice File</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {invoice.uploaded_file_url ? (
+              <a
+                href={invoice.uploaded_file_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 underline"
+              >
+                <FileText className="h-4 w-4" />
+                View uploaded invoice
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            ) : (
+              <p className="text-sm text-muted-foreground">No file uploaded yet.</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Freight shipping details */}
+      {invoice.invoice_type === "freight" && (invoice.port_of_loading || invoice.packages_count || invoice.final_destination) && (
+        <Card className="border-none shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-[#071A3A] dark:text-white">Shipping Details</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-3 gap-4 text-sm">
+            {invoice.port_of_loading && (
+              <div><p className="text-xs text-muted-foreground">Port of Loading</p><p className="font-medium">{invoice.port_of_loading}</p></div>
+            )}
+            {invoice.packages_count && (
+              <div><p className="text-xs text-muted-foreground">Packages</p><p className="font-medium">{invoice.packages_count}</p></div>
+            )}
+            {invoice.final_destination && (
+              <div><p className="text-xs text-muted-foreground">Final Destination</p><p className="font-medium">{invoice.final_destination}</p></div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {invoice.payment_notes && (
         <Card className="border-none shadow-sm">
