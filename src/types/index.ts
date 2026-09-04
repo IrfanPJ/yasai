@@ -503,7 +503,7 @@ export interface Invoice {
 // ─── Finance Module Types ──────────────────────────────────────
 
 export type FundCollectionStatus = "pending" | "approved" | "verified";
-export type FundCollectionPaymentMode = "cash" | "bank_transfer";
+export type FundCollectionPaymentMode = "cash" | "bank_transfer" | "cheque";
 export type FundTransferMode = "cash_third_party" | "bank_transfer";
 export type FundTransferStatus = "initiated" | "in_transit" | "delivered" | "confirmed";
 export type SupplierPaymentMode = "bank_transfer" | "cdm" | "cash_hand";
@@ -522,6 +522,13 @@ export interface FundCollection {
   transfer_rate?: number;
   bank_reference?: string;
   destination_account?: string;
+  bank_name?: string;
+  iban?: string;
+  cheque_number?: string;
+  cheque_date?: string;
+  cheque_bank?: string;
+  collected_by?: string;
+  customer_phone?: string;
   status: FundCollectionStatus;
   sales_manager_approved_by?: string;
   sales_manager_approved_at?: string;

@@ -38,10 +38,17 @@ export async function POST(request: NextRequest) {
   const nullify = (v: unknown) => (v === "" || v === undefined ? null : v);
   const cleanBody = {
     ...body,
-    invoice_id: nullify(body.invoice_id),
-    bank_reference: nullify(body.bank_reference),
+    invoice_id:       nullify(body.invoice_id),
+    bank_reference:   nullify(body.bank_reference),
     destination_account: nullify(body.destination_account),
-    notes: nullify(body.notes),
+    bank_name:        nullify(body.bank_name),
+    iban:             nullify(body.iban),
+    cheque_number:    nullify(body.cheque_number),
+    cheque_date:      nullify(body.cheque_date),
+    cheque_bank:      nullify(body.cheque_bank),
+    collected_by:     nullify(body.collected_by),
+    customer_phone:   nullify(body.customer_phone),
+    notes:            nullify(body.notes),
   };
 
   const { data: num, error: numErr } = await serviceClient.rpc("generate_collection_number");

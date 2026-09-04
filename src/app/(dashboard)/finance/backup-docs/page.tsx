@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, ChevronLeft } from "lucide-react";
 import { BackupDocTable } from "@/components/finance/backup-doc-table";
 
 export default async function BackupDocsPage() {
@@ -14,6 +14,10 @@ export default async function BackupDocsPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-5">
+      <Link href="/finance" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <ChevronLeft className="h-4 w-4" /> Finance
+      </Link>
+
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-[#071A3A] dark:text-white">Backup Documents</h1>

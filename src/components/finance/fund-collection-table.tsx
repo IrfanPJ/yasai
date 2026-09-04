@@ -99,7 +99,7 @@ export function FundCollectionTable({ collections }: Props) {
                 </TableCell>
                 <TableCell className="font-medium">{c.customer_name}</TableCell>
                 <TableCell className="font-mono tabular-nums">{c.currency} {Number(c.amount).toLocaleString()}</TableCell>
-                <TableCell className="capitalize">{c.payment_mode === "bank_transfer" ? "Bank Transfer" : "Cash"}</TableCell>
+                <TableCell className="capitalize">{{ cash: "Cash", bank_transfer: "Bank Transfer", cheque: "Cheque" }[c.payment_mode] ?? c.payment_mode}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{fmtDate(c.collection_date)}</TableCell>
                 <TableCell>
                   <Badge className={`text-xs ${STATUS_COLORS[c.status]}`}>{c.status}</Badge>

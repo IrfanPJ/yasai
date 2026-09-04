@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Pencil, CheckCircle, ShieldCheck, Loader2, Trash2, Download, Upload, X, Link2, FileText, ArrowRightLeft } from "lucide-react";
+import { Pencil, CheckCircle, ShieldCheck, Loader2, Trash2, Download, Upload, X, Link2, FileText, ArrowRightLeft, Phone, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,16 +16,30 @@ import { FundCollectionForm } from "./fund-collection-form";
 import type { FundCollection, FundCollectionStatus } from "@/types";
 
 const STATUS_COLORS: Record<FundCollectionStatus, string> = {
-  pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  pending:  "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   approved: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   verified: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
 };
 
+const CURRENCY_COLORS: Record<string, string> = {
+  AED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
+  SAR: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  USD: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  EUR: "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200",
+  GBP: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
+};
+
 const TRANSFER_STATUS_COLORS: Record<string, string> = {
-  initiated: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+  initiated:  "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
   in_transit: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  delivered: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
-  confirmed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  delivered:  "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+  confirmed:  "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+};
+
+const MODE_LABELS: Record<string, string> = {
+  cash:          "Cash",
+  bank_transfer: "Bank Transfer",
+  cheque:        "Cheque",
 };
 
 function fmtDate(d?: string) {
@@ -59,6 +73,11 @@ export function FundCollectionDetail({ collection, linkedTransfers = [] }: Props
   const [proofUrl, setProofUrl] = useState<string | undefined>(collection.proof_url);
   const [transferRate, setTransferRate] = useState(collection.transfer_rate?.toString() ?? "");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isForeign = collection.currency !== "AED";
+  const aedEquiv = isForeign && collection.transfer_rate
+    ? Number(collection.amount) * Number(collection.transfer_rate)
+    : null;
 
   async function handleApprove() {
     setApproving(true);
@@ -172,49 +191,126 @@ export function FundCollectionDetail({ collection, linkedTransfers = [] }: Props
               <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Collection Number</p>
               <p className="text-2xl font-bold font-mono text-[#E67A32]">{collection.collection_number}</p>
             </div>
-            <Badge className={`text-sm px-3 py-1 capitalize ${STATUS_COLORS[collection.status]}`}>
-              {collection.status}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge className={`text-xs px-2 py-0.5 font-mono ${CURRENCY_COLORS[collection.currency] ?? "bg-gray-100 text-gray-700"}`}>
+                {collection.currency}
+              </Badge>
+              <Badge className={`text-sm px-3 py-1 capitalize ${STATUS_COLORS[collection.status]}`}>
+                {collection.status}
+              </Badge>
+            </div>
           </div>
+
           <Separator className="my-4" />
+
+          {/* Core details grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-xs text-muted-foreground">Customer</p>
               <p className="text-sm font-semibold">{collection.customer_name}</p>
+              {collection.customer_phone && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                  <Phone className="h-3 w-3" />{collection.customer_phone}
+                </p>
+              )}
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Amount</p>
-              <p className="text-sm font-semibold font-mono">{collection.currency} {Number(collection.amount).toLocaleString()}</p>
+              <p className="text-sm font-semibold font-mono">
+                {collection.currency} {Number(collection.amount).toLocaleString()}
+              </p>
+              {aedEquiv !== null && (
+                <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                  ≈ AED {aedEquiv.toLocaleString("en", { maximumFractionDigits: 2 })}
+                </p>
+              )}
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Payment Mode</p>
-              <p className="text-sm font-semibold capitalize">{collection.payment_mode === "bank_transfer" ? "Bank Transfer" : "Cash"}</p>
+              <p className="text-sm font-semibold">{MODE_LABELS[collection.payment_mode] ?? collection.payment_mode}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Collection Date</p>
               <p className="text-sm font-semibold">{fmtDate(collection.collection_date)}</p>
             </div>
           </div>
-          {(collection.bank_reference || collection.destination_account || collection.transfer_rate) && (
+
+          {/* Collected by + exchange rate row */}
+          {(collection.collected_by || (isForeign && collection.transfer_rate)) && (
             <>
               <Separator className="my-4" />
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {collection.transfer_rate && (
+                {collection.collected_by && (
                   <div>
-                    <p className="text-xs text-muted-foreground">Transfer Rate</p>
-                    <p className="text-sm font-semibold font-mono">{collection.transfer_rate}</p>
+                    <p className="text-xs text-muted-foreground">Received By</p>
+                    <p className="text-sm font-semibold flex items-center gap-1">
+                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                      {collection.collected_by}
+                    </p>
+                  </div>
+                )}
+                {isForeign && collection.transfer_rate && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Exchange Rate</p>
+                    <p className="text-sm font-semibold font-mono">
+                      1 {collection.currency} = {collection.transfer_rate} AED
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Bank transfer details */}
+          {collection.payment_mode === "bank_transfer" && (collection.bank_name || collection.bank_reference || collection.iban || collection.destination_account) && (
+            <>
+              <Separator className="my-4" />
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Bank Details</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {collection.bank_name && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Bank Name</p>
+                    <p className="text-sm font-medium">{collection.bank_name}</p>
                   </div>
                 )}
                 {collection.bank_reference && (
                   <div>
-                    <p className="text-xs text-muted-foreground">Bank Reference</p>
+                    <p className="text-xs text-muted-foreground">Transaction Ref</p>
                     <p className="text-sm font-mono">{collection.bank_reference}</p>
                   </div>
                 )}
-                {collection.destination_account && (
+                {(collection.iban || collection.destination_account) && (
                   <div>
-                    <p className="text-xs text-muted-foreground">Destination Account</p>
-                    <p className="text-sm font-mono">{collection.destination_account}</p>
+                    <p className="text-xs text-muted-foreground">IBAN / Account</p>
+                    <p className="text-sm font-mono">{collection.iban ?? collection.destination_account}</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Cheque details */}
+          {collection.payment_mode === "cheque" && (collection.cheque_number || collection.cheque_bank) && (
+            <>
+              <Separator className="my-4" />
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Cheque Details</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {collection.cheque_number && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Cheque Number</p>
+                    <p className="text-sm font-mono">{collection.cheque_number}</p>
+                  </div>
+                )}
+                {collection.cheque_date && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Cheque Date</p>
+                    <p className="text-sm">{fmtDate(collection.cheque_date)}</p>
+                  </div>
+                )}
+                {collection.cheque_bank && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Issuing Bank</p>
+                    <p className="text-sm">{collection.cheque_bank}</p>
                   </div>
                 )}
               </div>
@@ -231,8 +327,11 @@ export function FundCollectionDetail({ collection, linkedTransfers = [] }: Props
           </CardHeader>
           <CardContent>
             <div className="space-y-1.5 max-w-xs">
-              <Label>Transfer Rate (optional)</Label>
-              <Input type="number" step="0.0001" value={transferRate} onChange={e => setTransferRate(e.target.value)} placeholder="e.g. 0.1020" />
+              <Label>
+                Exchange Rate (optional)
+                {isForeign && <span className="ml-1 text-xs text-muted-foreground font-normal">1 {collection.currency} = ? AED</span>}
+              </Label>
+              <Input type="number" step="0.0001" value={transferRate} onChange={e => setTransferRate(e.target.value)} placeholder="e.g. 1.0200" />
             </div>
           </CardContent>
         </Card>
@@ -269,7 +368,7 @@ export function FundCollectionDetail({ collection, linkedTransfers = [] }: Props
         </CardContent>
       </Card>
 
-      {/* Linked transfers (chain view) */}
+      {/* Linked transfers */}
       {linkedTransfers.length > 0 && (
         <Card className="border-none shadow-sm">
           <CardHeader className="pb-2">
