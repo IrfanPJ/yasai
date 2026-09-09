@@ -13,6 +13,7 @@ import {
   Truck,
   Receipt,
   FileCheck2,
+  Banknote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { YasaiLogo } from "./logo";
@@ -56,6 +57,9 @@ const navItems = [
     href: "/waybills",
     icon: FileCheck2,
   },
+  ...(process.env.NEXT_PUBLIC_SHOW_FINANCE === "true"
+    ? [{ label: "Finance", href: "/finance", icon: Banknote }]
+    : []),
   {
     label: "Audit Logs",
     href: "/audit-logs",

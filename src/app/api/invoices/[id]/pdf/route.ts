@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { generateInvoicePDF } from "@/lib/pdf";
+import { generateInvoicePDF, generateFreightInvoicePDF } from "@/lib/pdf";
 import { getLogoDataUrl } from "@/lib/logo";
 import type { Invoice } from "@/types";
 
@@ -27,7 +27,10 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
   try {
     const logoDataUrl = getLogoDataUrl();
-    const pdfBuffer = await generateInvoicePDF(invoice as Invoice, logoDataUrl);
+    const isFreight = (invoice as Invoice).invoice_type === "freight";
+    const pdfBuffer = isFreight
+      ? await generateFreightInvoicePDF(invoice as Invoice, logoDataUrl)
+      : await generateInvoicePDF(invoice as Invoice, logoDataUrl);
     const filename = `Invoice - ${invoice.invoice_number}.pdf`;
 
     return new NextResponse(new Uint8Array(pdfBuffer), {

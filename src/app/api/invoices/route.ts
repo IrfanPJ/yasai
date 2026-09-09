@@ -30,8 +30,18 @@ export async function POST(request: NextRequest) {
   const customer_name = typeof body.customer_name === "string" ? body.customer_name.trim() : "";
   if (!customer_name) return NextResponse.json({ error: "customer_name is required" }, { status: 400 });
 
-  const { data: invoiceNumber, error: numError } = await serviceClient.rpc("generate_invoice_number");
-  if (numError) return NextResponse.json({ error: "Failed to generate invoice number" }, { status: 500 });
+  const invoiceType: string = body.invoice_type || "standard";
+
+  // Freight and uploaded invoices use a caller-supplied number; standard uses auto-gen
+  let invoiceNumber: string;
+  if (invoiceType === "freight" || invoiceType === "uploaded") {
+    invoiceNumber = typeof body.invoice_number === "string" ? body.invoice_number.trim() : "";
+    if (!invoiceNumber) return NextResponse.json({ error: "invoice_number is required for freight/uploaded invoices" }, { status: 400 });
+  } else {
+    const { data: genNum, error: numError } = await serviceClient.rpc("generate_invoice_number");
+    if (numError) return NextResponse.json({ error: "Failed to generate invoice number" }, { status: 500 });
+    invoiceNumber = genNum as string;
+  }
 
   const lineItems = Array.isArray(body.line_items) ? body.line_items : [];
   const subtotal = lineItems.reduce((s: number, item: { amount?: number }) => s + (item.amount || 0), 0);
@@ -42,7 +52,8 @@ export async function POST(request: NextRequest) {
   const { data, error } = await serviceClient
     .from("invoices")
     .insert({
-      invoice_number: invoiceNumber as string,
+      invoice_number: invoiceNumber,
+      invoice_type: invoiceType,
       job_order_id: body.job_order_id || null,
       customer_name,
       customer_email: body.customer_email || null,
@@ -55,6 +66,9 @@ export async function POST(request: NextRequest) {
       currency: body.currency || "SAR",
       due_date: body.due_date || null,
       payment_notes: body.payment_notes || null,
+      port_of_loading: body.port_of_loading || null,
+      packages_count: body.packages_count || null,
+      final_destination: body.final_destination || null,
       created_by: user.id,
       updated_by: user.id,
     })
