@@ -57,11 +57,9 @@ const navItems = [
     href: "/waybills",
     icon: FileCheck2,
   },
-  {
-    label: "Finance",
-    href: "/finance",
-    icon: Banknote,
-  },
+  ...(process.env.NEXT_PUBLIC_SHOW_FINANCE === "true"
+    ? [{ label: "Finance", href: "/finance", icon: Banknote }]
+    : []),
   {
     label: "Audit Logs",
     href: "/audit-logs",
