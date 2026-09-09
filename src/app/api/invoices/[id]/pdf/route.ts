@@ -19,7 +19,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   const serviceClient = createServiceClient();
   const { data: invoice, error } = await serviceClient
     .from("invoices")
-    .select("*")
+    .select("*, job_order:job_orders(job_number)")
     .eq("id", id)
     .single();
 
