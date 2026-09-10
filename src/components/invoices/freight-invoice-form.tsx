@@ -59,6 +59,11 @@ export function FreightInvoiceForm() {
     invoice_number: "",
     customer_name: "",
     customer_address: "",
+    customer_phone: "",
+    customer_email: "",
+    customer_contact_person: "",
+    shipper: "",
+    payment_terms: "COD",
     job_order_id: "none",
     port_of_loading: "Jebel Ali, UAE",
     packages_count: "",
@@ -108,6 +113,11 @@ export function FreightInvoiceForm() {
           invoice_number: form.invoice_number.trim(),
           customer_name: form.customer_name.trim(),
           customer_address: form.customer_address || null,
+          customer_phone: form.customer_phone || null,
+          customer_email: form.customer_email || null,
+          customer_contact_person: form.customer_contact_person || null,
+          shipper: form.shipper || null,
+          payment_terms: form.payment_terms || null,
           job_order_id: form.job_order_id === "none" ? null : form.job_order_id,
           currency: form.currency,
           port_of_loading: form.port_of_loading || null,
@@ -161,7 +171,27 @@ export function FreightInvoiceForm() {
           </div>
           <div className="md:col-span-2 space-y-1.5">
             <Label>Customer Address</Label>
-            <Textarea value={form.customer_address} onChange={e => setF("customer_address", e.target.value)} rows={2} placeholder="Billing address" />
+            <Textarea value={form.customer_address} onChange={e => setF("customer_address", e.target.value)} rows={2} placeholder="City and country (e.g. RIYADH&#10;KINGDOM OF SAUDI ARABIA.)" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Customer Tel / MOB</Label>
+            <Input value={form.customer_phone} onChange={e => setF("customer_phone", e.target.value)} placeholder="+966 57 404 4440" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Customer Email</Label>
+            <Input value={form.customer_email} onChange={e => setF("customer_email", e.target.value)} placeholder="customer@example.com" />
+          </div>
+          <div className="md:col-span-2 space-y-1.5">
+            <Label>Contact Person</Label>
+            <Input value={form.customer_contact_person} onChange={e => setF("customer_contact_person", e.target.value)} placeholder="Contact person name" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Shipper</Label>
+            <Input value={form.shipper} onChange={e => setF("shipper", e.target.value)} placeholder="Shipper name" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Payment Terms</Label>
+            <Input value={form.payment_terms} onChange={e => setF("payment_terms", e.target.value)} placeholder="COD / Credit 30 days" />
           </div>
           <div className="space-y-1.5">
             <Label>Linked Job Order</Label>

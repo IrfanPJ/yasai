@@ -483,6 +483,10 @@ export interface Invoice {
   customer_name: string;
   customer_email?: string;
   customer_address?: string;
+  customer_phone?: string;
+  customer_contact_person?: string;
+  shipper?: string;
+  payment_terms?: string;
   line_items: InvoiceLineItem[];
   subtotal: number;
   tax_rate: number;
