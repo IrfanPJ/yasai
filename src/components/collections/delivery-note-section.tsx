@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import type { DeliveryNote, DeliveryNoteItem } from "@/types";
+import type { DeliveryNote, DeliveryNoteItem, GoodsCollectionNote } from "@/types";
 
 const inputCls =
   "w-full px-2.5 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-md " +
@@ -70,15 +70,34 @@ function toForm(dn: DeliveryNote | null): EmptyForm {
 interface Props {
   collectionId: string;
   deliveryNote: DeliveryNote | null;
+  gcn?: GoodsCollectionNote;
 }
 
-export function DeliveryNoteSection({ collectionId, deliveryNote }: Props) {
+export function DeliveryNoteSection({ collectionId, deliveryNote, gcn }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+
+  function fromGcn(g: GoodsCollectionNote): EmptyForm {
+    return {
+      doc_number: "",
+      doc_date: new Date().toISOString().slice(0, 10),
+      job_number: "",
+      shipper: g.shipper_name || "",
+      ref_number: g.collection_number || "",
+      destination: g.destination || "",
+      customer_name: g.consignee_name || "",
+      customer_address: "",
+      customer_phone: g.phone || "",
+      customer_email: g.email || "",
+      notes: g.special_instructions || "",
+      receiver_name: g.contact_person || "",
+      received_date: "",
+    };
+  }
 
   const [form, setForm] = useState<EmptyForm>(toForm(deliveryNote));
   const [items, setItems] = useState<DeliveryNoteItem[]>(
@@ -176,7 +195,7 @@ export function DeliveryNoteSection({ collectionId, deliveryNote }: Props) {
             variant="outline"
             size="sm"
             className="gap-1.5 border-[#071A3A] text-[#071A3A] hover:bg-[#071A3A] hover:text-white dark:border-white dark:text-white transition-colors"
-            onClick={() => setEditing(true)}
+            onClick={() => { if (gcn) setForm(fromGcn(gcn)); setEditing(true); }}
           >
             <Plus className="h-3.5 w-3.5" />
             Add Delivery Note

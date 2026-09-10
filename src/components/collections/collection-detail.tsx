@@ -536,7 +536,7 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
       </Card>
 
       {/* ── Delivery Note ── */}
-      <DeliveryNoteSection collectionId={collection.id} deliveryNote={deliveryNote} />
+      <DeliveryNoteSection collectionId={collection.id} deliveryNote={deliveryNote} gcn={collection} />
 
       {/* ── QR Code + PDF ── */}
       {(collection.qr_url || collection.pdf_url) && (
