@@ -2525,6 +2525,9 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
 <html>
 <head>
 <meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   @page { size: A4; margin: 0; }
@@ -2541,21 +2544,42 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
 
   /* ── LETTERHEAD ── */
   .lh {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 16px 8px; background: white;
-    border-bottom: 3px solid ${NAVY};
+    display: flex; align-items: center;
+    padding: 8px 14px; background: white;
+    border-bottom: 3px solid ${ORANGE};
     flex-shrink: 0;
   }
-  .lh-logo { display: flex; align-items: center; height: 56px; }
-  .lh-logo img { height: 52px; width: auto; object-fit: contain; }
-  .lh-addr {
-    display: flex; align-items: flex-start; gap: 5px;
-    font-size: 8pt; color: #444; text-align: right; line-height: 1.5;
+  .lh-logo {
+    display: flex; align-items: center;
+    padding-right: 14px; border-right: 2.5px solid ${ORANGE};
+    min-width: 110px; height: 64px;
   }
-  .lh-addr-pin {
+  .lh-logo img { height: 58px; width: auto; object-fit: contain; }
+  .lh-center { flex: 1; padding: 0 14px; }
+  .lh-title-en { font-size: 12pt; font-weight: 900; color: ${NAVY}; letter-spacing: 0.5px; }
+  .lh-subtitle { font-size: 7pt; color: #888; margin-top: 1px; }
+  .lh-ar {
+    font-size: 10pt; font-weight: bold; color: ${NAVY};
+    direction: rtl; text-align: right; min-width: 160px;
+    font-family: 'Noto Naskh Arabic', Arial, sans-serif;
+  }
+
+  /* ── CONTACT ROW ── */
+  .contact-row {
+    display: flex; align-items: center; padding: 3px 14px;
+    background: white; gap: 14px; font-size: 6pt; color: #666;
+    border-bottom: 1px solid #eee; flex-shrink: 0;
+  }
+  .contact-row .ci { display: flex; align-items: center; gap: 3px; }
+  .ci-icon {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 16px; height: 16px; background: ${NAVY};
-    border-radius: 50%; color: white; font-size: 9px; flex-shrink: 0; margin-top: 1px;
+    width: 12px; height: 12px; background: ${ORANGE};
+    border-radius: 50%; color: white; font-size: 7px; flex-shrink: 0;
+  }
+  .web-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 12px; height: 12px; background: ${NAVY};
+    border-radius: 50%; color: white; font-size: 7px; flex-shrink: 0;
   }
 
   /* ── CONTENT AREA ── */
@@ -2576,8 +2600,6 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
     padding: 8px 10px; background: white;
   }
   .cust-name { font-weight: 700; font-size: 9.5pt; color: ${NAVY}; }
-  .cust-line { color: #444; }
-  .cust-contact { color: #444; font-size: 8pt; }
   .meta-box { flex: 1; border: 1.5px solid ${BORDER}; border-radius: 5px; overflow: hidden; }
   .meta-hdr {
     background: ${NAVY}; color: white; font-size: 7pt; font-weight: 800;
@@ -2585,7 +2607,7 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
   }
   .meta-row { display: flex; border-bottom: 1px solid #eee; font-size: 8.5pt; }
   .meta-row:last-child { border-bottom: none; }
-  .meta-key { width: 80px; padding: 3px 8px; color: #666; font-weight: 600; border-right: 1px solid #eee; flex-shrink: 0; }
+  .meta-key { width: 85px; padding: 3px 8px; color: #666; font-weight: 600; border-right: 1px solid #eee; flex-shrink: 0; }
   .meta-colon { padding: 3px 3px; color: #888; flex-shrink: 0; }
   .meta-val { padding: 3px 6px; color: ${NAVY}; font-weight: 700; }
 
@@ -2614,11 +2636,18 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
   .grand-num { text-align: right; font-family: monospace; font-weight: 800; color: ${ORANGE}; }
 
   /* ── BANK DETAILS ── */
-  .bank-section { padding: 6px 0 4px; }
-  .bank-hdr { font-size: 8.5pt; font-weight: 800; color: ${NAVY}; margin-bottom: 4px; }
-  .bank-grid { display: grid; grid-template-columns: 60px 1fr; gap: 2px 12px; font-size: 8.5pt; }
-  .bk { font-weight: 700; color: #444; white-space: nowrap; }
-  .bv { color: #111; }
+  .bank-section {
+    border: 1.5px solid ${BORDER}; border-radius: 5px; overflow: hidden;
+  }
+  .bank-hdr {
+    background: ${LIGHT_ORANGE}; border-bottom: 1.5px solid ${ORANGE};
+    padding: 5px 10px; font-size: 8pt; font-weight: 800;
+    color: ${NAVY}; text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .bank-body { padding: 8px 12px; }
+  .bank-grid { display: grid; grid-template-columns: auto 1fr; gap: 3px 16px; font-size: 8.5pt; }
+  .bk { font-weight: 700; color: #555; white-space: nowrap; }
+  .bv { color: #111; font-family: monospace; }
 
   /* ── SIGNATURES ── */
   .sig-row { display: flex; gap: 30px; padding: 14px 0 8px; border-top: 1.5px solid ${BORDER}; }
@@ -2636,15 +2665,8 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
   /* ── BOTTOM BAR ── */
   .bottom-bar {
     background: ${NAVY}; color: white;
-    display: flex; align-items: center; justify-content: center; gap: 20px;
-    font-size: 7.5pt; padding: 7px 14px;
-    flex-shrink: 0; margin-top: auto;
-  }
-  .bar-item { display: flex; align-items: center; gap: 5px; }
-  .bar-icon {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 16px; height: 16px; border: 1.5px solid white;
-    border-radius: 50%; font-size: 8px; flex-shrink: 0;
+    text-align: center; font-size: 6.5pt; padding: 5px 14px;
+    letter-spacing: 0.2px; flex-shrink: 0; margin-top: auto;
   }
 </style>
 </head>
@@ -2653,27 +2675,34 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
   <!-- LETTERHEAD -->
   <div class="lh">
     <div class="lh-logo">
-      ${logoDataUrl ? `<img src="${logoDataUrl}" alt="YASAI">` : `<span style="font-size:16pt;font-weight:900;color:${NAVY};">YASAI<br><span style="font-size:7pt;letter-spacing:3px;font-weight:400;">LOGISTICS</span></span>`}
+      ${logoDataUrl ? `<img src="${logoDataUrl}" alt="YASAI">` : ""}
     </div>
-    <div class="lh-addr">
-      <div class="lh-addr-pin">&#9679;</div>
-      <div>7579, Ibn al malah Al nahda District,<br>Riyadh, Saudi Arabia</div>
+    <div class="lh-center">
+      <div class="lh-title-en">YASAI LOGISTICS COMPANY</div>
+      <div class="lh-subtitle">Freight &amp; Logistics Solutions</div>
     </div>
+    <div class="lh-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1575;&#1578;</div>
+  </div>
+
+  <!-- CONTACT ROW -->
+  <div class="contact-row">
+    <div class="ci">H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
+    <div class="ci">Tel: +966 55 932 6687</div>
+    <div class="ci">info@yasailogistics.com</div>
+    <div class="ci">www.yasailogistics.com</div>
   </div>
 
   <!-- CONTENT -->
   <div class="content">
 
     <!-- FREIGHT DETAILS TITLE -->
-    <div class="freight-title">FREIGHT DETAILS</div>
+    <div class="freight-title">FREIGHT INVOICE</div>
 
     <!-- CUSTOMER + META -->
     <div class="top-row">
       <div class="cust-block">
         <div class="cust-name">M/s. ${esc(invoice.customer_name)}</div>
-        ${invoice.customer_address ? invoice.customer_address.split("\n").map(l => `<div class="cust-line">${esc(l)}</div>`).join("") : ""}
-        ${(invoice.customer_phone || invoice.customer_email) ? `<div class="cust-contact" style="margin-top:3px;">Tel : ${esc(invoice.customer_phone || "")} &nbsp;&nbsp;&nbsp; Email: ${esc(invoice.customer_email || "")}</div>` : ""}
-        ${invoice.customer_contact_person ? `<div class="cust-contact">Contact person : ${esc(invoice.customer_contact_person)} &nbsp;&nbsp;&nbsp; MOB: ${esc(invoice.customer_phone || "")}</div>` : ""}
+        ${invoice.customer_address ? `<div style="margin-top:3px;color:#444;">${esc(invoice.customer_address).replace(/\n/g, "<br>")}</div>` : ""}
       </div>
       <div class="meta-box">
         <div class="meta-hdr">Invoice Details</div>
@@ -2689,17 +2718,17 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
           <div class="meta-key">Job No</div><div class="meta-colon">:</div>
           <div class="meta-val">${esc((invoice.job_order as { job_number?: string }).job_number!)}</div>
         </div>` : ""}
-        ${invoice.shipper ? `<div class="meta-row">
-          <div class="meta-key">Shipper</div><div class="meta-colon">:</div>
-          <div class="meta-val">${esc(invoice.shipper)}</div>
+        ${invoice.port_of_loading ? `<div class="meta-row">
+          <div class="meta-key">Port of Loading</div><div class="meta-colon">:</div>
+          <div class="meta-val">${esc(invoice.port_of_loading)}</div>
         </div>` : ""}
         ${invoice.final_destination ? `<div class="meta-row">
           <div class="meta-key">Destination</div><div class="meta-colon">:</div>
           <div class="meta-val">${esc(invoice.final_destination)}</div>
         </div>` : ""}
-        ${invoice.payment_terms ? `<div class="meta-row">
-          <div class="meta-key">Payment</div><div class="meta-colon">:</div>
-          <div class="meta-val">${esc(invoice.payment_terms)}</div>
+        ${invoice.packages_count ? `<div class="meta-row">
+          <div class="meta-key">Packages</div><div class="meta-colon">:</div>
+          <div class="meta-val">${esc(invoice.packages_count)}</div>
         </div>` : ""}
       </div>
     </div>
@@ -2748,20 +2777,14 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
     <!-- BANK DETAILS -->
     <div class="bank-section">
       <div class="bank-hdr">Our Bank Details</div>
-      ${currency === "AED" ? `
-      <div class="bank-grid">
-        <span class="bk">A/c. No</span><span class="bv">14627562920003</span>
-        <span class="bk">IBAN</span><span class="bv">AE150030014627562920003</span>
-        <span class="bk">A/c. Name</span><span class="bv">YASAI LOGISTICS LLC</span>
-        <span class="bk">Bank</span><span class="bv">Abu Dhabi Commercial Bank PJSC (ADCB)</span>
-        <span class="bk">Swift</span><span class="bv">ADCBAEAA</span>
-      </div>` : `
-      <div class="bank-grid">
-        <span class="bk">A/c. No</span><span class="bv">6820 63417 42000</span>
-        <span class="bk">IBAN</span><span class="bv">SA 410 50000 6820 63417 42000</span>
-        <span class="bk">A/c. Name</span><span class="bv">Altaawn Aldhhbyt Altjaryt Company</span>
-        <span class="bk">Bank</span><span class="bv">Alinma Bank</span>
-      </div>`}
+      <div class="bank-body">
+        <div class="bank-grid">
+          <span class="bk">A/c. No</span><span class="bv">6820 63417 42000</span>
+          <span class="bk">IBAN</span><span class="bv">SA 410 50000 6820 63417 42000</span>
+          <span class="bk">A/c. Name</span><span class="bv">Altaawn Aldhhbyt Altjaryt Company</span>
+          <span class="bk">Bank</span><span class="bv">Alinma Bank</span>
+        </div>
+      </div>
     </div>
 
     <!-- SIGNATURES -->
@@ -2786,9 +2809,7 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
 
   <!-- BOTTOM BAR -->
   <div class="bottom-bar">
-    <div class="bar-item"><span class="bar-icon">&#9742;</span> +966 55 932 6687</div>
-    <div class="bar-item"><span class="bar-icon">&#9993;</span> info@yasailogistics.com</div>
-    <div class="bar-item"><span class="bar-icon">&#9675;</span> www.yasailogistics.com</div>
+    YASAI Logistics Company &nbsp;|&nbsp; Tel: +966 55 932 6687 &nbsp;|&nbsp; info@yasailogistics.com &nbsp;|&nbsp; www.yasailogistics.com &nbsp;|&nbsp; Trusted Name in Cargo Consolidation
   </div>
 
 </body>
