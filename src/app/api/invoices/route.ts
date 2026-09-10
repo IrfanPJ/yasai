@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
       customer_contact_person: body.customer_contact_person || null,
       shipper: body.shipper || null,
       payment_terms: body.payment_terms || null,
+      manual_job_number: body.manual_job_number || null,
       line_items: lineItems,
       subtotal,
       tax_rate: taxRate,

@@ -2716,9 +2716,9 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
           <div class="meta-key">Date</div><div class="meta-colon">:</div>
           <div class="meta-val">${fmtDate(invoice.issued_at || invoice.created_at)}</div>
         </div>
-        ${(invoice.job_order as { job_number?: string } | null)?.job_number ? `<div class="meta-row">
+        ${((invoice.job_order as { job_number?: string } | null)?.job_number || invoice.manual_job_number) ? `<div class="meta-row">
           <div class="meta-key">Job No</div><div class="meta-colon">:</div>
-          <div class="meta-val">${esc((invoice.job_order as { job_number?: string }).job_number!)}</div>
+          <div class="meta-val">${esc((invoice.job_order as { job_number?: string } | null)?.job_number || invoice.manual_job_number || "")}</div>
         </div>` : ""}
         ${invoice.shipper ? `<div class="meta-row">
           <div class="meta-key">Shipper</div><div class="meta-colon">:</div>

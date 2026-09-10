@@ -487,6 +487,7 @@ export interface Invoice {
   customer_contact_person?: string;
   shipper?: string;
   payment_terms?: string;
+  manual_job_number?: string;
   line_items: InvoiceLineItem[];
   subtotal: number;
   tax_rate: number;

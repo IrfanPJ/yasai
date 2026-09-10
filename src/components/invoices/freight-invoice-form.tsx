@@ -64,6 +64,7 @@ export function FreightInvoiceForm() {
     customer_contact_person: "",
     shipper: "",
     payment_terms: "COD",
+    manual_job_number: "",
     job_order_id: "none",
     port_of_loading: "Jebel Ali, UAE",
     packages_count: "",
@@ -118,6 +119,7 @@ export function FreightInvoiceForm() {
           customer_contact_person: form.customer_contact_person || null,
           shipper: form.shipper || null,
           payment_terms: form.payment_terms || null,
+          manual_job_number: form.manual_job_number || null,
           job_order_id: form.job_order_id === "none" ? null : form.job_order_id,
           currency: form.currency,
           port_of_loading: form.port_of_loading || null,
@@ -194,7 +196,11 @@ export function FreightInvoiceForm() {
             <Input value={form.payment_terms} onChange={e => setF("payment_terms", e.target.value)} placeholder="COD / Credit 30 days" />
           </div>
           <div className="space-y-1.5">
-            <Label>Linked Job Order</Label>
+            <Label>Job No (manual)</Label>
+            <Input value={form.manual_job_number} onChange={e => setF("manual_job_number", e.target.value)} placeholder="Type job number manually" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Linked Job Order <span className="text-muted-foreground text-xs">(optional — overrides manual job no)</span></Label>
             <Select value={form.job_order_id} onValueChange={v => setF("job_order_id", v)}>
               <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
               <SelectContent>
