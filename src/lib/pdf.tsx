@@ -2748,12 +2748,20 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
     <!-- BANK DETAILS -->
     <div class="bank-section">
       <div class="bank-hdr">Our Bank Details</div>
+      ${currency === "AED" ? `
+      <div class="bank-grid">
+        <span class="bk">A/c. No</span><span class="bv">14627562920003</span>
+        <span class="bk">IBAN</span><span class="bv">AE150030014627562920003</span>
+        <span class="bk">A/c. Name</span><span class="bv">YASAI LOGISTICS LLC</span>
+        <span class="bk">Bank</span><span class="bv">Abu Dhabi Commercial Bank PJSC (ADCB)</span>
+        <span class="bk">Swift</span><span class="bv">ADCBAEAA</span>
+      </div>` : `
       <div class="bank-grid">
         <span class="bk">A/c. No</span><span class="bv">6820 63417 42000</span>
         <span class="bk">IBAN</span><span class="bv">SA 410 50000 6820 63417 42000</span>
         <span class="bk">A/c. Name</span><span class="bv">Altaawn Aldhhbyt Altjaryt Company</span>
         <span class="bk">Bank</span><span class="bv">Alinma Bank</span>
-      </div>
+      </div>`}
     </div>
 
     <!-- SIGNATURES -->
