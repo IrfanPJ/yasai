@@ -2703,6 +2703,8 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
       <div class="cust-block">
         <div class="cust-name">M/s. ${esc(invoice.customer_name)}</div>
         ${invoice.customer_address ? `<div style="margin-top:3px;color:#444;">${esc(invoice.customer_address).replace(/\n/g, "<br>")}</div>` : ""}
+        ${(invoice.customer_phone || invoice.customer_email) ? `<div style="margin-top:3px;color:#444;">Tel : ${esc(invoice.customer_phone || "")} &nbsp;&nbsp;&nbsp; Email: ${esc(invoice.customer_email || "")}</div>` : ""}
+        ${invoice.customer_contact_person ? `<div style="color:#444;">Contact person : ${esc(invoice.customer_contact_person)} &nbsp;&nbsp;&nbsp; MOB: ${esc(invoice.customer_phone || "")}</div>` : ""}
       </div>
       <div class="meta-box">
         <div class="meta-hdr">Invoice Details</div>
@@ -2718,17 +2720,17 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
           <div class="meta-key">Job No</div><div class="meta-colon">:</div>
           <div class="meta-val">${esc((invoice.job_order as { job_number?: string }).job_number!)}</div>
         </div>` : ""}
-        ${invoice.port_of_loading ? `<div class="meta-row">
-          <div class="meta-key">Port of Loading</div><div class="meta-colon">:</div>
-          <div class="meta-val">${esc(invoice.port_of_loading)}</div>
+        ${invoice.shipper ? `<div class="meta-row">
+          <div class="meta-key">Shipper</div><div class="meta-colon">:</div>
+          <div class="meta-val">${esc(invoice.shipper)}</div>
         </div>` : ""}
         ${invoice.final_destination ? `<div class="meta-row">
           <div class="meta-key">Destination</div><div class="meta-colon">:</div>
           <div class="meta-val">${esc(invoice.final_destination)}</div>
         </div>` : ""}
-        ${invoice.packages_count ? `<div class="meta-row">
-          <div class="meta-key">Packages</div><div class="meta-colon">:</div>
-          <div class="meta-val">${esc(invoice.packages_count)}</div>
+        ${invoice.payment_terms ? `<div class="meta-row">
+          <div class="meta-key">Payment</div><div class="meta-colon">:</div>
+          <div class="meta-val">${esc(invoice.payment_terms)}</div>
         </div>` : ""}
       </div>
     </div>
