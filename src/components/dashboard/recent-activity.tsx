@@ -65,10 +65,10 @@ export function RecentActivity({ items }: RecentActivityProps) {
                 <div className="flex-shrink-0">
                   <span
                     className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                      STATUS_COLORS[item.status]
+                      STATUS_COLORS[item.current_stage]
                     }`}
                   >
-                    {STATUS_LABELS[item.status]}
+                    {STATUS_LABELS[item.current_stage]}
                   </span>
                 </div>
 

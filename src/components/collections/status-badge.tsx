@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
-import type { CollectionStatus } from "@/types";
+import type { TrackingStage } from "@/types";
 import { STATUS_LABELS, STATUS_COLORS } from "@/types";
 
 interface StatusBadgeProps {
-  status: CollectionStatus;
+  status: TrackingStage;
   className?: string;
 }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth-role";
+import { logTrackingEvents } from "@/lib/tracking-events";
 
 export const dynamic = "force-dynamic";
 
@@ -19,12 +20,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "storage_location is required" }, { status: 400 });
   }
 
+  const { data: warehouse } = await serviceClient
+    .from("warehouses")
+    .select("id")
+    .eq("code", storageLocation)
+    .maybeSingle();
+
   const { data, error } = await serviceClient
     .from("goods_collection_notes")
     .update({
       warehouse_received_by: user.id,
       warehouse_received_at: new Date().toISOString(),
       storage_location: storageLocation,
+      warehouse_id: warehouse?.id ?? null,
       palletized: Boolean(body.palletized),
       status: "in_warehouse",
       updated_by: user.id,
@@ -34,6 +42,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await logTrackingEvents(serviceClient, {
+    gcnIds: [id],
+    eventType: "received_at_warehouse",
+    performedBy: user.id,
+    toWarehouseId: warehouse?.id,
+    toLocation: storageLocation,
+  });
 
   await serviceClient.from("activity_logs").insert({
     user_id: user.id,

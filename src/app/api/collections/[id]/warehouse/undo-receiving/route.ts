@@ -34,11 +34,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       warehouse_received_at: null,
       warehouse_received_by: null,
       storage_location: null,
+      warehouse_id: null,
       palletized: false,
       warehouse_report_status: "not_submitted",
       warehouse_report_notes: null,
       warehouse_report_rejection_reason: null,
       status: "collected",
+      current_stage: "collected",
       updated_by: user.id,
     })
     .eq("id", id)

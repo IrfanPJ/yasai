@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth-role";
+import { logTrackingEvents } from "@/lib/tracking-events";
 
 export const dynamic = "force-dynamic";
 
@@ -32,10 +33,12 @@ export async function POST(_: unknown, { params }: RouteParams) {
 
   if (gcnLinks && gcnLinks.length > 0) {
     const gcnIds = gcnLinks.map((r: { gcn_id: string }) => r.gcn_id);
-    await serviceClient
-      .from("goods_collection_notes")
-      .update({ status: "delivered", updated_by: user.id })
-      .in("id", gcnIds);
+    await logTrackingEvents(serviceClient, {
+      gcnIds,
+      eventType: "delivered",
+      performedBy: user.id,
+      relatedJobOrderId: id,
+    });
   }
 
   await serviceClient.from("activity_logs").insert({

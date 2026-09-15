@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth-role";
+import { logTrackingEvents } from "@/lib/tracking-events";
 
 export const dynamic = "force-dynamic";
 
@@ -41,13 +42,15 @@ export async function POST(_: unknown, { params }: RouteParams) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Flip all linked GCNs to in_transit
+  // Log a dispatched-to-transit tracking event for every linked GCN
   if (gcnLinks && gcnLinks.length > 0) {
     const gcnIds = gcnLinks.map((r: { gcn_id: string }) => r.gcn_id);
-    await serviceClient
-      .from("goods_collection_notes")
-      .update({ status: "in_transit", updated_by: user.id })
-      .in("id", gcnIds);
+    await logTrackingEvents(serviceClient, {
+      gcnIds,
+      eventType: "dispatched_transit",
+      performedBy: user.id,
+      relatedJobOrderId: id,
+    });
   }
 
   await serviceClient.from("activity_logs").insert({

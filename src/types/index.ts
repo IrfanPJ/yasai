@@ -6,13 +6,55 @@ export type CargoType = "air" | "sea" | "land";
 
 export type BillingType = "customer" | "supplier";
 
-export type CollectionStatus =
+// The GCN's own persisted status — only ever these two now. Everything that
+// happens after warehousing (transfers, transit, customs, delivery) lives in
+// gcn_tracking_events instead; see TrackingStage / TrackingEvent below.
+export type CollectionStatus = "collected" | "in_warehouse";
+
+// The full journey, for display only — computed from the latest tracking
+// event and denormalized onto GoodsCollectionNote.current_stage.
+export type TrackingStage =
   | "collected"
   | "in_warehouse"
   | "in_transit"
   | "customs_clearance"
   | "out_for_delivery"
   | "delivered";
+
+export type TrackingEventType =
+  | "received_at_warehouse"
+  | "warehouse_transfer"
+  | "dispatched_transit"
+  | "customs_cleared"
+  | "out_for_delivery"
+  | "delivered";
+
+export type TrackingApprovalStatus = "auto" | "pending" | "approved" | "rejected";
+
+export interface TrackingEvent {
+  id: string;
+  gcn_id: string;
+  event_type: TrackingEventType;
+  from_warehouse_id?: string;
+  to_warehouse_id?: string;
+  from_location?: string;
+  to_location?: string;
+  approval_status: TrackingApprovalStatus;
+  requested_by?: string;
+  requested_at: string;
+  approved_by?: string;
+  approved_at?: string;
+  rejection_reason?: string;
+  related_job_order_id?: string;
+  notes?: string;
+  created_at: string;
+  // Joined for display
+  from_warehouse?: Warehouse;
+  to_warehouse?: Warehouse;
+  requested_by_user?: UserProfile;
+  approved_by_user?: UserProfile;
+  gcn?: Pick<GoodsCollectionNote, "id" | "collection_number" | "shipper_name" | "consignee_name">;
+}
 
 export interface Warehouse {
   id: string;
@@ -83,6 +125,8 @@ export interface GoodsCollectionNote {
 
   // Warehouse receiving (Stage 2)
   storage_location?: string;
+  warehouse_id?: string;
+  warehouse?: Warehouse;
   palletized: boolean;
   warehouse_received_by?: string;
   warehouse_received_at?: string;
@@ -96,8 +140,10 @@ export interface GoodsCollectionNote {
   warehouse_report_approved_at?: string;
   warehouse_report_rejection_reason?: string;
 
-  // Status
+  // Status — collected/in_warehouse only; see current_stage for display
+  // and TrackingEvent (gcn_tracking_events) for the full journey.
   status: CollectionStatus;
+  current_stage: TrackingStage;
 
   // Files
   pdf_url?: string;
@@ -106,8 +152,9 @@ export interface GoodsCollectionNote {
   packing_list_url?: string | null;
   country_of_origin_url?: string | null;
 
-  // Status timeline
-  status_history?: { status: CollectionStatus; changed_at: string }[];
+  // Legacy status timeline (pre-tracking-events); may contain any
+  // TrackingStage value from before status was collapsed to 2 values.
+  status_history?: { status: TrackingStage; changed_at: string }[];
 
   // Metadata
   created_by?: string;
@@ -207,7 +254,7 @@ export interface CollectionFormData {
   goods_image_url?: string;
 }
 
-export const STATUS_LABELS: Record<CollectionStatus, string> = {
+export const STATUS_LABELS: Record<TrackingStage, string> = {
   collected: "Collected",
   in_warehouse: "In Warehouse",
   in_transit: "In Transit",
@@ -216,7 +263,16 @@ export const STATUS_LABELS: Record<CollectionStatus, string> = {
   delivered: "Delivered",
 };
 
-export const STATUS_COLORS: Record<CollectionStatus, string> = {
+export const TRACKING_EVENT_LABELS: Record<TrackingEventType, string> = {
+  received_at_warehouse: "Received at Warehouse",
+  warehouse_transfer: "Warehouse Transfer",
+  dispatched_transit: "Dispatched — In Transit",
+  customs_cleared: "Customs Cleared",
+  out_for_delivery: "Out for Delivery",
+  delivered: "Delivered",
+};
+
+export const STATUS_COLORS: Record<TrackingStage, string> = {
   collected: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   in_warehouse: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   in_transit: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",

@@ -14,6 +14,7 @@ import {
   Receipt,
   FileCheck2,
   Banknote,
+  Warehouse,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { YasaiLogo } from "./logo";
@@ -36,6 +37,11 @@ const navItems = [
     label: "Collections",
     href: "/collections",
     icon: FileText,
+  },
+  {
+    label: "Warehouse",
+    href: "/warehouse",
+    icon: Warehouse,
   },
   {
     label: "Job Orders",

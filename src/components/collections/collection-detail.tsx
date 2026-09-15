@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "./status-badge";
 import { WarehouseReceivingPanel } from "./warehouse-receiving-panel";
+import { TrackingTimeline } from "./tracking-timeline";
 import { DeliveryNoteSection } from "./delivery-note-section";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -39,10 +40,10 @@ interface CollectionDetailProps {
   deliveryNote: DeliveryNote | null;
 }
 
-const STATUS_ORDER: CollectionStatus[] = [
-  "collected", "in_warehouse", "in_transit",
-  "customs_clearance", "out_for_delivery", "delivered",
-];
+// Only these two are ever written to GCN.status now — everything past
+// warehousing happens via Job Orders / warehouse transfers instead, which
+// drive current_stage (see the read-only badge above this selector).
+const STATUS_ORDER: CollectionStatus[] = ["collected", "in_warehouse"];
 
 export function CollectionDetail({ collection, userRole, deliveryNote }: CollectionDetailProps) {
   const router = useRouter();
@@ -215,7 +216,7 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
       <div className="flex flex-col gap-3 mb-6">
         {/* Info row */}
         <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge status={collection.status} />
+          <StatusBadge status={collection.current_stage} />
           <span className="text-muted-foreground text-sm">·</span>
           <span className="text-sm text-muted-foreground font-mono">
             {collection.collection_number}
@@ -228,23 +229,27 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
 
         {/* Actions row */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Status selector */}
-          <Select
-            value={collection.status}
-            onValueChange={(v) => handleStatusChange(v as CollectionStatus)}
-            disabled={updatingStatus}
-          >
-            <SelectTrigger className="h-9 text-sm gap-1.5 flex-1 sm:flex-none sm:min-w-36">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_ORDER.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {STATUS_LABELS[s]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Status selector — only while the GCN hasn't left the warehouse yet.
+              Once it's dispatched, the journey is driven by Job Orders /
+              warehouse transfers, not this manual toggle. */}
+          {(collection.current_stage === "collected" || collection.current_stage === "in_warehouse") && (
+            <Select
+              value={collection.status}
+              onValueChange={(v) => handleStatusChange(v as CollectionStatus)}
+              disabled={updatingStatus}
+            >
+              <SelectTrigger className="h-9 text-sm gap-1.5 flex-1 sm:flex-none sm:min-w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_ORDER.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {STATUS_LABELS[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           {/* Edit */}
           <Button asChild variant="outline" size="sm" className="gap-1.5">
@@ -457,6 +462,7 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
 
       {/* ── Warehouse Receiving ── */}
       <WarehouseReceivingPanel collection={collection} userRole={userRole} />
+      <TrackingTimeline collection={collection} userRole={userRole} />
 
       {/* ── Shipment Documents ── */}
       <Card className="border-none shadow-sm mt-6">
