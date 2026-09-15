@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Loader2, FileText, Save, X, ImagePlus, Trash2, Plus } from "lucide-react";
 import { SignaturePad } from "./signature-pad";
 import { cn } from "@/lib/utils";
-import type { GoodsCollectionNote, CargoType, BillingType, DeliveryNoteItem } from "@/types";
+import type { GoodsCollectionNote, CargoType, BillingType, DeliveryNoteItem, PalletDimension } from "@/types";
 
 const schema = z.object({
   shipper_name: z.string().min(1, "Required"),
@@ -132,6 +132,35 @@ export function CollectionForm({
   function addDnItem() { setDnItems(p => [...p, { item_description: "", qty: "", unit: "", total_pallets: "", remark: "" }]); }
   function removeDnItem(i: number) { setDnItems(p => p.filter((_, idx) => idx !== i)); }
 
+  // Pallets → volume (CBM)
+  // `palletsTouched` guards against clobbering a pre-existing GCN's saved volume_cbm /
+  // num_packages the instant the edit form mounts: legacy records (saved before this
+  // feature existed) have no pallet_dimensions, so the calculator starts from one empty
+  // pallet — it must NOT auto-sync until the user actually interacts with it.
+  const emptyPallet = (): PalletDimension => ({ length_m: 0, width_m: 0, height_m: 0 });
+  const hasSavedPallets = !!(defaultValues?.pallet_dimensions && defaultValues.pallet_dimensions.length > 0);
+  const [pallets, setPallets] = useState<PalletDimension[]>(
+    hasSavedPallets ? defaultValues!.pallet_dimensions! : [emptyPallet()]
+  );
+  const [palletsTouched, setPalletsTouched] = useState(!isEdit || hasSavedPallets);
+
+  function handlePalletCountChange(count: number) {
+    setPalletsTouched(true);
+    setPallets((prev) =>
+      count > prev.length
+        ? [...prev, ...Array.from({ length: count - prev.length }, emptyPallet)]
+        : prev.slice(0, count)
+    );
+  }
+  function updatePallet(index: number, field: keyof PalletDimension, value: number) {
+    setPalletsTouched(true);
+    setPallets((prev) => prev.map((p, i) => (i === index ? { ...p, [field]: value } : p)));
+  }
+  function palletVolumeCbm(p: PalletDimension) {
+    return (p.length_m || 0) * (p.width_m || 0) * (p.height_m || 0);
+  }
+  const totalVolumeCbm = pallets.reduce((sum, p) => sum + palletVolumeCbm(p), 0);
+
   const {
     register,
     handleSubmit,
@@ -160,6 +189,16 @@ export function CollectionForm({
   const cargoType = watch("cargo_type");
   const billingType = watch("billing_type");
 
+  useEffect(() => {
+    if (!palletsTouched) return;
+    setValue("volume_cbm", Number(totalVolumeCbm.toFixed(3)));
+  }, [totalVolumeCbm, palletsTouched, setValue]);
+
+  useEffect(() => {
+    if (!palletsTouched) return;
+    setValue("num_packages", `${pallets.length} PLT`);
+  }, [pallets.length, palletsTouched, setValue]);
+
   async function handleGoodsImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -180,12 +219,19 @@ export function CollectionForm({
     setReceiverSig(undefined);
     setStaffSig(undefined);
     setGoodsImage(undefined);
+    setPallets([emptyPallet()]);
   }
 
   async function onSubmit(data: FormData) {
     setLoading(true);
     try {
-      const payload = { ...data, receiver_signature: receiverSig, staff_signature: staffSig, goods_image_url: goodsImage };
+      const payload = {
+        ...data,
+        ...(palletsTouched ? { pallet_dimensions: pallets } : {}),
+        receiver_signature: receiverSig,
+        staff_signature: staffSig,
+        goods_image_url: goodsImage,
+      };
       const url = isEdit ? `/api/collections/${collectionId}` : "/api/collections";
       const method = isEdit ? "PUT" : "POST";
 
@@ -317,16 +363,16 @@ export function CollectionForm({
               className={cn(inputCls, errors.destination && "border-red-400")}
             />
           </Field>
-          <Field label="No. of Packages">
-            <input {...register("num_packages")} placeholder="e.g. 1 PLT" className={inputCls} />
-          </Field>
-          <Field label="Volume (CBM)">
-            <input
-              {...register("volume_cbm")}
-              type="number" step="0.001" min="0"
-              placeholder="e.g. 0.60"
-              className={inputCls}
-            />
+          <Field label="No. of Packages (Pallets)">
+            <select
+              value={pallets.length}
+              onChange={(e) => handlePalletCountChange(Number(e.target.value))}
+              className={selectCls}
+            >
+              {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>{n} PLT</option>
+              ))}
+            </select>
           </Field>
           <Field label="Weight (Kgs)">
             <input
@@ -336,6 +382,58 @@ export function CollectionForm({
               className={inputCls}
             />
           </Field>
+        </div>
+
+        {/* ── PALLET DIMENSIONS → VOLUME ── */}
+        <SectionHeader>Pallet Dimensions (m)</SectionHeader>
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 space-y-3">
+          {pallets.map((pallet, i) => (
+            <div key={i} className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-end">
+              <Field label={`Pallet ${i + 1} — Length`}>
+                <input
+                  type="number" step="0.01" min="0"
+                  value={pallet.length_m || ""}
+                  onChange={(e) => updatePallet(i, "length_m", Number(e.target.value))}
+                  placeholder="m"
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Width">
+                <input
+                  type="number" step="0.01" min="0"
+                  value={pallet.width_m || ""}
+                  onChange={(e) => updatePallet(i, "width_m", Number(e.target.value))}
+                  placeholder="m"
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Height">
+                <input
+                  type="number" step="0.01" min="0"
+                  value={pallet.height_m || ""}
+                  onChange={(e) => updatePallet(i, "height_m", Number(e.target.value))}
+                  placeholder="m"
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Volume">
+                <div className={cn(inputCls, "bg-gray-50 dark:bg-[#071A3A]/60 text-gray-500")}>
+                  {palletVolumeCbm(pallet).toFixed(3)} m³
+                </div>
+              </Field>
+            </div>
+          ))}
+          {!palletsTouched && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              This record&apos;s existing volume ({(defaultValues?.volume_cbm ?? 0).toFixed(3)} CBM) is kept as-is
+              until you enter pallet dimensions above.
+            </p>
+          )}
+          <div className="flex justify-end pt-2 border-t border-gray-100 dark:border-gray-800">
+            <div className="text-sm font-semibold text-[#071A3A] dark:text-white">
+              Total Volume: {(palletsTouched ? totalVolumeCbm : defaultValues?.volume_cbm ?? 0).toFixed(3)} CBM
+            </div>
+          </div>
         </div>
 
         {/* ── BILLING & INSTRUCTIONS ── */}

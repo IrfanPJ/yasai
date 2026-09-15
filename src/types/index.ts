@@ -37,6 +37,12 @@ export interface UserProfile {
   updated_at: string;
 }
 
+export interface PalletDimension {
+  length_m: number;
+  width_m: number;
+  height_m: number;
+}
+
 export interface GoodsCollectionNote {
   id: string;
   collection_number: string;
@@ -62,6 +68,7 @@ export interface GoodsCollectionNote {
   num_packages?: string;
   package_type?: string;
   volume_cbm?: number;
+  pallet_dimensions?: PalletDimension[];
   weight_kg?: number;
 
   // Billing
@@ -192,6 +199,7 @@ export interface CollectionFormData {
   num_packages?: string;
   package_type?: string;
   volume_cbm?: number;
+  pallet_dimensions?: PalletDimension[];
   weight_kg?: number;
   billing_type?: BillingType;
   receiver_signature?: string;
