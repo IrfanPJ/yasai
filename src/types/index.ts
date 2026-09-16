@@ -535,6 +535,7 @@ export interface FundCollection {
   id: string;
   collection_number: string;
   invoice_id?: string;
+  account_id?: string;
   customer_name: string;
   amount: number;
   currency: string;
@@ -571,6 +572,8 @@ export interface FundTransfer {
   id: string;
   transfer_number: string;
   fund_collection_id?: string;
+  source_account_id?: string;
+  destination_account_id?: string;
   transfer_mode: FundTransferMode;
   amount: number;
   currency: string;
@@ -619,10 +622,34 @@ export interface BankProfile {
   updated_at: string;
 }
 
+export interface Account {
+  id: string;
+  name: string;
+  country?: string;
+  currency: string;
+  bank_profile_id?: string;
+  opening_balance: number;
+  is_active: boolean;
+  notes?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AccountBalance {
+  account_id: string;
+  name: string;
+  currency: string;
+  country?: string;
+  opening_balance: number;
+  balance: number;
+}
+
 export interface SupplierPayment {
   id: string;
   payment_number: string;
   fund_transfer_id?: string;
+  account_id?: string;
   supplier_name: string;
   amount: number;
   currency: string;

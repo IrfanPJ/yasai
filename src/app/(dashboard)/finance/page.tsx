@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Banknote, ArrowRightLeft, CreditCard, FileText,
   TrendingUp, Clock, AlertCircle, CheckCircle2,
-  ShieldCheck, PackageCheck, ArrowRight,
+  ShieldCheck, PackageCheck, ArrowRight, Landmark,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -106,6 +106,9 @@ export default async function FinancePage() {
           <p className="text-sm text-muted-foreground mt-0.5">Fund collections, transfers, supplier payments &amp; backup documents</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Link href="/finance/accounts" className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border hover:bg-accent transition-colors">
+            <Landmark className="h-3.5 w-3.5" /> Accounts
+          </Link>
           <Link href="/finance/collections/new" className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-[#071A3A] text-white hover:bg-[#0d2a5e] transition-colors">
             <Banknote className="h-3.5 w-3.5" /> New Collection
           </Link>

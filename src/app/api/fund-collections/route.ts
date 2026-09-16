@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
     bank_reference:   nullify(body.bank_reference),
     destination_account: nullify(body.destination_account),
     bank_profile_id:  nullify(body.bank_profile_id),
+    account_id:       nullify(body.account_id),
     bank_name:        nullify(body.bank_name),
     bank_account_holder: nullify(body.bank_account_holder),
     iban:             nullify(body.iban),

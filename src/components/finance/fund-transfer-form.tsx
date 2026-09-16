@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RecordPicker, type PickerOption } from "./record-picker";
 import { BankPicker } from "./bank-picker";
+import { AccountPicker } from "./account-picker";
 import { CURRENCIES } from "@/lib/currencies";
 import type { FundTransfer } from "@/types";
 
@@ -48,6 +49,8 @@ export function FundTransferForm({ initial, fundCollectionId }: Props) {
     currency: initial?.currency ?? "SAR",
     destination_currency: initial?.destination_currency ?? "AED",
     transfer_rate: initial?.transfer_rate?.toString() ?? "",
+    source_account_id: initial?.source_account_id ?? "",
+    destination_account_id: initial?.destination_account_id ?? "",
     source_region: initial?.source_region ?? "UAE",
     destination_region: initial?.destination_region ?? "KSA",
     third_party_name: initial?.third_party_name ?? "",
@@ -196,6 +199,14 @@ export function FundTransferForm({ initial, fundCollectionId }: Props) {
           <div className="space-y-1.5">
             <Label>Destination Region</Label>
             <Input value={form.destination_region} onChange={e => set("destination_region", e.target.value)} placeholder="KSA" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Source Account <span className="text-xs font-normal text-muted-foreground">(money leaves)</span></Label>
+            <AccountPicker value={form.source_account_id} onChange={v => set("source_account_id", v)} currency={form.currency} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Destination Account <span className="text-xs font-normal text-muted-foreground">(if it is one of yours)</span></Label>
+            <AccountPicker value={form.destination_account_id} onChange={v => set("destination_account_id", v)} currency={form.destination_currency} />
           </div>
           {form.transfer_mode === "bank_transfer" ? (
             <>

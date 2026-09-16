@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RecordPicker, type PickerOption } from "./record-picker";
+import { AccountPicker } from "./account-picker";
+import { CURRENCIES } from "@/lib/currencies";
 import type { SupplierPayment } from "@/types";
 
 interface Props { initial?: SupplierPayment; fundTransferId?: string }
@@ -42,6 +44,7 @@ export function SupplierPaymentForm({ initial, fundTransferId }: Props) {
     supplier_name: initial?.supplier_name ?? "",
     amount: initial?.amount?.toString() ?? "",
     currency: initial?.currency ?? "AED",
+    account_id: initial?.account_id ?? "",
     payment_mode: initial?.payment_mode ?? "bank_transfer",
     payment_date: initial?.payment_date ?? new Date().toISOString().slice(0, 10),
     bank_reference: initial?.bank_reference ?? "",
@@ -57,7 +60,7 @@ export function SupplierPaymentForm({ initial, fundTransferId }: Props) {
     if (!form.supplier_name || !form.amount) { toast.error("Fill required fields"); return; }
     setSaving(true);
     try {
-      const payload = { ...form, amount: parseFloat(form.amount) };
+      const payload = { ...form, amount: parseFloat(form.amount), account_id: form.account_id || null };
       const url = isEdit ? `/api/supplier-payments/${initial!.id}` : "/api/supplier-payments";
       const res = await fetch(url, { method: isEdit ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       if (!res.ok) throw new Error((await res.json()).error);
@@ -100,11 +103,13 @@ export function SupplierPaymentForm({ initial, fundTransferId }: Props) {
             <Select value={form.currency} onValueChange={v => set("currency", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="AED">AED</SelectItem>
-                <SelectItem value="SAR">SAR</SelectItem>
-                <SelectItem value="USD">USD</SelectItem>
+                {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Account <span className="text-xs font-normal text-muted-foreground">(paid from)</span></Label>
+            <AccountPicker value={form.account_id} onChange={v => set("account_id", v)} currency={form.currency} />
           </div>
           <div className="space-y-1.5">
             <Label>Payment Mode <span className="text-red-500">*</span></Label>
