@@ -14,6 +14,7 @@ import {
   Receipt,
   FileCheck2,
   Banknote,
+  Landmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { YasaiLogo } from "./logo";
@@ -58,7 +59,10 @@ const navItems = [
     icon: FileCheck2,
   },
   ...(process.env.NEXT_PUBLIC_SHOW_FINANCE === "true"
-    ? [{ label: "Finance", href: "/finance", icon: Banknote }]
+    ? [
+        { label: "Finance", href: "/finance", icon: Banknote },
+        { label: "Accounts", href: "/finance/accounts", icon: Landmark },
+      ]
     : []),
   {
     label: "Audit Logs",
@@ -72,10 +76,23 @@ const navItems = [
   },
 ];
 
+// Picks the single most specific matching item (longest href prefix) so a
+// nested route like /finance/accounts only highlights "Accounts", not both
+// "Accounts" and its parent "Finance".
+function getActiveHref(pathname: string) {
+  let best: string | null = null;
+  for (const item of navItems) {
+    const matches = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+    if (matches && (best === null || item.href.length > best.length)) best = item.href;
+  }
+  return best;
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const activeHref = getActiveHref(pathname);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -93,10 +110,7 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
-          const isActive =
-            item.href === "/"
-              ? pathname === "/"
-              : pathname.startsWith(item.href);
+          const isActive = item.href === activeHref;
 
           return (
             <Link
@@ -137,6 +151,7 @@ export function MobileNav({ onClose }: { onClose: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const activeHref = getActiveHref(pathname);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -148,8 +163,7 @@ export function MobileNav({ onClose }: { onClose: () => void }) {
     <div className="flex flex-col h-full">
       <nav className="flex flex-col gap-1 py-4 flex-1">
         {navItems.map((item) => {
-          const isActive =
-            item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          const isActive = item.href === activeHref;
           return (
             <Link
               key={item.href}
