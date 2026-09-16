@@ -11,7 +11,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BankPicker } from "./bank-picker";
-import { AccountPicker } from "./account-picker";
 import { CURRENCIES } from "@/lib/currencies";
 import type { FundCollection } from "@/types";
 
@@ -28,7 +27,6 @@ export function FundCollectionForm({ initial }: Props) {
     amount:           initial?.amount?.toString() ?? "",
     currency:            initial?.currency             ?? "SAR",
     destination_currency: initial?.destination_currency ?? "AED",
-    account_id:       initial?.account_id          ?? "",
     payment_mode:     initial?.payment_mode      ?? "cash",
     collection_date:  initial?.collection_date   ?? new Date().toISOString().slice(0, 10),
     collected_by:     initial?.collected_by      ?? "",
@@ -79,7 +77,6 @@ export function FundCollectionForm({ initial }: Props) {
         amount:          parseFloat(form.amount),
         currency:        form.currency,
         destination_currency: form.destination_currency,
-        account_id:      form.account_id || null,
         payment_mode:    form.payment_mode,
         collection_date: form.collection_date,
         collected_by:    form.collected_by  || null,
@@ -184,10 +181,6 @@ export function FundCollectionForm({ initial }: Props) {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Account <span className="text-xs font-normal text-muted-foreground">(which of yours received it)</span></Label>
-            <AccountPicker value={form.account_id} onChange={v => set("account_id", v)} currency={form.destination_currency} />
           </div>
           <div className="space-y-1.5">
             <Label>Payment Mode <span className="text-red-500">*</span></Label>

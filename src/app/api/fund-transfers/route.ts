@@ -40,8 +40,6 @@ export async function POST(request: NextRequest) {
     third_party_name: nullify(body.third_party_name),
     third_party_location: nullify(body.third_party_location),
     bank_profile_id: nullify(body.bank_profile_id),
-    source_account_id: nullify(body.source_account_id),
-    destination_account_id: nullify(body.destination_account_id),
     bank_name: nullify(body.bank_name),
     bank_account_holder: nullify(body.bank_account_holder),
     destination_bank_account: nullify(body.destination_bank_account),

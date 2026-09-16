@@ -61,7 +61,7 @@ const navItems = [
   ...(process.env.NEXT_PUBLIC_SHOW_FINANCE === "true"
     ? [
         { label: "Finance", href: "/finance", icon: Banknote },
-        { label: "Accounts", href: "/finance/accounts", icon: Landmark },
+        { label: "By Currency", href: "/finance/by-currency", icon: Landmark },
       ]
     : []),
   {

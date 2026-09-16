@@ -32,8 +32,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     third_party_name: nullify(rest.third_party_name),
     third_party_location: nullify(rest.third_party_location),
     bank_profile_id: nullify(rest.bank_profile_id),
-    source_account_id: nullify(rest.source_account_id),
-    destination_account_id: nullify(rest.destination_account_id),
     bank_name: nullify(rest.bank_name),
     bank_account_holder: nullify(rest.bank_account_holder),
     destination_bank_account: nullify(rest.destination_bank_account),
