@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronLeft, Layers } from "lucide-react";
+import { CURRENCIES } from "@/lib/currencies";
 
 export const metadata = { title: "By Currency" };
 
@@ -45,7 +46,11 @@ export default async function ByCurrencyPage() {
   const transfersByCurrency = summarize((transfers ?? []) as Row[]);
   const paymentsByCurrency = summarize((payments ?? []) as Row[]);
 
+  // Always list every supported currency, even ones with zero activity so
+  // far — plus anything unexpected already in the data (e.g. a legacy
+  // value not in the current list), so nothing is silently hidden either.
   const allCurrencies = Array.from(new Set([
+    ...CURRENCIES,
     ...collectionsByCurrency.keys(),
     ...transfersByCurrency.keys(),
     ...paymentsByCurrency.keys(),
@@ -71,15 +76,8 @@ export default async function ByCurrencyPage() {
         </p>
       </div>
 
-      {stats.length === 0 ? (
-        <Card className="border-none shadow-sm">
-          <CardContent className="p-10 text-center text-sm text-muted-foreground">
-            No transactions recorded yet.
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="border-none shadow-sm">
-          <CardContent className="p-0 overflow-x-auto">
+      <Card className="border-none shadow-sm">
+        <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800">
@@ -95,22 +93,27 @@ export default async function ByCurrencyPage() {
                 </tr>
               </thead>
               <tbody>
-                {stats.map((s) => (
-                  <tr key={s.currency} className="border-b border-gray-50 dark:border-gray-900 last:border-0">
-                    <td className="px-4 py-3 font-mono font-bold text-[#071A3A] dark:text-white">{s.currency}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{s.collections.count}</td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums">{fmt(s.collections.total)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{s.transfers.count}</td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums">{fmt(s.transfers.total)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{s.payments.count}</td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums">{fmt(s.payments.total)}</td>
-                  </tr>
-                ))}
+                {stats.map((s) => {
+                  const hasActivity = s.collections.count + s.transfers.count + s.payments.count > 0;
+                  return (
+                    <tr
+                      key={s.currency}
+                      className={`border-b border-gray-50 dark:border-gray-900 last:border-0 ${hasActivity ? "" : "text-muted-foreground"}`}
+                    >
+                      <td className={`px-4 py-3 font-mono font-bold ${hasActivity ? "text-[#071A3A] dark:text-white" : ""}`}>{s.currency}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{s.collections.count}</td>
+                      <td className="px-4 py-3 text-right font-mono tabular-nums">{fmt(s.collections.total)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{s.transfers.count}</td>
+                      <td className="px-4 py-3 text-right font-mono tabular-nums">{fmt(s.transfers.total)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{s.payments.count}</td>
+                      <td className="px-4 py-3 text-right font-mono tabular-nums">{fmt(s.payments.total)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-          </CardContent>
-        </Card>
-      )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
