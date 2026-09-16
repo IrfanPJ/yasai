@@ -68,8 +68,9 @@ export function FundTransferDetail({ transfer, linkedCollection, linkedPayments 
   const [editing, setEditing] = useState(false);
   const [advancing, setAdvancing] = useState(false);
 
-  const expectedAmount = linkedCollection?.transfer_rate
-    ? (Number(transfer.amount) * linkedCollection.transfer_rate).toFixed(2)
+  const effectiveRate = transfer.transfer_rate ?? linkedCollection?.transfer_rate;
+  const expectedAmount = effectiveRate
+    ? (Number(transfer.amount) * effectiveRate).toFixed(2)
     : null;
 
   const [receivedAmount, setReceivedAmount] = useState(transfer.received_amount?.toString() ?? "");
@@ -192,20 +193,20 @@ export function FundTransferDetail({ transfer, linkedCollection, linkedPayments 
               <p className="text-xs text-muted-foreground">Initiated</p>
               <p className="text-sm font-semibold">{fmtDate(transfer.created_at)}</p>
             </div>
-            {linkedCollection?.transfer_rate && (
+            {effectiveRate && (
               <div>
                 <p className="text-xs text-muted-foreground">Transfer Rate</p>
-                <p className="text-sm font-semibold font-mono">{linkedCollection.transfer_rate}</p>
+                <p className="text-sm font-semibold font-mono">1 {transfer.currency} = {effectiveRate} {transfer.destination_currency}</p>
               </div>
             )}
             {expectedAmount && (
               <div>
                 <p className="text-xs text-muted-foreground">Expected at Dest.</p>
-                <p className="text-sm font-semibold font-mono text-amber-600 dark:text-amber-400">{transfer.currency} {Number(expectedAmount).toLocaleString()}</p>
+                <p className="text-sm font-semibold font-mono text-amber-600 dark:text-amber-400">{transfer.destination_currency} {Number(expectedAmount).toLocaleString()}</p>
               </div>
             )}
           </div>
-          {(transfer.third_party_name || transfer.destination_bank_account || transfer.bank_reference) && (
+          {(transfer.third_party_name || transfer.bank_name || transfer.destination_bank_account || transfer.bank_reference) && (
             <>
               <Separator className="my-4" />
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -215,8 +216,17 @@ export function FundTransferDetail({ transfer, linkedCollection, linkedPayments 
                 {transfer.third_party_location && (
                   <div><p className="text-xs text-muted-foreground">Location</p><p className="text-sm">{transfer.third_party_location}</p></div>
                 )}
+                {transfer.bank_name && (
+                  <div><p className="text-xs text-muted-foreground">Bank Name</p><p className="text-sm font-medium">{transfer.bank_name}</p></div>
+                )}
+                {transfer.bank_account_holder && (
+                  <div><p className="text-xs text-muted-foreground">Account Holder</p><p className="text-sm font-medium">{transfer.bank_account_holder}</p></div>
+                )}
                 {transfer.destination_bank_account && (
                   <div><p className="text-xs text-muted-foreground">Dest. Account</p><p className="text-sm font-mono">{transfer.destination_bank_account}</p></div>
+                )}
+                {transfer.swift_code && (
+                  <div><p className="text-xs text-muted-foreground">SWIFT / BIC</p><p className="text-sm font-mono">{transfer.swift_code}</p></div>
                 )}
                 {transfer.bank_reference && (
                   <div><p className="text-xs text-muted-foreground">Bank Ref.</p><p className="text-sm font-mono">{transfer.bank_reference}</p></div>
@@ -239,7 +249,7 @@ export function FundTransferDetail({ transfer, linkedCollection, linkedPayments 
                 <Label>Received Amount</Label>
                 {expectedAmount && (
                   <span className="text-xs text-muted-foreground">
-                    Expected: {transfer.currency} {Number(expectedAmount).toLocaleString()}
+                    Expected: {transfer.destination_currency} {Number(expectedAmount).toLocaleString()}
                     {!receivedAmount && (
                       <button
                         type="button"

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth-role";
 import { createClient } from "@/lib/supabase/server";
+import { ensureBankProfile } from "@/lib/bank-profiles";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   const body = await request.json();
   const { collection_number, created_by, created_at, ...rest } = body;
   void collection_number; void created_by; void created_at;
+
+  if (rest.payment_mode === "bank_transfer" && !rest.bank_profile_id && rest.bank_name) {
+    rest.bank_profile_id = await ensureBankProfile(serviceClient, {
+      bank_name: rest.bank_name,
+      account_holder: rest.bank_account_holder,
+      account_number: rest.iban,
+      swift_code: rest.swift_code,
+      currency: rest.currency,
+      createdBy: user.id,
+    });
+  }
 
   const { data, error } = await serviceClient
     .from("fund_collections")

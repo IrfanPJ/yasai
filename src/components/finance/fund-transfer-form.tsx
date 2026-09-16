@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RecordPicker, type PickerOption } from "./record-picker";
+import { BankPicker } from "./bank-picker";
+import { CURRENCIES } from "@/lib/currencies";
 import type { FundTransfer } from "@/types";
 
 interface Props { initial?: FundTransfer; fundCollectionId?: string }
@@ -43,17 +45,34 @@ export function FundTransferForm({ initial, fundCollectionId }: Props) {
     fund_collection_id: initial?.fund_collection_id ?? fundCollectionId ?? "",
     transfer_mode: initial?.transfer_mode ?? "bank_transfer",
     amount: initial?.amount?.toString() ?? "",
-    currency: initial?.currency ?? "AED",
+    currency: initial?.currency ?? "SAR",
+    destination_currency: initial?.destination_currency ?? "AED",
+    transfer_rate: initial?.transfer_rate?.toString() ?? "",
     source_region: initial?.source_region ?? "UAE",
     destination_region: initial?.destination_region ?? "KSA",
     third_party_name: initial?.third_party_name ?? "",
     third_party_location: initial?.third_party_location ?? "",
+    bank_profile_id: initial?.bank_profile_id ?? "",
+    bank_name: initial?.bank_name ?? "",
     destination_bank_account: initial?.destination_bank_account ?? "",
+    bank_account_holder: initial?.bank_account_holder ?? "",
+    swift_code: initial?.swift_code ?? "",
     bank_reference: initial?.bank_reference ?? "",
     notes: initial?.notes ?? "",
   });
 
   function set(k: string, v: string) { setForm(p => ({ ...p, [k]: v })); }
+
+  function applyBank(bank: { id: string; bank_name: string; account_holder?: string; account_number?: string; swift_code?: string } | null) {
+    setForm(p => ({
+      ...p,
+      bank_profile_id: bank?.id ?? "",
+      bank_name: bank?.bank_name ?? p.bank_name,
+      destination_bank_account: bank?.account_number ?? p.destination_bank_account,
+      bank_account_holder: bank?.account_holder ?? p.bank_account_holder,
+      swift_code: bank?.swift_code ?? p.swift_code,
+    }));
+  }
 
   function handleCollectionChange(v: string) {
     const meta = collectionMeta.get(v);
@@ -63,6 +82,11 @@ export function FundTransferForm({ initial, fundCollectionId }: Props) {
       ...(meta && !p.amount ? { amount: meta.amount.toString(), currency: meta.currency } : {}),
     }));
   }
+
+  const needsRate = form.currency !== form.destination_currency;
+  const equiv = needsRate && form.amount && form.transfer_rate
+    ? (parseFloat(form.amount) * parseFloat(form.transfer_rate)).toLocaleString("en", { maximumFractionDigits: 2 })
+    : null;
 
   const selectedMeta = collectionMeta.get(form.fund_collection_id);
   const expectedDestAmount = selectedMeta?.transfer_rate && form.amount
@@ -114,16 +138,47 @@ export function FundTransferForm({ initial, fundCollectionId }: Props) {
             )}
           </div>
           <div className="space-y-1.5">
-            <Label>Currency</Label>
+            <Label>Source Currency</Label>
             <Select value={form.currency} onValueChange={v => set("currency", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="AED">AED</SelectItem>
-                <SelectItem value="SAR">SAR</SelectItem>
-                <SelectItem value="USD">USD</SelectItem>
+                {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-1.5">
+            <Label>Destination Currency</Label>
+            <Select value={form.destination_currency} onValueChange={v => set("destination_currency", v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {needsRate && (
+            <div className="md:col-span-2 space-y-1.5">
+              <Label>
+                Exchange Rate
+                <span className="ml-1 text-xs text-muted-foreground font-normal">
+                  1 {form.currency} = ? {form.destination_currency}
+                </span>
+              </Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="number" step="0.0001"
+                  value={form.transfer_rate}
+                  onChange={e => set("transfer_rate", e.target.value)}
+                  placeholder="e.g. 1.0200"
+                  className="max-w-xs"
+                />
+                {equiv && (
+                  <p className="text-sm text-muted-foreground whitespace-nowrap">
+                    ≈ <strong className="text-foreground">{form.destination_currency} {equiv}</strong>
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label>Transfer Mode <span className="text-red-500">*</span></Label>
             <Select value={form.transfer_mode} onValueChange={v => set("transfer_mode", v)}>
@@ -144,9 +199,29 @@ export function FundTransferForm({ initial, fundCollectionId }: Props) {
           </div>
           {form.transfer_mode === "bank_transfer" ? (
             <>
+              <div className="md:col-span-2 space-y-1.5">
+                <Label>Saved Bank</Label>
+                <BankPicker selectedId={form.bank_profile_id} currency={form.destination_currency} onSelect={applyBank} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Bank Name</Label>
+                <Input
+                  value={form.bank_name}
+                  onChange={e => { set("bank_name", e.target.value); set("bank_profile_id", ""); }}
+                  placeholder="e.g. Emirates NBD, Al Rajhi"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Account Holder</Label>
+                <Input value={form.bank_account_holder} onChange={e => set("bank_account_holder", e.target.value)} placeholder="Name on the account" />
+              </div>
               <div className="space-y-1.5">
                 <Label>Destination Bank Account</Label>
                 <Input value={form.destination_bank_account} onChange={e => set("destination_bank_account", e.target.value)} placeholder="IBAN / Account no." />
+              </div>
+              <div className="space-y-1.5">
+                <Label>SWIFT / BIC Code</Label>
+                <Input value={form.swift_code} onChange={e => set("swift_code", e.target.value)} placeholder="e.g. EBILAEAD" />
               </div>
               <div className="space-y-1.5">
                 <Label>Bank Reference</Label>

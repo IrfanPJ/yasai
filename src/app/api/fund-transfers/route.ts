@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth-role";
 import { createClient } from "@/lib/supabase/server";
+import { ensureBankProfile } from "@/lib/bank-profiles";
 
 export const dynamic = "force-dynamic";
 
@@ -38,10 +39,26 @@ export async function POST(request: NextRequest) {
     fund_collection_id: nullify(body.fund_collection_id),
     third_party_name: nullify(body.third_party_name),
     third_party_location: nullify(body.third_party_location),
+    bank_profile_id: nullify(body.bank_profile_id),
+    bank_name: nullify(body.bank_name),
+    bank_account_holder: nullify(body.bank_account_holder),
     destination_bank_account: nullify(body.destination_bank_account),
+    swift_code: nullify(body.swift_code),
     bank_reference: nullify(body.bank_reference),
+    transfer_rate: body.transfer_rate ? parseFloat(body.transfer_rate) : null,
     notes: nullify(body.notes),
   };
+
+  if (cleanBody.transfer_mode === "bank_transfer" && !cleanBody.bank_profile_id && cleanBody.bank_name) {
+    cleanBody.bank_profile_id = await ensureBankProfile(serviceClient, {
+      bank_name: cleanBody.bank_name,
+      account_holder: cleanBody.bank_account_holder,
+      account_number: cleanBody.destination_bank_account,
+      swift_code: cleanBody.swift_code,
+      currency: cleanBody.destination_currency,
+      createdBy: user.id,
+    });
+  }
 
   const { data: num, error: numErr } = await serviceClient.rpc("generate_transfer_number");
   if (numErr) return NextResponse.json({ error: "Failed to generate number" }, { status: 500 });

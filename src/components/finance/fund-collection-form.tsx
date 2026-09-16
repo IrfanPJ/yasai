@@ -10,11 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BankPicker } from "./bank-picker";
+import { CURRENCIES } from "@/lib/currencies";
 import type { FundCollection } from "@/types";
 
 interface Props { initial?: FundCollection }
-
-const CURRENCIES = ["AED", "SAR", "USD", "EUR", "GBP", "OMR", "KWD", "BHD", "QAR"];
 
 export function FundCollectionForm({ initial }: Props) {
   const router = useRouter();
@@ -25,15 +25,19 @@ export function FundCollectionForm({ initial }: Props) {
     customer_name:    initial?.customer_name    ?? "",
     customer_phone:   initial?.customer_phone   ?? "",
     amount:           initial?.amount?.toString() ?? "",
-    currency:         initial?.currency          ?? "AED",
+    currency:            initial?.currency             ?? "SAR",
+    destination_currency: initial?.destination_currency ?? "AED",
     payment_mode:     initial?.payment_mode      ?? "cash",
     collection_date:  initial?.collection_date   ?? new Date().toISOString().slice(0, 10),
     collected_by:     initial?.collected_by      ?? "",
     transfer_rate:    initial?.transfer_rate?.toString() ?? "",
     // Bank transfer fields
-    bank_name:        initial?.bank_name         ?? "",
-    bank_reference:   initial?.bank_reference    ?? "",
-    iban:             initial?.iban              ?? "",
+    bank_profile_id:   initial?.bank_profile_id   ?? "",
+    bank_name:         initial?.bank_name         ?? "",
+    bank_account_holder: initial?.bank_account_holder ?? "",
+    bank_reference:    initial?.bank_reference    ?? "",
+    iban:              initial?.iban              ?? "",
+    swift_code:        initial?.swift_code        ?? "",
     // Cheque fields
     cheque_number:    initial?.cheque_number     ?? "",
     cheque_date:      initial?.cheque_date       ?? "",
@@ -43,8 +47,19 @@ export function FundCollectionForm({ initial }: Props) {
 
   function set(k: string, v: string) { setForm(p => ({ ...p, [k]: v })); }
 
-  const isForeign = form.currency !== "AED";
-  const equiv = isForeign && form.amount && form.transfer_rate
+  function applyBank(bank: { id: string; bank_name: string; account_holder?: string; account_number?: string; swift_code?: string } | null) {
+    setForm(p => ({
+      ...p,
+      bank_profile_id: bank?.id ?? "",
+      bank_name: bank?.bank_name ?? p.bank_name,
+      bank_account_holder: bank?.account_holder ?? p.bank_account_holder,
+      iban: bank?.account_number ?? p.iban,
+      swift_code: bank?.swift_code ?? p.swift_code,
+    }));
+  }
+
+  const needsRate = form.currency !== form.destination_currency;
+  const equiv = needsRate && form.amount && form.transfer_rate
     ? (parseFloat(form.amount) * parseFloat(form.transfer_rate)).toLocaleString("en", { maximumFractionDigits: 2 })
     : null;
 
@@ -61,13 +76,17 @@ export function FundCollectionForm({ initial }: Props) {
         customer_phone:  form.customer_phone || null,
         amount:          parseFloat(form.amount),
         currency:        form.currency,
+        destination_currency: form.destination_currency,
         payment_mode:    form.payment_mode,
         collection_date: form.collection_date,
         collected_by:    form.collected_by  || null,
         transfer_rate:   form.transfer_rate ? parseFloat(form.transfer_rate) : null,
-        bank_name:       form.payment_mode === "bank_transfer" ? (form.bank_name || null)      : null,
-        bank_reference:  form.payment_mode === "bank_transfer" ? (form.bank_reference || null)  : null,
-        iban:            form.payment_mode === "bank_transfer" ? (form.iban || null)            : null,
+        bank_profile_id:     form.payment_mode === "bank_transfer" ? (form.bank_profile_id || null)     : null,
+        bank_name:           form.payment_mode === "bank_transfer" ? (form.bank_name || null)           : null,
+        bank_account_holder: form.payment_mode === "bank_transfer" ? (form.bank_account_holder || null) : null,
+        bank_reference:      form.payment_mode === "bank_transfer" ? (form.bank_reference || null)      : null,
+        iban:                form.payment_mode === "bank_transfer" ? (form.iban || null)                : null,
+        swift_code:          form.payment_mode === "bank_transfer" ? (form.swift_code || null)          : null,
         cheque_number:   form.payment_mode === "cheque" ? (form.cheque_number || null)          : null,
         cheque_date:     form.payment_mode === "cheque" ? (form.cheque_date || null)            : null,
         cheque_bank:     form.payment_mode === "cheque" ? (form.cheque_bank || null)            : null,
@@ -142,8 +161,19 @@ export function FundCollectionForm({ initial }: Props) {
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Currency</Label>
+            <Label>Source Currency</Label>
             <Select value={form.currency} onValueChange={v => set("currency", v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {CURRENCIES.map(c => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Destination Currency</Label>
+            <Select value={form.destination_currency} onValueChange={v => set("destination_currency", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {CURRENCIES.map(c => (
@@ -172,12 +202,12 @@ export function FundCollectionForm({ initial }: Props) {
             />
           </div>
 
-          {isForeign && (
+          {needsRate && (
             <div className="md:col-span-2 space-y-1.5">
               <Label>
                 Exchange Rate
                 <span className="ml-1 text-xs text-muted-foreground font-normal">
-                  1 {form.currency} = ? AED
+                  1 {form.currency} = ? {form.destination_currency}
                 </span>
               </Label>
               <div className="flex items-center gap-3">
@@ -191,7 +221,7 @@ export function FundCollectionForm({ initial }: Props) {
                 />
                 {equiv && (
                   <p className="text-sm text-muted-foreground whitespace-nowrap">
-                    ≈ <strong className="text-foreground">AED {equiv}</strong>
+                    ≈ <strong className="text-foreground">{form.destination_currency} {equiv}</strong>
                   </p>
                 )}
               </div>
@@ -207,12 +237,36 @@ export function FundCollectionForm({ initial }: Props) {
             <CardTitle className="text-sm text-[#071A3A] dark:text-white">Bank Details</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2 space-y-1.5">
+              <Label>Saved Bank</Label>
+              <BankPicker
+                selectedId={form.bank_profile_id}
+                currency={form.currency}
+                onSelect={applyBank}
+              />
+            </div>
             <div className="space-y-1.5">
               <Label>Bank Name</Label>
               <Input
                 value={form.bank_name}
-                onChange={e => set("bank_name", e.target.value)}
+                onChange={e => { set("bank_name", e.target.value); set("bank_profile_id", ""); }}
                 placeholder="e.g. Emirates NBD, Al Rajhi"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Account Holder</Label>
+              <Input
+                value={form.bank_account_holder}
+                onChange={e => set("bank_account_holder", e.target.value)}
+                placeholder="Name on the account"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>SWIFT / BIC Code</Label>
+              <Input
+                value={form.swift_code}
+                onChange={e => set("swift_code", e.target.value)}
+                placeholder="e.g. EBILAEAD"
               />
             </div>
             <div className="space-y-1.5">

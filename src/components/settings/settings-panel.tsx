@@ -21,12 +21,13 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import type { UserProfile, UserRole, Warehouse } from "@/types";
+import type { UserProfile, UserRole, Warehouse, BankProfile } from "@/types";
+import { CURRENCIES } from "@/lib/currencies";
 import { useTheme } from "next-themes";
 import {
   Loader2, Shield, User, Building2, Sun, Users,
   UserCheck, UserX, Crown, Eye, Wrench, Warehouse as WarehouseIcon, Calculator,
-  Plus, MapPin, Pencil, Check, X, KeyRound,
+  Plus, MapPin, Pencil, Check, X, KeyRound, Landmark,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -77,6 +78,75 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
   const [resettingPassword, setResettingPassword] = useState(false);
 
   const isAdmin = currentUser?.role === "admin";
+  const canManageBanks = isAdmin || currentUser?.role === "finance";
+
+  // Bank profiles state
+  const [banks, setBanks] = useState<BankProfile[]>([]);
+  const [newBank, setNewBank] = useState({ bank_name: "", account_holder: "", account_number: "", swift_code: "", currency: "AED", country: "" });
+  const [savingBank, setSavingBank] = useState(false);
+  const [editingBank, setEditingBank] = useState<string | null>(null);
+  const [editBank, setEditBank] = useState({ bank_name: "", account_holder: "", account_number: "", swift_code: "" });
+
+  useEffect(() => {
+    if (!canManageBanks) return;
+    fetch("/api/bank-profiles?all=true")
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setBanks(data); })
+      .catch(() => {});
+  }, [canManageBanks]);
+
+  async function handleAddBank() {
+    if (!newBank.bank_name.trim()) return;
+    setSavingBank(true);
+    try {
+      const res = await fetch("/api/bank-profiles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newBank),
+      });
+      const bank = await res.json();
+      if (!res.ok) throw new Error(bank.error || "Failed to add bank");
+      setBanks((prev) => [...prev.filter((b) => b.id !== bank.id), bank].sort((a, b) => a.bank_name.localeCompare(b.bank_name)));
+      setNewBank({ bank_name: "", account_holder: "", account_number: "", swift_code: "", currency: "AED", country: "" });
+      toast.success("Bank added");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add bank");
+    } finally {
+      setSavingBank(false);
+    }
+  }
+
+  async function handleToggleBank(id: string, isActive: boolean) {
+    try {
+      const res = await fetch(`/api/bank-profiles/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: isActive }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setBanks((prev) => prev.map((b) => (b.id === id ? { ...b, is_active: isActive } : b)));
+      toast.success(isActive ? "Bank activated" : "Bank deactivated");
+    } catch {
+      toast.error("Failed to update bank");
+    }
+  }
+
+  async function handleSaveBank(id: string) {
+    try {
+      const res = await fetch(`/api/bank-profiles/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editBank),
+      });
+      const updated = await res.json();
+      if (!res.ok) throw new Error(updated.error || "Failed to update");
+      setBanks((prev) => prev.map((b) => (b.id === id ? updated : b)));
+      setEditingBank(null);
+      toast.success("Bank updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update bank");
+    }
+  }
 
   // Warehouses state
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -292,6 +362,12 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
             <TabsTrigger value="warehouses" className="gap-2">
               <WarehouseIcon className="h-4 w-4" />
               Warehouses
+            </TabsTrigger>
+          )}
+          {canManageBanks && (
+            <TabsTrigger value="banks" className="gap-2">
+              <Landmark className="h-4 w-4" />
+              Banks
             </TabsTrigger>
           )}
         </TabsList>
@@ -837,6 +913,179 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
                 </Card>
               );
             })}
+          </TabsContent>
+        )}
+
+        {/* ── Banks (Admin / Finance) ── */}
+        {canManageBanks && (
+          <TabsContent value="banks" className="space-y-6">
+            {/* Add bank */}
+            <Card className="border-none shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Plus className="h-4 w-4 text-[#E67A32]" /> Add Bank
+                </CardTitle>
+                <CardDescription>
+                  Saved here shows up as a pickable option on Fund Collection and Fund Transfer forms.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label className="text-xs uppercase tracking-wide">Bank Name</Label>
+                    <Input
+                      value={newBank.bank_name}
+                      onChange={(e) => setNewBank((p) => ({ ...p, bank_name: e.target.value }))}
+                      placeholder="e.g. Emirates NBD"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wide">Currency</Label>
+                    <Select value={newBank.currency} onValueChange={(v) => setNewBank((p) => ({ ...p, currency: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {CURRENCIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wide">Account Holder</Label>
+                    <Input
+                      value={newBank.account_holder}
+                      onChange={(e) => setNewBank((p) => ({ ...p, account_holder: e.target.value }))}
+                      placeholder="Name on the account"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wide">Account Number / IBAN</Label>
+                    <Input
+                      value={newBank.account_number}
+                      onChange={(e) => setNewBank((p) => ({ ...p, account_number: e.target.value }))}
+                      placeholder="AE00 0000 0000 0000 0000 000"
+                      className="font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wide">SWIFT / BIC Code</Label>
+                    <Input
+                      value={newBank.swift_code}
+                      onChange={(e) => setNewBank((p) => ({ ...p, swift_code: e.target.value }))}
+                      placeholder="e.g. EBILAEAD"
+                      className="font-mono"
+                    />
+                  </div>
+                </div>
+                <Button
+                  className="mt-3 gap-1.5 bg-[#071A3A] hover:bg-[#0d2550]"
+                  disabled={savingBank || !newBank.bank_name.trim()}
+                  onClick={handleAddBank}
+                >
+                  {savingBank ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  Add Bank
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Saved banks */}
+            <Card className="border-none shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider">
+                  <Landmark className="h-3.5 w-3.5" /> Saved Banks
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-50/50 dark:bg-gray-900/50">
+                      <TableHead className="font-semibold">Bank</TableHead>
+                      <TableHead className="font-semibold">Account</TableHead>
+                      <TableHead className="font-semibold w-20">Currency</TableHead>
+                      <TableHead className="font-semibold text-center w-20">Active</TableHead>
+                      <TableHead className="w-24" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {banks.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">
+                          No banks saved yet.
+                        </TableCell>
+                      </TableRow>
+                    ) : banks.map((b) => (
+                      <TableRow key={b.id} className={b.is_active ? "" : "opacity-50"}>
+                        {editingBank === b.id ? (
+                          <>
+                            <TableCell colSpan={2}>
+                              <div className="flex flex-col gap-1.5">
+                                <Input
+                                  className="h-7 text-sm"
+                                  value={editBank.bank_name}
+                                  onChange={(e) => setEditBank((p) => ({ ...p, bank_name: e.target.value }))}
+                                  placeholder="Bank name"
+                                  autoFocus
+                                />
+                                <Input
+                                  className="h-7 text-sm font-mono"
+                                  value={editBank.account_number}
+                                  onChange={(e) => setEditBank((p) => ({ ...p, account_number: e.target.value }))}
+                                  placeholder="Account number / IBAN"
+                                />
+                                <Input
+                                  className="h-7 text-sm font-mono"
+                                  value={editBank.swift_code}
+                                  onChange={(e) => setEditBank((p) => ({ ...p, swift_code: e.target.value }))}
+                                  placeholder="SWIFT / BIC"
+                                />
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs text-muted-foreground">{b.currency}</TableCell>
+                            <TableCell className="text-center">
+                              <Switch checked={b.is_active} onCheckedChange={(v) => handleToggleBank(b.id, v)} />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <button onClick={() => handleSaveBank(b.id)} className="text-green-600 hover:text-green-700">
+                                  <Check className="h-4 w-4" />
+                                </button>
+                                <button onClick={() => setEditingBank(null)} className="text-muted-foreground hover:text-red-500">
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </TableCell>
+                          </>
+                        ) : (
+                          <>
+                            <TableCell>
+                              <p className="font-semibold text-[#071A3A] dark:text-white">{b.bank_name}</p>
+                              {b.account_holder && <p className="text-xs text-muted-foreground">{b.account_holder}</p>}
+                            </TableCell>
+                            <TableCell>
+                              <p className="font-mono text-sm">{b.account_number || "—"}</p>
+                              {b.swift_code && <p className="font-mono text-xs text-muted-foreground">{b.swift_code}</p>}
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">{b.currency}</TableCell>
+                            <TableCell className="text-center">
+                              <Switch checked={b.is_active} onCheckedChange={(v) => handleToggleBank(b.id, v)} />
+                            </TableCell>
+                            <TableCell>
+                              <button
+                                onClick={() => {
+                                  setEditingBank(b.id);
+                                  setEditBank({ bank_name: b.bank_name, account_holder: b.account_holder || "", account_number: b.account_number || "", swift_code: b.swift_code || "" });
+                                }}
+                                className="text-muted-foreground hover:text-[#071A3A] dark:hover:text-white"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                            </TableCell>
+                          </>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </TabsContent>
         )}
       </Tabs>

@@ -538,13 +538,17 @@ export interface FundCollection {
   customer_name: string;
   amount: number;
   currency: string;
+  destination_currency: string;
   payment_mode: FundCollectionPaymentMode;
   collection_date: string;
   transfer_rate?: number;
   bank_reference?: string;
   destination_account?: string;
+  bank_profile_id?: string;
   bank_name?: string;
+  bank_account_holder?: string;
   iban?: string;
+  swift_code?: string;
   cheque_number?: string;
   cheque_date?: string;
   cheque_bank?: string;
@@ -570,13 +574,19 @@ export interface FundTransfer {
   transfer_mode: FundTransferMode;
   amount: number;
   currency: string;
+  destination_currency: string;
+  transfer_rate?: number;
   source_region: string;
   destination_region: string;
   third_party_name?: string;
   third_party_location?: string;
   third_party_scheduled_at?: string;
   third_party_receipt_url?: string;
+  bank_profile_id?: string;
+  bank_name?: string;
   destination_bank_account?: string;
+  bank_account_holder?: string;
+  swift_code?: string;
   bank_reference?: string;
   backup_document_url?: string;
   status: FundTransferStatus;
@@ -590,6 +600,21 @@ export interface FundTransfer {
   notes?: string;
   created_by?: string;
   updated_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BankProfile {
+  id: string;
+  bank_name: string;
+  account_holder?: string;
+  account_number?: string;
+  swift_code?: string;
+  currency: string;
+  country?: string;
+  notes?: string;
+  is_active: boolean;
+  created_by?: string;
   created_at: string;
   updated_at: string;
 }

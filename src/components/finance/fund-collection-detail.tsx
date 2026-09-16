@@ -74,8 +74,8 @@ export function FundCollectionDetail({ collection, linkedTransfers = [] }: Props
   const [transferRate, setTransferRate] = useState(collection.transfer_rate?.toString() ?? "");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isForeign = collection.currency !== "AED";
-  const aedEquiv = isForeign && collection.transfer_rate
+  const needsRate = collection.currency !== collection.destination_currency;
+  const destEquiv = needsRate && collection.transfer_rate
     ? Number(collection.amount) * Number(collection.transfer_rate)
     : null;
 
@@ -219,9 +219,9 @@ export function FundCollectionDetail({ collection, linkedTransfers = [] }: Props
               <p className="text-sm font-semibold font-mono">
                 {collection.currency} {Number(collection.amount).toLocaleString()}
               </p>
-              {aedEquiv !== null && (
+              {destEquiv !== null && (
                 <p className="text-xs text-muted-foreground font-mono mt-0.5">
-                  ≈ AED {aedEquiv.toLocaleString("en", { maximumFractionDigits: 2 })}
+                  ≈ {collection.destination_currency} {destEquiv.toLocaleString("en", { maximumFractionDigits: 2 })}
                 </p>
               )}
             </div>
@@ -236,7 +236,7 @@ export function FundCollectionDetail({ collection, linkedTransfers = [] }: Props
           </div>
 
           {/* Collected by + exchange rate row */}
-          {(collection.collected_by || (isForeign && collection.transfer_rate)) && (
+          {(collection.collected_by || (needsRate && collection.transfer_rate)) && (
             <>
               <Separator className="my-4" />
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -249,11 +249,11 @@ export function FundCollectionDetail({ collection, linkedTransfers = [] }: Props
                     </p>
                   </div>
                 )}
-                {isForeign && collection.transfer_rate && (
+                {needsRate && collection.transfer_rate && (
                   <div>
                     <p className="text-xs text-muted-foreground">Exchange Rate</p>
                     <p className="text-sm font-semibold font-mono">
-                      1 {collection.currency} = {collection.transfer_rate} AED
+                      1 {collection.currency} = {collection.transfer_rate} {collection.destination_currency}
                     </p>
                   </div>
                 )}
@@ -273,6 +273,12 @@ export function FundCollectionDetail({ collection, linkedTransfers = [] }: Props
                     <p className="text-sm font-medium">{collection.bank_name}</p>
                   </div>
                 )}
+                {collection.bank_account_holder && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Account Holder</p>
+                    <p className="text-sm font-medium">{collection.bank_account_holder}</p>
+                  </div>
+                )}
                 {collection.bank_reference && (
                   <div>
                     <p className="text-xs text-muted-foreground">Transaction Ref</p>
@@ -283,6 +289,12 @@ export function FundCollectionDetail({ collection, linkedTransfers = [] }: Props
                   <div>
                     <p className="text-xs text-muted-foreground">IBAN / Account</p>
                     <p className="text-sm font-mono">{collection.iban ?? collection.destination_account}</p>
+                  </div>
+                )}
+                {collection.swift_code && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">SWIFT / BIC</p>
+                    <p className="text-sm font-mono">{collection.swift_code}</p>
                   </div>
                 )}
               </div>
@@ -329,7 +341,7 @@ export function FundCollectionDetail({ collection, linkedTransfers = [] }: Props
             <div className="space-y-1.5 max-w-xs">
               <Label>
                 Exchange Rate (optional)
-                {isForeign && <span className="ml-1 text-xs text-muted-foreground font-normal">1 {collection.currency} = ? AED</span>}
+                {needsRate && <span className="ml-1 text-xs text-muted-foreground font-normal">1 {collection.currency} = ? {collection.destination_currency}</span>}
               </Label>
               <Input type="number" step="0.0001" value={transferRate} onChange={e => setTransferRate(e.target.value)} placeholder="e.g. 1.0200" />
             </div>
