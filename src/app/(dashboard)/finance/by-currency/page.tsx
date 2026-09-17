@@ -11,6 +11,10 @@ interface Row {
   amount: number;
 }
 
+interface TransferRow extends Row {
+  fund_collection_id: string | null;
+}
+
 interface Metric {
   count: number;
   total: number;
@@ -20,6 +24,11 @@ interface CurrencyStats {
   currency: string;
   collections: Metric;
   transfers: Metric;
+  // Of the Transferred total, how much traces back to an actual same-currency
+  // collection vs. was recorded with no such link — the direct answer to
+  // "where did this transferred money actually come from."
+  transfersLinked: number;
+  transfersUnlinked: number;
   payments: Metric;
 }
 
@@ -86,7 +95,20 @@ function CurrencyCard({ s }: { s: CurrencyStats }) {
           </span>
         </div>
         <Bar metricKey="collections" value={s.collections.total} count={s.collections.count} max={max} />
-        <Bar metricKey="transfers" value={s.transfers.total} count={s.transfers.count} max={max} />
+        <div className="space-y-1">
+          <Bar metricKey="transfers" value={s.transfers.total} count={s.transfers.count} max={max} />
+          {s.transfers.total > 0 && (
+            <p className="text-[11px] text-muted-foreground pl-3.5">
+              {s.transfersLinked > 0 && <>traced to a collection: {fmt(s.transfersLinked)}</>}
+              {s.transfersLinked > 0 && s.transfersUnlinked > 0 && " · "}
+              {s.transfersUnlinked > 0 && (
+                <span className="text-amber-600 dark:text-amber-400">
+                  not linked to any collection: {fmt(s.transfersUnlinked)}
+                </span>
+              )}
+            </p>
+          )}
+        </div>
         <Bar metricKey="payments" value={s.payments.total} count={s.payments.count} max={max} />
       </CardContent>
     </Card>
@@ -97,14 +119,29 @@ export default async function ByCurrencyPage() {
   const supabase = await createClient();
 
   const [{ data: collections }, { data: transfers }, { data: payments }] = await Promise.all([
-    supabase.from("fund_collections").select("currency, amount").is("deleted_at", null),
-    supabase.from("fund_transfers").select("currency, amount"),
+    supabase.from("fund_collections").select("id, currency, amount").is("deleted_at", null),
+    supabase.from("fund_transfers").select("currency, amount, fund_collection_id"),
     supabase.from("supplier_payments").select("currency, amount"),
   ]);
 
-  const collectionsByCurrency = summarize((collections ?? []) as Row[]);
+  const collectionRows = (collections ?? []) as (Row & { id: string })[];
+  const collectionCurrencyById = new Map(collectionRows.map((c) => [c.id, c.currency]));
+
+  const collectionsByCurrency = summarize(collectionRows);
   const transfersByCurrency = summarize((transfers ?? []) as Row[]);
   const paymentsByCurrency = summarize((payments ?? []) as Row[]);
+
+  // A transfer only counts as "linked" when it points at a collection AND
+  // that collection is in the same currency — otherwise there's no real
+  // amount to trace it back to.
+  const transferRows = (transfers ?? []) as TransferRow[];
+  const linkedByCurrency = new Map<string, number>();
+  const unlinkedByCurrency = new Map<string, number>();
+  for (const t of transferRows) {
+    const collectionCurrency = t.fund_collection_id ? collectionCurrencyById.get(t.fund_collection_id) : undefined;
+    const bucket = collectionCurrency === t.currency ? linkedByCurrency : unlinkedByCurrency;
+    bucket.set(t.currency, (bucket.get(t.currency) ?? 0) + (Number(t.amount) || 0));
+  }
 
   // Always cover every supported currency, plus anything unexpected already
   // in the data (a legacy value not in the current list) — nothing silently
@@ -120,6 +157,8 @@ export default async function ByCurrencyPage() {
     currency,
     collections: collectionsByCurrency.get(currency) ?? { count: 0, total: 0 },
     transfers: transfersByCurrency.get(currency) ?? { count: 0, total: 0 },
+    transfersLinked: linkedByCurrency.get(currency) ?? 0,
+    transfersUnlinked: unlinkedByCurrency.get(currency) ?? 0,
     payments: paymentsByCurrency.get(currency) ?? { count: 0, total: 0 },
   }));
 
