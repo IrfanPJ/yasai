@@ -234,6 +234,15 @@ export function FundTransferDetail({ transfer, linkedCollection, linkedPayments 
               </div>
             </>
           )}
+          {transfer.over_transfer_reason && (
+            <>
+              <Separator className="my-4" />
+              <div className="rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 p-3">
+                <p className="text-xs font-medium text-red-700 dark:text-red-300">Exceeded the linked collection&apos;s remaining balance</p>
+                <p className="text-sm text-red-600 dark:text-red-400 mt-0.5">{transfer.over_transfer_reason}</p>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

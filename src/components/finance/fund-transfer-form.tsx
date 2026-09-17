@@ -24,22 +24,39 @@ export function FundTransferForm({ initial, fundCollectionId }: Props) {
   const [collectionOptions, setCollectionOptions] = useState<PickerOption[]>([]);
   const [collectionMeta, setCollectionMeta] = useState<Map<string, { amount: number; currency: string; transfer_rate?: number }>>(new Map());
   const [loadingCollections, setLoadingCollections] = useState(true);
+  // How much of each collection has already been drawn by OTHER transfers,
+  // so we can show what's actually left and catch an over-draw.
+  const [alreadyTransferred, setAlreadyTransferred] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
-    fetch("/api/fund-collections")
-      .then(r => r.json())
-      .then((rows: { id: string; collection_number: string; customer_name: string; amount: number; currency: string; status: string; transfer_rate?: number }[]) => {
-        setCollectionOptions(rows.map(c => ({
+    Promise.all([
+      fetch("/api/fund-collections").then(r => r.json()),
+      fetch("/api/fund-transfers").then(r => r.json()),
+    ])
+      .then(([collectionRows, transferRows]: [
+        { id: string; collection_number: string; customer_name: string; amount: number; currency: string; status: string; transfer_rate?: number }[],
+        { id: string; fund_collection_id?: string; amount: number; currency: string }[],
+      ]) => {
+        setCollectionOptions(collectionRows.map(c => ({
           value: c.id,
           label: c.collection_number,
           sublabel: `${c.customer_name} · ${c.currency} ${Number(c.amount).toLocaleString()}`,
           badge: c.status,
         })));
-        setCollectionMeta(new Map(rows.map(c => [c.id, { amount: c.amount, currency: c.currency, transfer_rate: c.transfer_rate }])));
+        setCollectionMeta(new Map(collectionRows.map(c => [c.id, { amount: c.amount, currency: c.currency, transfer_rate: c.transfer_rate }])));
+
+        const drawn = new Map<string, number>();
+        for (const t of transferRows) {
+          if (!t.fund_collection_id || t.id === initial?.id) continue; // exclude this same transfer when editing
+          const collection = collectionRows.find(c => c.id === t.fund_collection_id);
+          if (!collection || t.currency !== collection.currency) continue; // only meaningful same-currency
+          drawn.set(t.fund_collection_id, (drawn.get(t.fund_collection_id) ?? 0) + Number(t.amount));
+        }
+        setAlreadyTransferred(drawn);
       })
       .catch(() => {})
       .finally(() => setLoadingCollections(false));
-  }, []);
+  }, [initial?.id]);
 
   const [form, setForm] = useState({
     fund_collection_id: initial?.fund_collection_id ?? fundCollectionId ?? "",
@@ -59,6 +76,7 @@ export function FundTransferForm({ initial, fundCollectionId }: Props) {
     swift_code: initial?.swift_code ?? "",
     bank_reference: initial?.bank_reference ?? "",
     notes: initial?.notes ?? "",
+    over_transfer_reason: initial?.over_transfer_reason ?? "",
   });
 
   function set(k: string, v: string) { setForm(p => ({ ...p, [k]: v })); }
@@ -93,12 +111,29 @@ export function FundTransferForm({ initial, fundCollectionId }: Props) {
     ? (parseFloat(form.amount) * selectedMeta.transfer_rate).toFixed(2)
     : null;
 
+  // Remaining balance on the linked collection, only meaningful when this
+  // transfer's currency matches the collection's own currency.
+  const sameCurrencyAsCollection = !!selectedMeta && selectedMeta.currency === form.currency;
+  const remainingOnCollection = sameCurrencyAsCollection
+    ? selectedMeta!.amount - (alreadyTransferred.get(form.fund_collection_id) ?? 0)
+    : null;
+  const enteredAmount = parseFloat(form.amount) || 0;
+  const isOverTransfer = remainingOnCollection !== null && enteredAmount > remainingOnCollection;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.amount || !form.transfer_mode) { toast.error("Fill required fields"); return; }
+    if (isOverTransfer && !form.over_transfer_reason.trim()) {
+      toast.error("This exceeds what's left of the linked collection — enter a reason to continue");
+      return;
+    }
     setSaving(true);
     try {
-      const payload = { ...form, amount: parseFloat(form.amount) };
+      const payload = {
+        ...form,
+        amount: parseFloat(form.amount),
+        over_transfer_reason: isOverTransfer ? form.over_transfer_reason.trim() : null,
+      };
       const url = isEdit ? `/api/fund-transfers/${initial!.id}` : "/api/fund-transfers";
       const res = await fetch(url, { method: isEdit ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       if (!res.ok) throw new Error((await res.json()).error);
@@ -127,6 +162,16 @@ export function FundTransferForm({ initial, fundCollectionId }: Props) {
               placeholder="Search and select a collection…"
               loading={loadingCollections}
             />
+            {selectedMeta && sameCurrencyAsCollection && remainingOnCollection !== null && (
+              <p className={`text-xs ${remainingOnCollection <= 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
+                Collected {selectedMeta.currency} {selectedMeta.amount.toLocaleString()}
+                {" · "}already transferred {selectedMeta.currency} {(alreadyTransferred.get(form.fund_collection_id) ?? 0).toLocaleString()}
+                {" · "}
+                {remainingOnCollection > 0
+                  ? <>remaining <strong>{selectedMeta.currency} {remainingOnCollection.toLocaleString()}</strong></>
+                  : <strong>fully transferred — nothing left</strong>}
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Amount <span className="text-red-500">*</span></Label>
@@ -246,6 +291,27 @@ export function FundTransferForm({ initial, fundCollectionId }: Props) {
           </div>
         </CardContent>
       </Card>
+
+      {isOverTransfer && (
+        <Card className="border-none shadow-sm border-l-4 border-l-red-500">
+          <CardContent className="pt-4 space-y-1.5">
+            <Label className="text-red-600 dark:text-red-400">
+              Reason for exceeding the collected amount <span className="text-red-500">*</span>
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              This transfer is {selectedMeta!.currency} {(enteredAmount - (remainingOnCollection ?? 0)).toLocaleString()} more than
+              what&apos;s left on the linked collection. Explain why before this can be saved — it&apos;s kept on record.
+            </p>
+            <Textarea
+              value={form.over_transfer_reason}
+              onChange={e => set("over_transfer_reason", e.target.value)}
+              placeholder="e.g. advance against next week's collection, correcting an earlier short transfer…"
+              rows={2}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex gap-2">
         <Button type="submit" disabled={saving} className="gap-2 bg-[#071A3A] hover:bg-[#0d2a5e]">
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}

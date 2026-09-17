@@ -12,7 +12,7 @@ export default async function FundCollectionDetailPage({ params }: Props) {
 
   const [{ data, error }, { data: linkedTransfers }] = await Promise.all([
     serviceClient.from("fund_collections").select("*").eq("id", id).single(),
-    serviceClient.from("fund_transfers").select("id, transfer_number, status, amount, currency, source_region, destination_region").eq("fund_collection_id", id),
+    serviceClient.from("fund_transfers").select("id, transfer_number, status, amount, currency, source_region, destination_region, over_transfer_reason").eq("fund_collection_id", id),
   ]);
   if (error || !data) notFound();
 

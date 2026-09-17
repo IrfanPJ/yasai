@@ -39,6 +39,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     bank_reference: nullify(rest.bank_reference),
     transfer_rate: rest.transfer_rate ? parseFloat(rest.transfer_rate) : null,
     notes: nullify(rest.notes),
+    over_transfer_reason: nullify(rest.over_transfer_reason),
   };
 
   if (cleanRest.transfer_mode === "bank_transfer" && !cleanRest.bank_profile_id && cleanRest.bank_name) {
@@ -60,5 +61,16 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (error || !data) return NextResponse.json({ error: error?.message || "Update failed" }, { status: 500 });
+
+  if (cleanRest.over_transfer_reason) {
+    await serviceClient.from("activity_logs").insert({
+      user_id: user.id,
+      action: "OVER_TRANSFER",
+      entity_type: "fund_transfers",
+      entity_id: id,
+      details: { transfer_number: data.transfer_number, reason: cleanRest.over_transfer_reason, fund_collection_id: cleanRest.fund_collection_id },
+    });
+  }
+
   return NextResponse.json(data);
 }

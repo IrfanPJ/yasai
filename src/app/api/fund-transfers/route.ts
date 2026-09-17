@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
     bank_reference: nullify(body.bank_reference),
     transfer_rate: body.transfer_rate ? parseFloat(body.transfer_rate) : null,
     notes: nullify(body.notes),
+    over_transfer_reason: nullify(body.over_transfer_reason),
   };
 
   if (cleanBody.transfer_mode === "bank_transfer" && !cleanBody.bank_profile_id && cleanBody.bank_name) {
@@ -78,6 +79,16 @@ export async function POST(request: NextRequest) {
     entity_id: data.id,
     details: { transfer_number: num },
   });
+
+  if (cleanBody.over_transfer_reason) {
+    await serviceClient.from("activity_logs").insert({
+      user_id: user.id,
+      action: "OVER_TRANSFER",
+      entity_type: "fund_transfers",
+      entity_id: data.id,
+      details: { transfer_number: num, reason: cleanBody.over_transfer_reason, fund_collection_id: cleanBody.fund_collection_id },
+    });
+  }
 
   return NextResponse.json(data, { status: 201 });
 }

@@ -589,6 +589,7 @@ export interface FundTransfer {
   swift_code?: string;
   bank_reference?: string;
   backup_document_url?: string;
+  over_transfer_reason?: string;
   status: FundTransferStatus;
   transferred_by?: string;
   transferred_at?: string;

@@ -55,6 +55,7 @@ interface LinkedTransfer {
   currency: string;
   source_region: string;
   destination_region: string;
+  over_transfer_reason?: string;
 }
 
 interface Props {
@@ -78,6 +79,13 @@ export function FundCollectionDetail({ collection, linkedTransfers = [] }: Props
   const destEquiv = needsRate && collection.transfer_rate
     ? Number(collection.amount) * Number(collection.transfer_rate)
     : null;
+
+  // How much of this collection has already been drawn by (same-currency)
+  // linked transfers, and what's left / whether it's already over-drawn.
+  const transferredAgainstThis = linkedTransfers
+    .filter(t => t.currency === collection.currency)
+    .reduce((s, t) => s + Number(t.amount), 0);
+  const remaining = Number(collection.amount) - transferredAgainstThis;
 
   async function handleApprove() {
     setApproving(true);
@@ -225,6 +233,22 @@ export function FundCollectionDetail({ collection, linkedTransfers = [] }: Props
                 </p>
               )}
             </div>
+            {linkedTransfers.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground">Remaining</p>
+                {remaining > 0 ? (
+                  <p className="text-sm font-semibold font-mono">
+                    {collection.currency} {remaining.toLocaleString()}
+                  </p>
+                ) : remaining === 0 ? (
+                  <p className="text-sm font-semibold text-muted-foreground">Fully transferred (locked)</p>
+                ) : (
+                  <p className="text-sm font-semibold font-mono text-red-600 dark:text-red-400">
+                    Over by {collection.currency} {Math.abs(remaining).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            )}
             <div>
               <p className="text-xs text-muted-foreground">Payment Mode</p>
               <p className="text-sm font-semibold">{MODE_LABELS[collection.payment_mode] ?? collection.payment_mode}</p>
@@ -390,18 +414,25 @@ export function FundCollectionDetail({ collection, linkedTransfers = [] }: Props
           </CardHeader>
           <CardContent className="space-y-2">
             {linkedTransfers.map(t => (
-              <a key={t.id} href={`/finance/transfers/${t.id}`} className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition-colors">
-                <div className="flex items-center gap-3">
-                  <ArrowRightLeft className="h-4 w-4 text-blue-500 shrink-0" />
-                  <div>
-                    <p className="text-sm font-mono font-semibold text-[#E67A32]">{t.transfer_number}</p>
-                    <p className="text-xs text-muted-foreground">{t.source_region} → {t.destination_region}</p>
+              <a key={t.id} href={`/finance/transfers/${t.id}`} className="flex flex-col gap-1.5 p-3 rounded-lg border hover:bg-accent transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <ArrowRightLeft className="h-4 w-4 text-blue-500 shrink-0" />
+                    <div>
+                      <p className="text-sm font-mono font-semibold text-[#E67A32]">{t.transfer_number}</p>
+                      <p className="text-xs text-muted-foreground">{t.source_region} → {t.destination_region}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-mono">{t.currency} {Number(t.amount).toLocaleString()}</p>
+                    <Badge className={`text-[10px] px-1.5 py-0 ${TRANSFER_STATUS_COLORS[t.status]}`}>{t.status.replace("_", " ")}</Badge>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-mono">{t.currency} {Number(t.amount).toLocaleString()}</p>
-                  <Badge className={`text-[10px] px-1.5 py-0 ${TRANSFER_STATUS_COLORS[t.status]}`}>{t.status.replace("_", " ")}</Badge>
-                </div>
+                {t.over_transfer_reason && (
+                  <p className="text-xs text-red-600 dark:text-red-400 pl-7">
+                    Exceeded remaining balance: {t.over_transfer_reason}
+                  </p>
+                )}
               </a>
             ))}
           </CardContent>
