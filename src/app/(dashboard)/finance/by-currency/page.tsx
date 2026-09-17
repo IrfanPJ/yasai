@@ -120,11 +120,20 @@ export default async function ByCurrencyPage() {
 
   // Note: fund_collections has no deleted_at column (unlike the logistics
   // GCN table) — don't filter on one, or the whole query errors silently.
-  const [{ data: collections }, { data: transfers }, { data: payments }] = await Promise.all([
+  const [
+    { data: collections, error: collectionsError },
+    { data: transfers, error: transfersError },
+    { data: payments, error: paymentsError },
+  ] = await Promise.all([
     supabase.from("fund_collections").select("id, currency, amount"),
     supabase.from("fund_transfers").select("currency, amount, fund_collection_id"),
     supabase.from("supplier_payments").select("currency, amount"),
   ]);
+  // A query error here silently produced "0 collected" for everything once
+  // before — log loudly instead of falling through to an empty array.
+  if (collectionsError) console.error("By Currency: fund_collections query failed:", collectionsError.message);
+  if (transfersError) console.error("By Currency: fund_transfers query failed:", transfersError.message);
+  if (paymentsError) console.error("By Currency: supplier_payments query failed:", paymentsError.message);
 
   const collectionRows = (collections ?? []) as (Row & { id: string })[];
   const collectionCurrencyById = new Map(collectionRows.map((c) => [c.id, c.currency]));
