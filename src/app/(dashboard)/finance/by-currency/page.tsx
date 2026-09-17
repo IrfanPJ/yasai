@@ -118,8 +118,10 @@ function CurrencyCard({ s }: { s: CurrencyStats }) {
 export default async function ByCurrencyPage() {
   const supabase = await createClient();
 
+  // Note: fund_collections has no deleted_at column (unlike the logistics
+  // GCN table) — don't filter on one, or the whole query errors silently.
   const [{ data: collections }, { data: transfers }, { data: payments }] = await Promise.all([
-    supabase.from("fund_collections").select("id, currency, amount").is("deleted_at", null),
+    supabase.from("fund_collections").select("id, currency, amount"),
     supabase.from("fund_transfers").select("currency, amount, fund_collection_id"),
     supabase.from("supplier_payments").select("currency, amount"),
   ]);
