@@ -41,7 +41,7 @@ export default async function CollectionsPage({ searchParams }: PageProps) {
   }
 
   if (params.status && params.status !== "all") {
-    query = query.eq("status", params.status);
+    query = query.eq("current_stage", params.status);
   }
 
   const { data } = await query.limit(100);

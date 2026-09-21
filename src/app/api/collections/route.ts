@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
 
   const search = searchParams.get("search");
   const cargo = searchParams.get("cargo");
-  const status = searchParams.get("status");
+  const status = searchParams.get("status"); // filters on current_stage (the display stage)
+  const warehouseId = searchParams.get("warehouse_id");
 
   let query = supabase
     .from("goods_collection_notes")
@@ -28,7 +29,8 @@ export async function GET(request: NextRequest) {
     );
   }
   if (cargo && cargo !== "all") query = query.eq("cargo_type", cargo);
-  if (status && status !== "all") query = query.eq("status", status);
+  if (status && status !== "all") query = query.eq("current_stage", status);
+  if (warehouseId) query = query.eq("warehouse_id", warehouseId);
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

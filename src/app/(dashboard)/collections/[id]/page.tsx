@@ -17,7 +17,7 @@ export default async function CollectionDetailPage({ params }: PageProps) {
 
   const { data, error } = await supabase
     .from("goods_collection_notes")
-    .select("*")
+    .select("*, warehouse:warehouses(id, code, name, country)")
     .eq("id", id)
     .is("deleted_at", null)
     .single();

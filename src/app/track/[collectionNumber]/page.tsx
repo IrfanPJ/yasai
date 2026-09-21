@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { GoodsCollectionNote, CollectionStatus } from "@/types";
+import type { GoodsCollectionNote, TrackingStage } from "@/types";
 import { STATUS_LABELS, CARGO_TYPE_LABELS } from "@/types";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { YasaiLogo } from "@/components/layout/logo";
@@ -12,7 +12,7 @@ interface PageProps {
   params: Promise<{ collectionNumber: string }>;
 }
 
-const STATUS_STEPS: CollectionStatus[] = [
+const STATUS_STEPS: TrackingStage[] = [
   "collected",
   "in_warehouse",
   "in_transit",
@@ -21,7 +21,7 @@ const STATUS_STEPS: CollectionStatus[] = [
   "delivered",
 ];
 
-const STATUS_DESCRIPTIONS: Record<CollectionStatus, string> = {
+const STATUS_DESCRIPTIONS: Record<TrackingStage, string> = {
   collected: "Goods have been collected and logged",
   in_warehouse: "Goods are being processed at the warehouse",
   in_transit: "Shipment is on its way",
@@ -37,7 +37,7 @@ export default async function TrackingPage({ params }: PageProps) {
   const { data, error } = await supabase
     .from("goods_collection_notes")
     .select(
-      "collection_number, shipper_name, consignee_name, destination, weight_kg, cargo_type, status, status_history, created_at, updated_at"
+      "collection_number, shipper_name, consignee_name, destination, weight_kg, cargo_type, current_stage, status_history, created_at, updated_at"
     )
     .eq("collection_number", collectionNumber.toUpperCase())
     .is("deleted_at", null)
@@ -53,20 +53,20 @@ export default async function TrackingPage({ params }: PageProps) {
     | "destination"
     | "weight_kg"
     | "cargo_type"
-    | "status"
+    | "current_stage"
     | "status_history"
     | "created_at"
     | "updated_at"
   >;
 
-  const currentStep = STATUS_STEPS.indexOf(gcn.status);
+  const currentStep = STATUS_STEPS.indexOf(gcn.current_stage);
 
-  // Build a map of status → timestamp from status_history
-  const historyMap: Partial<Record<CollectionStatus, string>> = {};
+  // Build a map of stage → timestamp from status_history
+  const historyMap: Partial<Record<TrackingStage, string>> = {};
   // First entry is always "collected" at created_at
   historyMap["collected"] = gcn.created_at;
   for (const entry of gcn.status_history ?? []) {
-    historyMap[entry.status as CollectionStatus] = entry.changed_at;
+    historyMap[entry.status] = entry.changed_at;
   }
 
   return (
@@ -91,10 +91,10 @@ export default async function TrackingPage({ params }: PageProps) {
                 Current Status
               </p>
               <p className="text-2xl font-bold text-[#071A3A]">
-                {STATUS_LABELS[gcn.status]}
+                {STATUS_LABELS[gcn.current_stage]}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                {STATUS_DESCRIPTIONS[gcn.status]}
+                {STATUS_DESCRIPTIONS[gcn.current_stage]}
               </p>
               {gcn.updated_at && (
                 <p className="text-xs text-[#E67A32] mt-1">
@@ -102,7 +102,7 @@ export default async function TrackingPage({ params }: PageProps) {
                 </p>
               )}
             </div>
-            {gcn.status === "delivered" ? (
+            {gcn.current_stage === "delivered" ? (
               <div className="bg-green-100 p-3 rounded-xl">
                 <CheckCircle2 className="h-7 w-7 text-green-600" />
               </div>

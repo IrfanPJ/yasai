@@ -30,10 +30,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Cannot edit receiving details after report is approved" }, { status: 409 });
   }
 
+  const { data: warehouse } = await serviceClient
+    .from("warehouses")
+    .select("id")
+    .eq("code", storageLocation)
+    .maybeSingle();
+
   const { data, error } = await serviceClient
     .from("goods_collection_notes")
     .update({
       storage_location: storageLocation,
+      warehouse_id: warehouse?.id ?? null,
       palletized: Boolean(body.palletized),
       updated_by: user.id,
     })

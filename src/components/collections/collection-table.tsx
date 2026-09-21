@@ -66,7 +66,7 @@ export function CollectionsTable({
         item.destination.toLowerCase().includes(search.toLowerCase());
 
       const matchCargo = cargoFilter === "all" || item.cargo_type === cargoFilter;
-      const matchStatus = statusFilter === "all" || item.status === statusFilter;
+      const matchStatus = statusFilter === "all" || item.current_stage === statusFilter;
 
       return matchSearch && matchCargo && matchStatus;
     });
@@ -143,7 +143,7 @@ export function CollectionsTable({
       item.weight_kg,
       item.volume_cbm,
       item.num_packages,
-      STATUS_LABELS[item.status],
+      STATUS_LABELS[item.current_stage],
       item.doc_ref_number,
       formatDate(item.created_at),
     ]);
@@ -295,7 +295,7 @@ export function CollectionsTable({
                       {formatWeight(item.weight_kg)}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={item.status} />
+                      <StatusBadge status={item.current_stage} />
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {formatDate(item.created_at)}

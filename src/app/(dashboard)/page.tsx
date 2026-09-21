@@ -39,7 +39,7 @@ export default async function DashboardPage() {
     supabase
       .from("goods_collection_notes")
       .select("*", { count: "exact", head: true })
-      .not("status", "eq", "delivered")
+      .not("current_stage", "eq", "delivered")
       .is("deleted_at", null),
     supabase
       .from("goods_collection_notes")
