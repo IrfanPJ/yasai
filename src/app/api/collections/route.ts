@@ -3,6 +3,7 @@ import { createServiceClient, createClient } from "@/lib/supabase/server";
 import { generateQRCode } from "@/lib/qr";
 import { generateCollectionPDF } from "@/lib/pdf";
 import { getLogoDataUrl } from "@/lib/logo";
+import { attachGcnToConsolidationSheet } from "@/lib/manifest";
 import type { GoodsCollectionNote } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -78,6 +79,14 @@ export async function POST(request: NextRequest) {
       { error: insertError?.message || "Insert failed" },
       { status: 500 }
     );
+  }
+
+  // 2b. Attach to this zone's pending consolidation sheet (auto-converts to a
+  // manifest + Job Order once the sheet's pallet total hits the threshold)
+  try {
+    await attachGcnToConsolidationSheet(serviceClient, gcn, user.id);
+  } catch (manifestErr) {
+    console.error("Consolidation sheet attach failed:", manifestErr);
   }
 
   // 3. Generate QR code

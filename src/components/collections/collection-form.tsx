@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Loader2, FileText, Save, X, ImagePlus, Trash2, Plus } from "lucide-react";
 import { SignaturePad } from "./signature-pad";
 import { cn } from "@/lib/utils";
-import type { GoodsCollectionNote, CargoType, BillingType, DeliveryNoteItem, PalletDimension } from "@/types";
+import type { GoodsCollectionNote, CargoType, BillingType, DeliveryNoteItem, PalletDimension, ManifestZone } from "@/types";
 
 const schema = z.object({
   shipper_name: z.string().min(1, "Required"),
@@ -17,6 +17,7 @@ const schema = z.object({
   destination: z.string().min(1, "Required"),
   commodity: z.string().min(1, "Required"),
   cargo_type: z.enum(["air", "sea", "land"]),
+  origin_zone: z.enum(["mainland", "jafza"]),
   shipping_mark: z.string().optional(),
   doc_ref_number: z.string().optional(),
   special_instructions: z.string().optional(),
@@ -176,6 +177,7 @@ export function CollectionForm({
       destination: defaultValues?.destination || "",
       commodity: defaultValues?.commodity || "",
       cargo_type: defaultValues?.cargo_type || "land",
+      origin_zone: defaultValues?.origin_zone || "mainland",
       shipping_mark: defaultValues?.shipping_mark || "",
       doc_ref_number: defaultValues?.doc_ref_number || "",
       special_instructions: defaultValues?.special_instructions || "",
@@ -187,6 +189,7 @@ export function CollectionForm({
   });
 
   const cargoType = watch("cargo_type");
+  const originZone = watch("origin_zone");
   const billingType = watch("billing_type");
 
   useEffect(() => {
@@ -381,6 +384,16 @@ export function CollectionForm({
               placeholder="e.g. 328.00"
               className={inputCls}
             />
+          </Field>
+          <Field label="Shipment In" required error={errors.origin_zone?.message}>
+            <select
+              value={originZone}
+              onChange={(e) => setValue("origin_zone", e.target.value as ManifestZone)}
+              className={selectCls}
+            >
+              <option value="mainland">Mainland</option>
+              <option value="jafza">JAFZA</option>
+            </select>
           </Field>
         </div>
 

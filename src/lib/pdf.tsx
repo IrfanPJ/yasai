@@ -1,4 +1,5 @@
-import type { GoodsCollectionNote, DeliveryNote, DeliveryNoteItem, JobOrder, Invoice, InvoiceLineItem, Waybill, WaybillCargoItem } from "@/types";
+import type { GoodsCollectionNote, DeliveryNote, DeliveryNoteItem, JobOrder, Invoice, InvoiceLineItem, Waybill, WaybillCargoItem, ConsolidationSheet, ConsolidationSheetItem } from "@/types";
+import { MANIFEST_ZONE_LABELS } from "@/types";
 import { format } from "date-fns";
 
 const NAVY         = "#0B1F3F";
@@ -1660,6 +1661,126 @@ function buildPackingListHtml(job: JobOrder, gcns: GoodsCollectionNote[], logoDa
 export async function generatePackingListPDF(job: JobOrder, gcns: GoodsCollectionNote[], logoDataUrl?: string): Promise<Buffer> {
   const html = buildPackingListHtml(job, gcns, logoDataUrl);
   return renderHtmlToPdf(html);
+}
+
+// ══════════════════════════════════════════════════════════════
+// MANIFEST / CONSOLIDATION SHEET PDF
+// ══════════════════════════════════════════════════════════════
+
+function buildManifestHtml(sheet: ConsolidationSheet, items: ConsolidationSheetItem[], logoDataUrl?: string): string {
+  const fmtDate = (d?: string | null) => {
+    if (!d) return "&#8211;";
+    try { return format(new Date(d), "dd/MM/yyyy"); } catch { return d; }
+  };
+
+  const zoneLabel = MANIFEST_ZONE_LABELS[sheet.zone];
+  const docLabel = sheet.status === "manifest" ? "Manifest" : "Pending Consolidation Sheet";
+
+  const itemRows = items.map((item, i) => {
+    const g = item.gcn;
+    return `
+    <tr>
+      <td class="td ctr">${i + 1}</td>
+      <td class="td ctr">${g ? fmtDate(g.created_at) : "&#8211;"}</td>
+      <td class="td">${esc(g?.consignee_name)}</td>
+      <td class="td">${esc(g?.shipper_name)}</td>
+      <td class="td">${esc(g?.destination)}</td>
+      <td class="td ctr">${g?.weight_kg != null ? g.weight_kg.toFixed(2) : "&#8211;"}</td>
+      <td class="td ctr">${g?.volume_cbm != null ? g.volume_cbm.toFixed(3) : "&#8211;"}</td>
+      <td class="td">${esc(g?.doc_ref_number)}</td>
+      <td class="td ctr">${esc(g?.shipping_mark)}</td>
+      <td class="td">${esc(g?.num_packages)}</td>
+      <td class="td ctr">${item.pallet_count}</td>
+    </tr>`;
+  }).join("");
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  @page { size: A4 landscape; margin: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+    color: #111;
+    background: white;
+    width: 297mm;
+    min-height: 210mm;
+    padding: 14px 18px;
+  }
+  .hdr { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid ${ORANGE}; padding-bottom: 8px; margin-bottom: 4px; }
+  .hdr-left { display: flex; align-items: center; gap: 10px; }
+  .hdr-left img { height: 34px; width: auto; object-fit: contain; }
+  .hdr-co { font-size: 12pt; font-weight: 900; color: ${NAVY}; }
+  .hdr-sub { font-size: 7pt; color: #888; }
+  .hdr-meta { text-align: right; }
+  .hdr-meta-lbl { font-size: 6.5pt; color: #999; text-transform: uppercase; letter-spacing: 0.4px; }
+  .hdr-meta-val { font-size: 9pt; font-weight: 800; color: ${NAVY}; }
+  .title-bar { background: ${NAVY}; color: white; text-align: center; font-size: 12pt; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; padding: 6px; margin: 8px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: ${HDR_BG}; border: 1px solid ${BORDER}; font-size: 7.5pt; font-weight: 800; text-transform: uppercase; padding: 5px 6px; text-align: center; color: ${NAVY}; }
+  .td { border: 1px solid ${BORDER}; padding: 4px 6px; font-size: 8pt; vertical-align: middle; }
+  .ctr { text-align: center; }
+  tr:nth-child(even) .td { background: #f9f9f9; }
+  .footer-row td { border: 1px solid ${BORDER}; background: ${LIGHT_ORANGE}; font-weight: 800; color: ${NAVY}; padding: 6px; }
+  .doc-ref { display: flex; justify-content: space-between; margin-top: 6px; font-size: 6.5pt; color: #aaa; }
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-left">
+    ${logoDataUrl ? `<img src="${logoDataUrl}" alt="YASAI">` : ""}
+    <div><div class="hdr-co">YASAI LOGISTICS COMPANY</div><div class="hdr-sub">Freight &amp; Logistics Solutions</div></div>
+  </div>
+  <div class="hdr-meta">
+    <div class="hdr-meta-lbl">Sheet No</div><div class="hdr-meta-val">${esc(sheet.sheet_number)}</div>
+  </div>
+</div>
+
+<div class="title-bar">${zoneLabel.toUpperCase()} ${docLabel.toUpperCase()} AS ON ${format(new Date(), "dd-MM-yy")}</div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:4%">Sl No</th>
+      <th style="width:7%">Date</th>
+      <th style="width:14%">Customer</th>
+      <th style="width:14%">Supplier</th>
+      <th style="width:11%">Delivery Place</th>
+      <th style="width:8%">Weight(Kg)</th>
+      <th style="width:6%">CBM</th>
+      <th style="width:12%">Ref</th>
+      <th style="width:9%">Shipping Mark</th>
+      <th style="width:10%">Packages</th>
+      <th style="width:5%">Pallets</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${itemRows}
+  </tbody>
+  <tfoot>
+    <tr class="footer-row">
+      <td colspan="10">${esc(zoneLabel)} — Total</td>
+      <td class="ctr">${sheet.pallet_count} Pallets</td>
+    </tr>
+  </tfoot>
+</table>
+
+<div class="doc-ref">
+  <span>${esc(docLabel)} — ${esc(sheet.sheet_number)}</span>
+  <span>Generated ${format(new Date(), "dd/MM/yyyy HH:mm")}</span>
+</div>
+
+</body>
+</html>`;
+}
+
+export async function generateManifestPDF(sheet: ConsolidationSheet, items: ConsolidationSheetItem[], logoDataUrl?: string): Promise<Buffer> {
+  const html = buildManifestHtml(sheet, items, logoDataUrl);
+  return renderHtmlToPdf(html, 1);
 }
 
 // ══════════════════════════════════════════════════════════════

@@ -43,6 +43,48 @@ export interface PalletDimension {
   height_m: number;
 }
 
+export type ManifestZone = "mainland" | "jafza";
+
+export const MANIFEST_ZONE_LABELS: Record<ManifestZone, string> = {
+  mainland: "Mainland",
+  jafza: "JAFZA",
+};
+
+export type ConsolidationSheetStatus = "pending" | "manifest";
+export type ConsolidationConversionType = "auto" | "manual";
+
+export const CONSOLIDATION_PALLET_LIMIT = 45;
+
+export interface ConsolidationSheetItem {
+  id: string;
+  sheet_id: string;
+  gcn_id: string;
+  position: number;
+  pallet_count: number;
+  remarks?: string | null;
+  added_by?: string;
+  added_at: string;
+  gcn?: GoodsCollectionNote;
+}
+
+export interface ConsolidationSheet {
+  id: string;
+  sheet_number: string;
+  zone: ManifestZone;
+  status: ConsolidationSheetStatus;
+  pallet_count: number;
+  item_count: number;
+  converted_at?: string | null;
+  converted_by?: string | null;
+  conversion_type?: ConsolidationConversionType | null;
+  job_order_id?: string | null;
+  created_by?: string;
+  updated_by?: string;
+  created_at: string;
+  updated_at: string;
+  items?: ConsolidationSheetItem[];
+}
+
 export interface GoodsCollectionNote {
   id: string;
   collection_number: string;
@@ -70,6 +112,9 @@ export interface GoodsCollectionNote {
   volume_cbm?: number;
   pallet_dimensions?: PalletDimension[];
   weight_kg?: number;
+
+  // UAE warehouse zone this GCN was collected in
+  origin_zone?: ManifestZone;
 
   // Billing
   billing_type?: BillingType;
