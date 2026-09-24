@@ -448,8 +448,9 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
       </Card>
 
       {/* ── Package Stats ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
         <StatCard label="Packages" value={collection.num_packages || "—"} />
+        <StatCard label="Package Type" value={collection.package_type || "—"} />
         <StatCard label="Volume" value={formatVolume(collection.volume_cbm)} />
         <StatCard label="Weight" value={formatWeight(collection.weight_kg)} />
       </div>
