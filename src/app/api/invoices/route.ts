@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
     .from("invoices")
     .insert({
       invoice_number: invoiceNumber,
+      reference_number: body.reference_number || null,
       invoice_type: invoiceType,
       job_order_id: body.job_order_id || null,
       customer_name,

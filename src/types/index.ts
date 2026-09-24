@@ -525,6 +525,7 @@ export interface Invoice {
   shipper?: string;
   payment_terms?: string;
   manual_job_number?: string;
+  reference_number?: string;
   line_items: InvoiceLineItem[];
   subtotal: number;
   tax_rate: number;

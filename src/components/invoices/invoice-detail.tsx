@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Loader2, Download, Send, CheckCircle2, XCircle, Truck, FileText, ExternalLink,
+  Loader2, Download, Send, CheckCircle2, XCircle, Truck, FileText, ExternalLink, Pencil,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +74,13 @@ export function InvoiceDetail({ invoice, userRole }: InvoiceDetailProps) {
           >
             <Download className="h-3.5 w-3.5" />Download PDF
           </Button>
+          {canManage && isDraft && invoice.invoice_type !== "uploaded" && (
+            <Button asChild size="sm" variant="outline" className="gap-1.5">
+              <Link href={`/invoices/${invoice.id}/edit`}>
+                <Pencil className="h-3.5 w-3.5" />Edit
+              </Link>
+            </Button>
+          )}
           {canManage && canSend && (
             <Button
               size="sm" className="gap-1.5 bg-[#071A3A] hover:bg-[#0d2550]"
@@ -113,6 +120,12 @@ export function InvoiceDetail({ invoice, userRole }: InvoiceDetailProps) {
               <span className="text-xs text-muted-foreground block uppercase tracking-wide">Currency</span>
               <span className="font-medium">{invoice.currency}</span>
             </div>
+            {invoice.reference_number && (
+              <div>
+                <span className="text-xs text-muted-foreground block uppercase tracking-wide">Reference No</span>
+                <span className="font-medium">{invoice.reference_number}</span>
+              </div>
+            )}
             {invoice.job_order_id && (
               <div>
                 <span className="text-xs text-muted-foreground block uppercase tracking-wide">Job Order</span>

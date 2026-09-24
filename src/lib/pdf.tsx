@@ -2724,6 +2724,10 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
           <div class="meta-key">Shipper</div><div class="meta-colon">:</div>
           <div class="meta-val">${esc(invoice.shipper)}</div>
         </div>` : ""}
+        ${invoice.reference_number ? `<div class="meta-row">
+          <div class="meta-key">Ref No</div><div class="meta-colon">:</div>
+          <div class="meta-val">${esc(invoice.reference_number)}</div>
+        </div>` : ""}
         ${invoice.final_destination ? `<div class="meta-row">
           <div class="meta-key">Destination</div><div class="meta-colon">:</div>
           <div class="meta-val">${esc(invoice.final_destination)}</div>
