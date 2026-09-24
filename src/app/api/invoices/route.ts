@@ -15,7 +15,8 @@ export async function GET() {
   const { data, error } = await serviceClient
     .from("invoices")
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(200);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
@@ -46,7 +47,11 @@ export async function POST(request: NextRequest) {
   const lineItems = Array.isArray(body.line_items) ? body.line_items : [];
   const subtotal = lineItems.reduce((s: number, item: { amount?: number }) => s + (item.amount || 0), 0);
   const taxRate = Number(body.tax_rate) || 0;
-  const taxAmount = subtotal * (taxRate / 100);
+  // Freight invoices track VAT per line item (vat_amount), not a flat invoice-level
+  // rate — sum those instead of subtotal * tax_rate, which is always 0 for freight.
+  const taxAmount = invoiceType === "freight"
+    ? lineItems.reduce((s: number, item: { vat_amount?: number }) => s + (item.vat_amount || 0), 0)
+    : subtotal * (taxRate / 100);
   const totalAmount = subtotal + taxAmount;
 
   const { data, error } = await serviceClient

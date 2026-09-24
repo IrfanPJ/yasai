@@ -480,6 +480,7 @@ export interface InvoiceLineItem {
   qty: number;
   unit_price: number;
   country_of_origin?: string;
+  vat_percent?: number;
   vat_amount?: number;
   amount: number;
 }

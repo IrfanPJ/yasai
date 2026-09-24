@@ -31,7 +31,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   const { data: existing } = await serviceClient
     .from("invoices")
-    .select("status")
+    .select("status, invoice_type")
     .eq("id", id)
     .single();
 
@@ -46,7 +46,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     ? lineItems.reduce((s: number, item: { amount?: number }) => s + (item.amount || 0), 0)
     : undefined;
   const taxRate = body.tax_rate !== undefined ? Number(body.tax_rate) : undefined;
-  const taxAmount = subtotal !== undefined && taxRate !== undefined ? subtotal * (taxRate / 100) : undefined;
+  // Freight invoices track VAT per line item (vat_amount), not a flat invoice-level
+  // rate — sum those instead of subtotal * tax_rate, which is always 0 for freight.
+  const taxAmount = subtotal === undefined ? undefined
+    : existing.invoice_type === "freight"
+      ? lineItems!.reduce((s: number, item: { vat_amount?: number }) => s + (item.vat_amount || 0), 0)
+      : taxRate !== undefined ? subtotal * (taxRate / 100) : undefined;
   const totalAmount = subtotal !== undefined && taxAmount !== undefined ? subtotal + taxAmount : undefined;
 
   const updates: Record<string, unknown> = { updated_by: user.id };

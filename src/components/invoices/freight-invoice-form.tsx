@@ -18,6 +18,7 @@ interface FreightLineItem {
   qty: number;
   country_of_origin: string;
   rate: number;
+  vat_percent: number;
   vat_amount: number;
   amount: number;
 }
@@ -28,12 +29,18 @@ const EMPTY_LINE: FreightLineItem = {
   qty: 1,
   country_of_origin: "",
   rate: 0,
+  vat_percent: 0,
   vat_amount: 0,
   amount: 0,
 };
 
+const SUBUNIT_NAMES: Record<string, string> = {
+  SAR: "HALALAS",
+  AED: "FILS",
+  USD: "CENTS",
+};
+
 function toWords(n: number, currency = "SAR"): string {
-  if (n === 0) return `${currency} : ZERO ONLY`;
   const ones = ["", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE",
     "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTEEN", "NINETEEN"];
   const tens = ["", "", "TWENTY", "THIRTY", "FORTY", "FIFTY", "SIXTY", "SEVENTY", "EIGHTY", "NINETY"];
@@ -44,10 +51,21 @@ function toWords(n: number, currency = "SAR"): string {
     return ones[Math.floor(num / 100)] + " HUNDRED " + below1000(num % 100);
   }
   const intPart = Math.floor(n);
+  const subunit = Math.round((n - intPart) * 100);
+  const subunitName = SUBUNIT_NAMES[currency] || "CENTS";
+
+  if (intPart === 0 && subunit === 0) return `${currency} : ZERO ONLY`;
+
   let result = "";
   if (intPart >= 1000) result += below1000(Math.floor(intPart / 1000)) + "THOUSAND ";
   result += below1000(intPart % 1000);
-  return `${currency} : ${result.trim()} ONLY`;
+  result = result.trim();
+
+  if (subunit > 0) {
+    const subunitWords = below1000(subunit).trim();
+    result = result ? `${result} AND ${subunitWords} ${subunitName}` : `${subunitWords} ${subunitName}`;
+  }
+  return `${currency} : ${result} ONLY`;
 }
 
 interface FreightInvoiceFormProps {
@@ -86,6 +104,7 @@ export function FreightInvoiceForm({ invoice }: FreightInvoiceFormProps) {
           qty: l.qty,
           country_of_origin: l.country_of_origin || "",
           rate: l.unit_price,
+          vat_percent: l.vat_percent ?? 0,
           vat_amount: l.vat_amount ?? 0,
           amount: l.amount,
         }))
@@ -107,6 +126,12 @@ export function FreightInvoiceForm({ invoice }: FreightInvoiceFormProps) {
       const item = { ...next[i], [field]: value };
       if (field === "qty" || field === "rate") {
         item.amount = Math.round(Number(item.qty) * Number(item.rate) * 100) / 100;
+      }
+      // VAT is opt-in: only applied when a percentage is actually entered.
+      if (field === "qty" || field === "rate" || field === "vat_percent") {
+        item.vat_amount = item.vat_percent > 0
+          ? Math.round(item.amount * (item.vat_percent / 100) * 100) / 100
+          : 0;
       }
       next[i] = item;
       return next;
@@ -148,6 +173,7 @@ export function FreightInvoiceForm({ invoice }: FreightInvoiceFormProps) {
           qty: l.qty,
           country_of_origin: l.country_of_origin,
           unit_price: l.rate,
+          vat_percent: l.vat_percent,
           vat_amount: l.vat_amount,
           amount: l.amount,
         })),
@@ -244,19 +270,19 @@ export function FreightInvoiceForm({ invoice }: FreightInvoiceFormProps) {
           <CardTitle className="text-sm text-[#071A3A] dark:text-white">Freight Line Items</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-[2fr_1fr_80px_80px_80px_80px_32px] gap-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground pb-1 border-b">
+          <div className="grid grid-cols-[2fr_1fr_70px_80px_70px_80px_32px] gap-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground pb-1 border-b">
             <span>Description</span>
             <span>Country of Origin</span>
             <span className="text-center">Qty</span>
             <span className="text-right">Rate</span>
-            <span className="text-right">VAT</span>
+            <span className="text-right">VAT %</span>
             <span className="text-right">Amount</span>
             <span />
           </div>
 
           {lines.map((line, i) => (
             <div key={i} className="space-y-1.5">
-              <div className="grid grid-cols-[2fr_1fr_80px_80px_80px_80px_32px] gap-2 items-start">
+              <div className="grid grid-cols-[2fr_1fr_70px_80px_70px_80px_32px] gap-2 items-start">
                 <div className="space-y-1">
                   <Input
                     value={line.description}
@@ -290,9 +316,10 @@ export function FreightInvoiceForm({ invoice }: FreightInvoiceFormProps) {
                   className="text-sm text-right"
                 />
                 <Input
-                  type="number" min={0} step={0.01}
-                  value={line.vat_amount}
-                  onChange={e => updateLine(i, "vat_amount", Number(e.target.value))}
+                  type="number" min={0} max={100} step={0.01}
+                  value={line.vat_percent || ""}
+                  onChange={e => updateLine(i, "vat_percent", Number(e.target.value))}
+                  placeholder="0"
                   className="text-sm text-right"
                 />
                 <div className="text-sm font-medium text-right pt-2 pr-1 font-mono">
@@ -307,6 +334,11 @@ export function FreightInvoiceForm({ invoice }: FreightInvoiceFormProps) {
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
+              {line.vat_percent > 0 && (
+                <p className="text-[11px] text-muted-foreground text-right pr-9">
+                  VAT: {line.vat_amount.toFixed(2)} ({line.vat_percent}% of {line.amount.toFixed(2)})
+                </p>
+              )}
             </div>
           ))}
 

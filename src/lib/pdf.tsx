@@ -2465,8 +2465,13 @@ export async function generateCollectionReceiptPDF(collection: CollectionReceipt
 
 // ─── Freight Invoice PDF ──────────────────────────────────────
 
+const FREIGHT_SUBUNIT_NAMES: Record<string, string> = {
+  SAR: "HALALAS",
+  AED: "FILS",
+  USD: "CENTS",
+};
+
 function freightToWords(n: number, currency = "SAR"): string {
-  if (n === 0) return `${currency} : ZERO ONLY`;
   const ones = ["", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE",
     "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTEEN", "NINETEEN"];
   const tens = ["", "", "TWENTY", "THIRTY", "FORTY", "FIFTY", "SIXTY", "SEVENTY", "EIGHTY", "NINETY"];
@@ -2477,11 +2482,22 @@ function freightToWords(n: number, currency = "SAR"): string {
     return ones[Math.floor(num / 100)] + " HUNDRED " + below1000(num % 100);
   }
   const intPart = Math.floor(n);
+  const subunit = Math.round((n - intPart) * 100);
+  const subunitName = FREIGHT_SUBUNIT_NAMES[currency] || "CENTS";
+
+  if (intPart === 0 && subunit === 0) return `${currency} : ZERO ONLY`;
+
   let result = "";
   if (intPart >= 1000000) result += below1000(Math.floor(intPart / 1000000)) + "MILLION ";
   if (intPart >= 1000) result += below1000(Math.floor((intPart % 1000000) / 1000)) + "THOUSAND ";
   result += below1000(intPart % 1000);
-  return `${currency} : ${result.trim()} ONLY`;
+  result = result.trim();
+
+  if (subunit > 0) {
+    const subunitWords = below1000(subunit).trim();
+    result = result ? `${result} AND ${subunitWords} ${subunitName}` : `${subunitWords} ${subunitName}`;
+  }
+  return `${currency} : ${result} ONLY`;
 }
 
 function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string {

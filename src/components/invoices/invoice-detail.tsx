@@ -206,9 +206,9 @@ export function InvoiceDetail({ invoice, userRole }: InvoiceDetailProps) {
               <span>Subtotal</span>
               <span>{invoice.currency} {Number(invoice.subtotal).toFixed(2)}</span>
             </div>
-            {Number(invoice.tax_rate) > 0 && (
+            {Number(invoice.tax_amount) > 0 && (
               <div className="flex justify-between text-muted-foreground">
-                <span>VAT ({invoice.tax_rate}%)</span>
+                <span>VAT{Number(invoice.tax_rate) > 0 ? ` (${invoice.tax_rate}%)` : ""}</span>
                 <span>{invoice.currency} {Number(invoice.tax_amount).toFixed(2)}</span>
               </div>
             )}
