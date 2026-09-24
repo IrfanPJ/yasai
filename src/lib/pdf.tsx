@@ -2703,7 +2703,7 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
   <!-- CONTACT ROW -->
   <div class="contact-row">
     <div class="ci">H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
-    <div class="ci">Tel: +966 55 932 6687</div>
+    <div class="ci">Tel: +971 52 214 5822</div>
     <div class="ci">info@yasailogistics.com</div>
     <div class="ci">www.yasailogistics.com</div>
   </div>
@@ -2839,7 +2839,7 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
 
   <!-- BOTTOM BAR -->
   <div class="bottom-bar">
-    YASAI Logistics Company &nbsp;|&nbsp; Tel: +966 55 932 6687 &nbsp;|&nbsp; info@yasailogistics.com &nbsp;|&nbsp; www.yasailogistics.com &nbsp;|&nbsp; Trusted Name in Cargo Consolidation
+    YASAI Logistics Company &nbsp;|&nbsp; Tel: +971 52 214 5822 &nbsp;|&nbsp; info@yasailogistics.com &nbsp;|&nbsp; www.yasailogistics.com &nbsp;|&nbsp; Trusted Name in Cargo Consolidation
   </div>
 
 </body>
