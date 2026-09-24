@@ -43,6 +43,34 @@ export interface PalletDimension {
   height_m: number;
 }
 
+export type PackageType = "pallet" | "piece" | "carton" | "box";
+
+export const PACKAGE_TYPE_LABELS: Record<PackageType, string> = {
+  pallet: "Pallet",
+  piece: "Piece",
+  carton: "Carton",
+  box: "Box",
+};
+
+export const PACKAGE_TYPE_SHORT: Record<PackageType, string> = {
+  pallet: "PLT",
+  piece: "PCS",
+  carton: "CTN",
+  box: "BOX",
+};
+
+// One line of a GCN's cargo: a quantity of a single package type. A GCN can
+// mix several lines (e.g. 3 pallets + 20 pieces + 5 cartons). Pallet lines
+// compute their own volume from per-pallet dimensions; other types are
+// entered manually since they have no per-unit dimension model.
+export interface PackageLineItem {
+  package_type: PackageType;
+  quantity: number;
+  weight_kg: number;
+  volume_cbm: number;
+  pallet_dimensions?: PalletDimension[];
+}
+
 export interface GoodsCollectionNote {
   id: string;
   collection_number: string;
@@ -70,6 +98,7 @@ export interface GoodsCollectionNote {
   volume_cbm?: number;
   pallet_dimensions?: PalletDimension[];
   weight_kg?: number;
+  package_items?: PackageLineItem[];
 
   // Billing
   billing_type?: BillingType;
