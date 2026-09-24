@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Package, ClipboardList, ChevronRight } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import type { ConsolidationSheet, ManifestZone } from "@/types";
-import { MANIFEST_ZONE_LABELS, CONSOLIDATION_CBM_LIMIT } from "@/types";
+import { MANIFEST_ZONE_LABELS, CONSOLIDATION_CBM_LIMIT, CONSOLIDATION_PALLET_LIMIT } from "@/types";
 
 const ZONES: ManifestZone[] = ["mainland", "jafza"];
 
@@ -18,7 +18,8 @@ export function ManifestOverview({ sheets }: { sheets: ConsolidationSheet[] }) {
         const zoneSheets = sheets.filter((s) => s.zone === zone);
         const pending = zoneSheets.find((s) => s.status === "pending");
         const manifests = zoneSheets.filter((s) => s.status === "manifest");
-        const pct = pending ? Math.min(100, Math.round((pending.cbm_total / CONSOLIDATION_CBM_LIMIT) * 100)) : 0;
+        const cbmPct = pending ? Math.min(100, Math.round((pending.cbm_total / CONSOLIDATION_CBM_LIMIT) * 100)) : 0;
+        const palletPct = pending ? Math.min(100, Math.round((pending.pallet_count / CONSOLIDATION_PALLET_LIMIT) * 100)) : 0;
 
         return (
           <Card key={zone} className="border-none shadow-sm">
@@ -39,13 +40,27 @@ export function ManifestOverview({ sheets }: { sheets: ConsolidationSheet[] }) {
                     <span className="text-xs font-semibold text-muted-foreground">{pending.sheet_number}</span>
                     <Badge variant="outline" className="text-[10px]">Pending</Badge>
                   </div>
-                  <Progress value={pct} className="h-2 mb-2" />
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{pending.item_count} GCNs &middot; {pending.pallet_count} pallets</span>
-                    <span className="font-semibold text-[#071A3A] dark:text-white">
-                      {pending.cbm_total.toFixed(3)} / {CONSOLIDATION_CBM_LIMIT} CBM
-                    </span>
+                  <div className="space-y-1.5">
+                    <div>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">CBM</span>
+                        <span className="font-semibold text-[#071A3A] dark:text-white">
+                          {pending.cbm_total.toFixed(3)} / {CONSOLIDATION_CBM_LIMIT}
+                        </span>
+                      </div>
+                      <Progress value={cbmPct} className="h-2" />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">Pallets</span>
+                        <span className="font-semibold text-[#071A3A] dark:text-white">
+                          {pending.pallet_count} / {CONSOLIDATION_PALLET_LIMIT}
+                        </span>
+                      </div>
+                      <Progress value={palletPct} className="h-2" />
+                    </div>
                   </div>
+                  <div className="text-xs text-muted-foreground mt-2">{pending.item_count} GCNs</div>
                 </Link>
               ) : (
                 <div className="p-4 rounded-lg border border-dashed border-gray-200 dark:border-gray-800 text-center text-xs text-muted-foreground">
@@ -71,7 +86,7 @@ export function ManifestOverview({ sheets }: { sheets: ConsolidationSheet[] }) {
                         <div className="flex items-center gap-2 min-w-0">
                           <ClipboardList className="h-3.5 w-3.5 text-[#E67A32] shrink-0" />
                           <span className="font-medium text-[#071A3A] dark:text-white truncate">{m.sheet_number}</span>
-                          <span className="text-muted-foreground shrink-0">{m.cbm_total.toFixed(3)} CBM</span>
+                          <span className="text-muted-foreground shrink-0">{m.pallet_count} plt &middot; {m.cbm_total.toFixed(3)} CBM</span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0 text-muted-foreground">
                           {m.converted_at && <span>{formatDateTime(m.converted_at)}</span>}
