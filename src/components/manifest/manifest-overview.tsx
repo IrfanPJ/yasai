@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Package, ClipboardList, ChevronRight } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import type { ConsolidationSheet, ManifestZone } from "@/types";
-import { MANIFEST_ZONE_LABELS, CONSOLIDATION_PALLET_LIMIT } from "@/types";
+import { MANIFEST_ZONE_LABELS, CONSOLIDATION_CBM_LIMIT } from "@/types";
 
 const ZONES: ManifestZone[] = ["mainland", "jafza"];
 
@@ -18,7 +18,7 @@ export function ManifestOverview({ sheets }: { sheets: ConsolidationSheet[] }) {
         const zoneSheets = sheets.filter((s) => s.zone === zone);
         const pending = zoneSheets.find((s) => s.status === "pending");
         const manifests = zoneSheets.filter((s) => s.status === "manifest");
-        const pct = pending ? Math.min(100, Math.round((pending.pallet_count / CONSOLIDATION_PALLET_LIMIT) * 100)) : 0;
+        const pct = pending ? Math.min(100, Math.round((pending.cbm_total / CONSOLIDATION_CBM_LIMIT) * 100)) : 0;
 
         return (
           <Card key={zone} className="border-none shadow-sm">
@@ -41,9 +41,9 @@ export function ManifestOverview({ sheets }: { sheets: ConsolidationSheet[] }) {
                   </div>
                   <Progress value={pct} className="h-2 mb-2" />
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{pending.item_count} GCNs</span>
+                    <span className="text-muted-foreground">{pending.item_count} GCNs &middot; {pending.pallet_count} pallets</span>
                     <span className="font-semibold text-[#071A3A] dark:text-white">
-                      {pending.pallet_count} / {CONSOLIDATION_PALLET_LIMIT} pallets
+                      {pending.cbm_total.toFixed(3)} / {CONSOLIDATION_CBM_LIMIT} CBM
                     </span>
                   </div>
                 </Link>
@@ -71,7 +71,7 @@ export function ManifestOverview({ sheets }: { sheets: ConsolidationSheet[] }) {
                         <div className="flex items-center gap-2 min-w-0">
                           <ClipboardList className="h-3.5 w-3.5 text-[#E67A32] shrink-0" />
                           <span className="font-medium text-[#071A3A] dark:text-white truncate">{m.sheet_number}</span>
-                          <span className="text-muted-foreground shrink-0">{m.pallet_count} plts</span>
+                          <span className="text-muted-foreground shrink-0">{m.cbm_total.toFixed(3)} CBM</span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0 text-muted-foreground">
                           {m.converted_at && <span>{formatDateTime(m.converted_at)}</span>}

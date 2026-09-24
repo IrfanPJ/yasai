@@ -1764,7 +1764,7 @@ function buildManifestHtml(sheet: ConsolidationSheet, items: ConsolidationSheetI
   <tfoot>
     <tr class="footer-row">
       <td colspan="10">${esc(zoneLabel)} — Total</td>
-      <td class="ctr">${sheet.pallet_count} Pallets</td>
+      <td class="ctr">${sheet.pallet_count} Pallets — ${sheet.cbm_total.toFixed(3)} CBM</td>
     </tr>
   </tfoot>
 </table>

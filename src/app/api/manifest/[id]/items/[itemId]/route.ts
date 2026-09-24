@@ -9,13 +9,14 @@ interface RouteParams { params: Promise<{ id: string; itemId: string }>; }
 async function recalcSheetTotals(serviceClient: ReturnType<typeof createServiceClient>, sheetId: string) {
   const { data: items } = await serviceClient
     .from("consolidation_sheet_items")
-    .select("pallet_count")
+    .select("pallet_count, cbm")
     .eq("sheet_id", sheetId);
 
   const palletCount = (items || []).reduce((s: number, it: { pallet_count: number }) => s + (it.pallet_count || 0), 0);
+  const cbmTotal = (items || []).reduce((s: number, it: { cbm: number }) => s + (it.cbm || 0), 0);
   await serviceClient
     .from("consolidation_sheets")
-    .update({ pallet_count: palletCount, item_count: (items || []).length })
+    .update({ pallet_count: palletCount, cbm_total: cbmTotal, item_count: (items || []).length })
     .eq("id", sheetId);
 }
 
@@ -32,9 +33,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 
   const body = await request.json();
-  const updateData: { remarks?: string | null; pallet_count?: number; position?: number } = {};
+  const updateData: { remarks?: string | null; pallet_count?: number; cbm?: number; position?: number } = {};
   if ("remarks" in body) updateData.remarks = body.remarks || null;
   if ("pallet_count" in body) updateData.pallet_count = Math.max(0, Number(body.pallet_count) || 0);
+  if ("cbm" in body) updateData.cbm = Math.max(0, Number(body.cbm) || 0);
   if ("position" in body) updateData.position = Number(body.position) || 0;
 
   const { data, error } = await serviceClient
@@ -47,7 +49,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  if ("pallet_count" in updateData) {
+  if ("pallet_count" in updateData || "cbm" in updateData) {
     await recalcSheetTotals(serviceClient, id);
   }
 

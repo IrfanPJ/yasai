@@ -1,8 +1,10 @@
 import type { createServiceClient } from "@/lib/supabase/server";
-import { CONSOLIDATION_PALLET_LIMIT } from "@/types";
+import { CONSOLIDATION_CBM_LIMIT } from "@/types";
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 
+// Pallet count is kept as a display-only figure alongside CBM — it no longer
+// drives auto-conversion, since not every GCN is palletized.
 function derivePalletCount(gcn: {
   pallet_dimensions?: unknown[] | null;
   num_packages?: string | null;
@@ -11,14 +13,14 @@ function derivePalletCount(gcn: {
     return gcn.pallet_dimensions.length;
   }
   const match = gcn.num_packages?.match(/(\d+)/);
-  return match ? parseInt(match[1], 10) : 1;
+  return match ? parseInt(match[1], 10) : 0;
 }
 
 /**
  * Attaches a newly-created GCN to its zone's open pending consolidation sheet,
  * creating that sheet if none is open yet. Auto-converts the sheet to a
- * manifest (and spins off a pre-filled Job Order) once its running pallet
- * total reaches CONSOLIDATION_PALLET_LIMIT.
+ * manifest (and spins off a pre-filled Job Order) once its running CBM total
+ * reaches CONSOLIDATION_CBM_LIMIT.
  */
 export async function attachGcnToConsolidationSheet(
   serviceClient: ServiceClient,
@@ -27,6 +29,7 @@ export async function attachGcnToConsolidationSheet(
     origin_zone?: string | null;
     pallet_dimensions?: unknown[] | null;
     num_packages?: string | null;
+    volume_cbm?: number | null;
   },
   userId: string
 ): Promise<void> {
@@ -39,6 +42,7 @@ export async function attachGcnToConsolidationSheet(
   }
 
   const palletCount = derivePalletCount(gcn);
+  const cbm = gcn.volume_cbm ?? 0;
 
   const { data: maxPos } = await serviceClient
     .from("consolidation_sheet_items")
@@ -53,19 +57,21 @@ export async function attachGcnToConsolidationSheet(
     gcn_id: gcn.id,
     position: (maxPos?.position ?? 0) + 1,
     pallet_count: palletCount,
+    cbm,
     added_by: userId,
   });
   if (insertError) throw insertError;
 
   const newPalletTotal = sheet.pallet_count + palletCount;
+  const newCbmTotal = sheet.cbm_total + cbm;
   const newItemTotal = sheet.item_count + 1;
 
   await serviceClient
     .from("consolidation_sheets")
-    .update({ pallet_count: newPalletTotal, item_count: newItemTotal, updated_by: userId })
+    .update({ pallet_count: newPalletTotal, cbm_total: newCbmTotal, item_count: newItemTotal, updated_by: userId })
     .eq("id", sheet.id);
 
-  if (newPalletTotal >= CONSOLIDATION_PALLET_LIMIT) {
+  if (newCbmTotal >= CONSOLIDATION_CBM_LIMIT) {
     await convertSheetToManifest(serviceClient, sheet.id, userId, "auto");
   }
 }
@@ -73,13 +79,14 @@ export async function attachGcnToConsolidationSheet(
 interface SheetRow {
   id: string;
   pallet_count: number;
+  cbm_total: number;
   item_count: number;
 }
 
 async function findOpenSheet(serviceClient: ServiceClient, zone: string): Promise<SheetRow | null> {
   const { data } = await serviceClient
     .from("consolidation_sheets")
-    .select("id, pallet_count, item_count")
+    .select("id, pallet_count, cbm_total, item_count")
     .eq("zone", zone)
     .eq("status", "pending")
     .maybeSingle();
@@ -93,7 +100,7 @@ async function createOpenSheet(serviceClient: ServiceClient, zone: string, userI
   const { data, error } = await serviceClient
     .from("consolidation_sheets")
     .insert({ sheet_number: sheetNumber as string, zone, created_by: userId, updated_by: userId })
-    .select("id, pallet_count, item_count")
+    .select("id, pallet_count, cbm_total, item_count")
     .single();
 
   if (error) {

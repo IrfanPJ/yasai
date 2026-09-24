@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { ConsolidationSheet, ConsolidationSheetItem, UserRole } from "@/types";
-import { CONSOLIDATION_PALLET_LIMIT } from "@/types";
+import { CONSOLIDATION_CBM_LIMIT } from "@/types";
 
 interface Props {
   sheet: ConsolidationSheet;
@@ -48,6 +48,7 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole }: Pr
 
   const canEdit = sheet.status === "pending" && EDIT_ROLES.includes(userRole);
   const totalPallets = items.reduce((s, it) => s + (it.pallet_count || 0), 0);
+  const totalCbm = items.reduce((s, it) => s + (it.cbm || 0), 0);
 
   function updateLocal(itemId: string, patch: Partial<ConsolidationSheetItem> & { gcn?: Partial<NonNullable<ConsolidationSheetItem["gcn"]>> }) {
     setItems((prev) => prev.map((it) => {
@@ -84,6 +85,22 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole }: Pr
       router.refresh();
     } catch {
       toast.error("Failed to save pallet count");
+    }
+  }
+
+  async function saveCbm(itemId: string, value: string) {
+    const parsed = Math.max(0, Number(value) || 0);
+    updateLocal(itemId, { cbm: parsed });
+    try {
+      const res = await fetch(`/api/manifest/${sheet.id}/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cbm: parsed }),
+      });
+      if (!res.ok) throw new Error();
+      router.refresh();
+    } catch {
+      toast.error("Failed to save CBM");
     }
   }
 
@@ -139,7 +156,7 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole }: Pr
           {sheet.status === "manifest" ? "Manifest" : "Pending"}
         </Badge>
         <span className="text-sm text-muted-foreground">
-          {items.length} GCNs &middot; {totalPallets} / {sheet.status === "pending" ? CONSOLIDATION_PALLET_LIMIT : totalPallets} pallets
+          {items.length} GCNs &middot; {totalPallets} pallets &middot; {totalCbm.toFixed(3)} / {sheet.status === "pending" ? CONSOLIDATION_CBM_LIMIT : totalCbm.toFixed(3)} CBM
         </span>
 
         <div className="ml-auto flex items-center gap-2">
@@ -175,8 +192,8 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole }: Pr
                   <DialogHeader>
                     <DialogTitle>Convert to Manifest?</DialogTitle>
                     <DialogDescription>
-                      This finalizes {sheet.sheet_number} ({items.length} GCNs, {totalPallets} pallets) as a manifest and
-                      creates a Job Order pre-filled with these GCNs. No more items can be added or edited on this sheet afterward.
+                      This finalizes {sheet.sheet_number} ({items.length} GCNs, {totalPallets} pallets, {totalCbm.toFixed(3)} CBM) as a
+                      manifest and creates a Job Order pre-filled with these GCNs. No more items can be added or edited on this sheet afterward.
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
@@ -207,6 +224,7 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole }: Pr
                   </th>
                 ))}
                 <th className="border border-gray-200 dark:border-gray-700 px-2 py-1.5 text-center font-semibold text-[#071A3A] dark:text-gray-200 w-20">Pallets</th>
+                <th className="border border-gray-200 dark:border-gray-700 px-2 py-1.5 text-center font-semibold text-[#071A3A] dark:text-gray-200 w-24">Sheet CBM</th>
                 <th className="border border-gray-200 dark:border-gray-700 px-2 py-1.5 text-left font-semibold text-[#071A3A] dark:text-gray-200 w-36">Remarks</th>
                 {canEdit && <th className="border border-gray-200 dark:border-gray-700 w-8" />}
               </tr>
@@ -259,6 +277,22 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole }: Pr
                   <td className="border border-gray-200 dark:border-gray-700 p-0.5">
                     {canEdit ? (
                       <input
+                        type="number"
+                        min="0" step="0.001"
+                        className={cn(cellCls, "text-center")}
+                        defaultValue={item.cbm}
+                        onBlur={(e) => {
+                          if (Number(e.target.value) !== item.cbm) saveCbm(item.id, e.target.value);
+                        }}
+                        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                      />
+                    ) : (
+                      <span className="block px-1.5 py-1 text-center">{item.cbm.toFixed(3)}</span>
+                    )}
+                  </td>
+                  <td className="border border-gray-200 dark:border-gray-700 p-0.5">
+                    {canEdit ? (
+                      <input
                         className={cellCls}
                         defaultValue={item.remarks || ""}
                         placeholder="Remarks"
@@ -287,7 +321,7 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole }: Pr
               ))}
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={GCN_COLUMNS.length + 4} className="border border-gray-200 dark:border-gray-700 px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={GCN_COLUMNS.length + 5} className="border border-gray-200 dark:border-gray-700 px-4 py-8 text-center text-muted-foreground">
                     No GCNs on this sheet yet.
                   </td>
                 </tr>
@@ -300,6 +334,7 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole }: Pr
                     Total
                   </td>
                   <td className="border border-gray-200 dark:border-gray-700 px-2 py-1.5 text-center">{totalPallets} Pallets</td>
+                  <td className="border border-gray-200 dark:border-gray-700 px-2 py-1.5 text-center">{totalCbm.toFixed(3)} CBM</td>
                   <td className="border border-gray-200 dark:border-gray-700" colSpan={canEdit ? 2 : 1} />
                 </tr>
               </tfoot>

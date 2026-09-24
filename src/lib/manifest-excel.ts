@@ -50,7 +50,7 @@ export async function generateManifestExcel(
 
   ws.mergeCells(items.length + 3, 1, items.length + 3, HEADERS.length);
   const footerCell = ws.getCell(items.length + 3, 1);
-  footerCell.value = `${MANIFEST_ZONE_LABELS[sheet.zone]} - ${sheet.pallet_count} Pallets`;
+  footerCell.value = `${MANIFEST_ZONE_LABELS[sheet.zone]} - ${sheet.pallet_count} Pallets - ${sheet.cbm_total.toFixed(3)} CBM`;
   footerCell.font = { bold: true };
 
   ws.columns.forEach((col, i) => {

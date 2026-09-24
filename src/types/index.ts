@@ -53,7 +53,10 @@ export const MANIFEST_ZONE_LABELS: Record<ManifestZone, string> = {
 export type ConsolidationSheetStatus = "pending" | "manifest";
 export type ConsolidationConversionType = "auto" | "manual";
 
-export const CONSOLIDATION_PALLET_LIMIT = 45;
+// Sheets auto-convert once total CBM (not pallet count) reaches this — not
+// every GCN is palletized, but every GCN has a CBM figure. Pallet count is
+// kept alongside as a display-only figure.
+export const CONSOLIDATION_CBM_LIMIT = 40.5;
 
 export interface ConsolidationSheetItem {
   id: string;
@@ -61,6 +64,7 @@ export interface ConsolidationSheetItem {
   gcn_id: string;
   position: number;
   pallet_count: number;
+  cbm: number;
   remarks?: string | null;
   added_by?: string;
   added_at: string;
@@ -73,6 +77,7 @@ export interface ConsolidationSheet {
   zone: ManifestZone;
   status: ConsolidationSheetStatus;
   pallet_count: number;
+  cbm_total: number;
   item_count: number;
   converted_at?: string | null;
   converted_by?: string | null;
