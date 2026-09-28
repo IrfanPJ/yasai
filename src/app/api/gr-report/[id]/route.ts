@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth-role";
+import { GR_REPORT_EDIT_ROLES } from "@/lib/gr-report";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ const EDITABLE_FIELDS = [
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
-  const auth = await requireRole(["admin", "operations", "finance"]);
+  const auth = await requireRole(GR_REPORT_EDIT_ROLES);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const { user, serviceClient } = auth;
 

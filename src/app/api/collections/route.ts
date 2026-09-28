@@ -165,11 +165,16 @@ export async function POST(request: NextRequest) {
 
   // 7. Seed the matching GR Report row
   const finalGcn = (updated || gcn) as GoodsCollectionNote;
-  await serviceClient.from("gr_report_entries").insert({
-    ...gcnToGrReportInsert(finalGcn),
-    created_by: user.id,
-    updated_by: user.id,
-  });
+  try {
+    const { error: grReportError } = await serviceClient.from("gr_report_entries").insert({
+      ...gcnToGrReportInsert(finalGcn),
+      created_by: user.id,
+      updated_by: user.id,
+    });
+    if (grReportError) throw grReportError;
+  } catch (grReportErr) {
+    console.error("GR Report seed failed:", grReportErr);
+  }
 
   return NextResponse.json(finalGcn, { status: 201 });
 }

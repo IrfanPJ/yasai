@@ -2,9 +2,10 @@
 
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Search, Check, X, Upload } from "lucide-react";
+import { Search, Check, X, Upload, FileSpreadsheet, FileText, Download } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -14,6 +15,7 @@ import type { GrReportEntry, GrReportDocType } from "@/types";
 interface GrReportGridProps {
   data: GrReportEntry[];
   canEdit: boolean;
+  canUpload: boolean;
 }
 
 const DOC_SLOTS: { key: GrReportDocType; label: string; urlField: keyof GrReportEntry }[] = [
@@ -35,7 +37,7 @@ const SEARCH_FIELDS: (keyof GrReportEntry)[] = [
   "item_category", "items", "item_package", "pickup_point", "tracking",
 ];
 
-export function GrReportGrid({ data, canEdit }: GrReportGridProps) {
+export function GrReportGrid({ data, canEdit, canUpload }: GrReportGridProps) {
   const [rows, setRows] = useState<GrReportEntry[]>(data);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<{ id: string; field: EditableField } | null>(null);
@@ -43,6 +45,16 @@ export function GrReportGrid({ data, canEdit }: GrReportGridProps) {
   const [uploadingCell, setUploadingCell] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pendingUpload = useRef<{ rowId: string; docType: GrReportDocType } | null>(null);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
+  function exportUrl(kind: "excel" | "pdf") {
+    const params = new URLSearchParams();
+    if (fromDate) params.set("from", fromDate);
+    if (toDate) params.set("to", toDate);
+    const qs = params.toString();
+    return `/api/gr-report/export/${kind}${qs ? `?${qs}` : ""}`;
+  }
 
   const filtered = useMemo(() => {
     if (!search.trim()) return rows;
@@ -66,6 +78,10 @@ export function GrReportGrid({ data, canEdit }: GrReportGridProps) {
     if (!row) return;
 
     const raw = draft.trim();
+    if (NUMERIC_FIELDS.has(field) && raw !== "" && Number.isNaN(Number(raw))) {
+      toast.error("Enter a valid number");
+      return;
+    }
     const value: string | number | null = NUMERIC_FIELDS.has(field)
       ? (raw === "" ? null : Number(raw))
       : (raw === "" ? null : raw);
@@ -91,7 +107,7 @@ export function GrReportGrid({ data, canEdit }: GrReportGridProps) {
   }
 
   function openUploadPicker(rowId: string, docType: GrReportDocType) {
-    if (!canEdit) return;
+    if (!canUpload) return;
     pendingUpload.current = { rowId, docType };
     fileInputRef.current?.click();
   }
@@ -176,16 +192,16 @@ export function GrReportGrid({ data, canEdit }: GrReportGridProps) {
       <button
         type="button"
         onClick={() => openUploadPicker(row.id, slot.key)}
-        title={canEdit ? `Upload ${slot.label}` : "Not uploaded"}
-        disabled={!canEdit || isUploading}
+        title={canUpload ? `Upload ${slot.label}` : "Not uploaded"}
+        disabled={!canUpload || isUploading}
         className={cn(
           "mx-auto flex items-center justify-center h-6 w-6 rounded-full",
-          canEdit ? "bg-red-100 text-red-600 hover:bg-red-200" : "bg-red-50 text-red-400"
+          canUpload ? "bg-red-100 text-red-600 hover:bg-red-200" : "bg-red-50 text-red-400"
         )}
       >
         {isUploading ? (
           <Upload className="h-3.5 w-3.5 animate-pulse" />
-        ) : canEdit ? (
+        ) : canUpload ? (
           <Upload className="h-3 w-3" />
         ) : (
           <X className="h-3.5 w-3.5" />
@@ -207,7 +223,7 @@ export function GrReportGrid({ data, canEdit }: GrReportGridProps) {
         }}
       />
 
-      <div className="p-3 md:p-4 border-b flex items-center gap-3">
+      <div className="p-3 md:p-4 border-b flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-0 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -217,6 +233,41 @@ export function GrReportGrid({ data, canEdit }: GrReportGridProps) {
             className="pl-9 h-9 text-sm w-full"
           />
         </div>
+
+        <div className="flex items-center gap-1.5">
+          <Input
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="h-9 text-sm w-36"
+            aria-label="From date"
+          />
+          <span className="text-xs text-muted-foreground">to</span>
+          <Input
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="h-9 text-sm w-36"
+            aria-label="To date"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button asChild size="sm" variant="outline" className="gap-1.5">
+            <a href={exportUrl("excel")}>
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              Excel
+            </a>
+          </Button>
+          <Button asChild size="sm" variant="outline" className="gap-1.5">
+            <a href={exportUrl("pdf")}>
+              <FileText className="h-3.5 w-3.5" />
+              <Download className="h-3 w-3" />
+              PDF
+            </a>
+          </Button>
+        </div>
+
         <span className="text-xs text-muted-foreground ml-auto">
           {filtered.length} of {rows.length} entries
         </span>

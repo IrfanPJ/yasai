@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth-role";
+import { GR_REPORT_EDIT_ROLES, GR_REPORT_UPLOAD_ROLES } from "@/lib/gr-report";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
@@ -14,12 +16,22 @@ const FIELD_MAP: Record<DocType, string> = {
   invoice: "invoice_url",
 };
 
+const BUCKET = "goods-collection-notes";
+const PUBLIC_URL_MARKER = `/object/public/${BUCKET}/`;
+
+async function removeIfExists(serviceClient: SupabaseClient, url: string | null | undefined) {
+  if (!url) return;
+  const idx = url.indexOf(PUBLIC_URL_MARKER);
+  if (idx === -1) return;
+  await serviceClient.storage.from(BUCKET).remove([url.slice(idx + PUBLIC_URL_MARKER.length)]);
+}
+
 // Uploading a document is lower-stakes than editing the row's financial
-// fields (PATCH below stays finance-restricted) — anyone who can manage a
+// fields (PATCH stays finance-restricted) — anyone who can manage a
 // consolidation sheet should be able to attach these from there too.
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
-  const auth = await requireRole(["admin", "operations", "finance", "warehouse", "warehouse_supervisor"]);
+  const auth = await requireRole(GR_REPORT_UPLOAD_ROLES);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const { user, serviceClient } = auth;
 
@@ -32,17 +44,26 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: `type must be one of: ${ALLOWED_TYPES.join(", ")}` }, { status: 400 });
   }
 
+  // A replacement upload with a different extension would otherwise leave
+  // the previous file orphaned in storage (upsert only dedupes same-path).
+  const { data: current } = await serviceClient
+    .from("gr_report_entries")
+    .select("freight_invoice_url, delivery_note_url, invoice_url")
+    .eq("id", id)
+    .single();
+  await removeIfExists(serviceClient, current?.[FIELD_MAP[docType as DocType] as keyof typeof current] as string | null | undefined);
+
   const ext = file.name.split(".").pop()?.toLowerCase() || "pdf";
   const storagePath = `gr-report/${id}/${docType}.${ext}`;
   const arrayBuffer = await file.arrayBuffer();
 
   const { error: uploadError } = await serviceClient.storage
-    .from("goods-collection-notes")
+    .from(BUCKET)
     .upload(storagePath, Buffer.from(arrayBuffer), { contentType: file.type || "application/octet-stream", upsert: true });
 
   if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 });
 
-  const { data: { publicUrl } } = serviceClient.storage.from("goods-collection-notes").getPublicUrl(storagePath);
+  const { data: { publicUrl } } = serviceClient.storage.from(BUCKET).getPublicUrl(storagePath);
 
   const { data, error: dbError } = await serviceClient
     .from("gr_report_entries")
@@ -56,9 +77,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   return NextResponse.json({ url: publicUrl, record: data });
 }
 
+// Deleting a document is more consequential than adding one, so this stays
+// on the tighter, finance-restricted role set rather than the upload roles.
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
-  const auth = await requireRole(["admin", "operations", "finance", "warehouse", "warehouse_supervisor"]);
+  const auth = await requireRole(GR_REPORT_EDIT_ROLES);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const { user, serviceClient } = auth;
 
@@ -74,12 +97,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     .eq("id", id)
     .single();
 
-  const existingUrl = current?.[FIELD_MAP[docType] as keyof typeof current] as string | null | undefined;
-  if (existingUrl) {
-    const marker = "/object/public/goods-collection-notes/";
-    const idx = existingUrl.indexOf(marker);
-    if (idx !== -1) await serviceClient.storage.from("goods-collection-notes").remove([existingUrl.slice(idx + marker.length)]);
-  }
+  await removeIfExists(serviceClient, current?.[FIELD_MAP[docType] as keyof typeof current] as string | null | undefined);
 
   const { data, error } = await serviceClient
     .from("gr_report_entries")

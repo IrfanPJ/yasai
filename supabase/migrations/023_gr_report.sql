@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════
 -- YASAI Logistics – GR Report
--- Migration: 020_gr_report.sql
+-- Migration: 023_gr_report.sql
 -- One row per GCN, auto-seeded on GCN creation, auto-updated with
 -- Job #/Job Date once that GCN is linked to a Job Order. Everything
 -- else (delivered qty, tracking, invoiced amount, and the three

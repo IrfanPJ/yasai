@@ -1,4 +1,4 @@
-import type { GoodsCollectionNote, DeliveryNote, DeliveryNoteItem, JobOrder, Invoice, InvoiceLineItem, Waybill, WaybillCargoItem, ConsolidationSheet, ConsolidationSheetItem } from "@/types";
+import type { GoodsCollectionNote, DeliveryNote, DeliveryNoteItem, JobOrder, Invoice, InvoiceLineItem, Waybill, WaybillCargoItem, ConsolidationSheet, ConsolidationSheetItem, GrReportEntry } from "@/types";
 import { MANIFEST_ZONE_LABELS } from "@/types";
 import { format } from "date-fns";
 import { formatMoney } from "@/lib/utils";
@@ -1781,6 +1781,131 @@ function buildManifestHtml(sheet: ConsolidationSheet, items: ConsolidationSheetI
 
 export async function generateManifestPDF(sheet: ConsolidationSheet, items: ConsolidationSheetItem[], logoDataUrl?: string): Promise<Buffer> {
   const html = buildManifestHtml(sheet, items, logoDataUrl);
+  return renderHtmlToPdf(html, 1);
+}
+
+// ══════════════════════════════════════════════════════════════
+// GR REPORT PDF
+// ══════════════════════════════════════════════════════════════
+
+function buildGrReportHtml(entries: GrReportEntry[], rangeLabel: string, logoDataUrl?: string): string {
+  const fmtDate = (d?: string | null) => {
+    if (!d) return "&#8211;";
+    try { return format(new Date(d), "dd/MM/yyyy"); } catch { return d; }
+  };
+
+  const rows = entries.map((e, i) => `
+    <tr>
+      <td class="td ctr">${i + 1}</td>
+      <td class="td ctr">${fmtDate(e.entry_date)}</td>
+      <td class="td">${esc(e.cr_number)}</td>
+      <td class="td">${esc(e.shipper)}</td>
+      <td class="td">${esc(e.consignee)}</td>
+      <td class="td">${esc(e.doc_ref_number)}</td>
+      <td class="td ctr">${e.total_package_qty ?? "&#8211;"}</td>
+      <td class="td ctr">${e.balance}</td>
+      <td class="td ctr">${e.delivered_qty}</td>
+      <td class="td">${esc(e.job_number)}</td>
+      <td class="td">${esc(e.item_category)}</td>
+      <td class="td">${esc(e.items)}</td>
+      <td class="td">${esc(e.item_package)}</td>
+      <td class="td">${esc(e.tracking)}</td>
+      <td class="td">${esc(e.pickup_point)}</td>
+      <td class="td ctr">${e.freight_invoice_url ? "&#10003;" : "&#10007;"}</td>
+      <td class="td ctr">${e.delivery_note_url ? "&#10003;" : "&#10007;"}</td>
+      <td class="td ctr">${e.invoice_url ? "&#10003;" : "&#10007;"}</td>
+      <td class="td ctr">${e.invoiced_amount ? Number(e.invoiced_amount).toFixed(2) : "&#8211;"}</td>
+      <td class="td ctr">${e.cbm != null ? Number(e.cbm).toFixed(3) : "&#8211;"}</td>
+    </tr>`).join("");
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  @page { size: A3 landscape; margin: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 8pt;
+    color: #111;
+    background: white;
+    width: 420mm;
+    min-height: 297mm;
+    padding: 14px 18px;
+  }
+  .hdr { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid ${ORANGE}; padding-bottom: 8px; margin-bottom: 4px; }
+  .hdr-left { display: flex; align-items: center; gap: 10px; }
+  .hdr-left img { height: 34px; width: auto; object-fit: contain; }
+  .hdr-co { font-size: 12pt; font-weight: 900; color: ${NAVY}; }
+  .hdr-sub { font-size: 7pt; color: #888; }
+  .hdr-meta { text-align: right; }
+  .hdr-meta-lbl { font-size: 6.5pt; color: #999; text-transform: uppercase; letter-spacing: 0.4px; }
+  .hdr-meta-val { font-size: 9pt; font-weight: 800; color: ${NAVY}; }
+  .title-bar { background: ${NAVY}; color: white; text-align: center; font-size: 12pt; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; padding: 6px; margin: 8px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: ${HDR_BG}; border: 1px solid ${BORDER}; font-size: 6.5pt; font-weight: 800; text-transform: uppercase; padding: 4px; text-align: center; color: ${NAVY}; }
+  .td { border: 1px solid ${BORDER}; padding: 3px 4px; font-size: 7pt; vertical-align: middle; }
+  .ctr { text-align: center; }
+  tr:nth-child(even) .td { background: #f9f9f9; }
+  .doc-ref { display: flex; justify-content: space-between; margin-top: 6px; font-size: 6.5pt; color: #aaa; }
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-left">
+    ${logoDataUrl ? `<img src="${logoDataUrl}" alt="YASAI">` : ""}
+    <div><div class="hdr-co">YASAI LOGISTICS COMPANY</div><div class="hdr-sub">Freight &amp; Logistics Solutions</div></div>
+  </div>
+  <div class="hdr-meta">
+    <div class="hdr-meta-lbl">Entries</div><div class="hdr-meta-val">${entries.length}</div>
+  </div>
+</div>
+
+<div class="title-bar">GR REPORT — ${esc(rangeLabel)}</div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:3%">Sl</th>
+      <th style="width:5%">Date</th>
+      <th style="width:6%">CR#</th>
+      <th style="width:7%">Shipper</th>
+      <th style="width:7%">Consignee</th>
+      <th style="width:6%">Doc Ref#</th>
+      <th style="width:4%">Total Qty</th>
+      <th style="width:4%">Balance</th>
+      <th style="width:4%">Delivered</th>
+      <th style="width:6%">Job#</th>
+      <th style="width:6%">Item Category</th>
+      <th style="width:6%">Items</th>
+      <th style="width:6%">Item Package</th>
+      <th style="width:6%">Tracking</th>
+      <th style="width:6%">Pickup Point</th>
+      <th style="width:3%">F</th>
+      <th style="width:3%">D</th>
+      <th style="width:3%">I</th>
+      <th style="width:5%">Invoiced</th>
+      <th style="width:4%">CBM</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${rows || `<tr><td class="td ctr" colspan="20">No entries in this range.</td></tr>`}
+  </tbody>
+</table>
+
+<div class="doc-ref">
+  <span>GR Report — ${esc(rangeLabel)}</span>
+  <span>Generated ${format(new Date(), "dd/MM/yyyy HH:mm")}</span>
+</div>
+
+</body>
+</html>`;
+}
+
+export async function generateGrReportPDF(entries: GrReportEntry[], rangeLabel: string, logoDataUrl?: string): Promise<Buffer> {
+  const html = buildGrReportHtml(entries, rangeLabel, logoDataUrl);
   return renderHtmlToPdf(html, 1);
 }
 
