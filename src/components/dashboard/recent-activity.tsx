@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { formatDateTime } from "@/lib/utils";
 import type { GoodsCollectionNote } from "@/types";
 import { STATUS_LABELS, STATUS_COLORS } from "@/types";

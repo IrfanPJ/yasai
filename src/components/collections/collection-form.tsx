@@ -477,6 +477,7 @@ export function CollectionForm({
         <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
           {goodsImage ? (
             <div className="flex items-start gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element -- local base64 preview before upload, not a remote/static asset */}
               <img
                 src={goodsImage}
                 alt="Goods"

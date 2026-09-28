@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Loader2, Download, Send, CheckCircle2, XCircle, Truck, FileText, ExternalLink,
+  Loader2, Download, Send, CheckCircle2, Truck, FileText, ExternalLink,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
