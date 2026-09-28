@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, formatMoney } from "@/lib/utils";
 import type { Invoice, UserRole } from "@/types";
 import { INVOICE_STATUS_LABELS, INVOICE_STATUS_COLORS } from "@/types";
 
@@ -186,13 +186,13 @@ export function InvoiceDetail({ invoice, userRole }: InvoiceDetailProps) {
                   )}
                   <td className="py-2 text-right text-muted-foreground">{item.qty}</td>
                   <td className="py-2 text-right text-muted-foreground font-mono">
-                    {Number(item.unit_price).toFixed(2)}
+                    {formatMoney(item.unit_price)}
                   </td>
                   {invoice.invoice_type === "freight" && (
-                    <td className="py-2 text-right text-muted-foreground font-mono">{Number(item.vat_amount ?? 0).toFixed(2)}</td>
+                    <td className="py-2 text-right text-muted-foreground font-mono">{formatMoney(item.vat_amount)}</td>
                   )}
                   <td className="py-2 text-right font-medium font-mono">
-                    {Number(item.amount).toFixed(2)}
+                    {formatMoney(item.amount)}
                   </td>
                 </tr>
               ))}
@@ -204,17 +204,17 @@ export function InvoiceDetail({ invoice, userRole }: InvoiceDetailProps) {
           <div className="space-y-1.5 text-sm ml-auto max-w-xs">
             <div className="flex justify-between text-muted-foreground">
               <span>Subtotal</span>
-              <span>{invoice.currency} {Number(invoice.subtotal).toFixed(2)}</span>
+              <span>{invoice.currency} {formatMoney(invoice.subtotal)}</span>
             </div>
             {Number(invoice.tax_amount) > 0 && (
               <div className="flex justify-between text-muted-foreground">
                 <span>VAT{Number(invoice.tax_rate) > 0 ? ` (${invoice.tax_rate}%)` : ""}</span>
-                <span>{invoice.currency} {Number(invoice.tax_amount).toFixed(2)}</span>
+                <span>{invoice.currency} {formatMoney(invoice.tax_amount)}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-base border-t pt-1.5">
               <span>Total</span>
-              <span>{invoice.currency} {Number(invoice.total_amount).toFixed(2)}</span>
+              <span>{invoice.currency} {formatMoney(invoice.total_amount)}</span>
             </div>
           </div>
         </CardContent>

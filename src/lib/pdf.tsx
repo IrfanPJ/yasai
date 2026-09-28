@@ -1,5 +1,6 @@
 import type { GoodsCollectionNote, DeliveryNote, DeliveryNoteItem, JobOrder, Invoice, InvoiceLineItem, Waybill, WaybillCargoItem } from "@/types";
 import { format } from "date-fns";
+import { formatMoney } from "@/lib/utils";
 
 const NAVY         = "#0B1F3F";
 const ORANGE       = "#E67A32";
@@ -2521,9 +2522,9 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
         ${item.model_description ? `<div style="font-size:7.5pt;color:#555;margin-top:2px;">${esc(item.model_description)}</div>` : ""}
       </td>
       <td class="c bd">${esc(String(item.qty))}</td>
-      <td class="r bd">${Number(item.unit_price).toFixed(2)}</td>
-      <td class="r bd">${Number(item.vat_amount ?? 0).toFixed(2)}</td>
-      <td class="r bd">${Number(item.amount).toFixed(2)}</td>
+      <td class="r bd">${formatMoney(item.unit_price)}</td>
+      <td class="r bd">${formatMoney(item.vat_amount)}</td>
+      <td class="r bd">${formatMoney(item.amount)}</td>
     </tr>`).join("");
 
   const emptyCount = Math.max(0, MIN_ROWS - items.length);
@@ -2780,19 +2781,19 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
       <tr class="words-row">
         <td colspan="3" style="width:62%;" class="words-bold">${freightToWords(total, currency)}</td>
         <td style="width:13%;text-align:center;font-weight:700;border:1px solid ${BORDER};color:#444;">Total</td>
-        <td style="text-align:right;font-family:monospace;font-weight:700;border:1px solid ${BORDER};color:${NAVY};" colspan="2">${subtotal.toFixed(2)}</td>
+        <td style="text-align:right;font-family:monospace;font-weight:700;border:1px solid ${BORDER};color:${NAVY};" colspan="2">${formatMoney(subtotal)}</td>
       </tr>
       <tr class="tot-row">
         <td colspan="3" style="border:1px solid ${BORDER};font-size:7.5pt;color:#555;padding:4px 8px;">
           ${shippingParts.map(p => `<div>${p}</div>`).join("")}
         </td>
         <td class="tot-lbl" style="border:1px solid ${BORDER};">VAT</td>
-        <td class="tot-num" style="border:1px solid ${BORDER};" colspan="2">${totalVat.toFixed(2)}</td>
+        <td class="tot-num" style="border:1px solid ${BORDER};" colspan="2">${formatMoney(totalVat)}</td>
       </tr>
       <tr class="grand-row">
         <td colspan="3" style="background:white;border:1px solid ${BORDER};"></td>
         <td class="grand-lbl">Total ${esc(currency)}</td>
-        <td class="grand-num" colspan="2">${total.toFixed(2)}</td>
+        <td class="grand-num" colspan="2">${formatMoney(total)}</td>
       </tr>
     </table>
 

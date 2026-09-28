@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { formatMoney } from "@/lib/utils";
 import type { Invoice, JobOrder } from "@/types";
 
 interface FreightLineItem {
@@ -323,7 +324,7 @@ export function FreightInvoiceForm({ invoice }: FreightInvoiceFormProps) {
                   className="text-sm text-right"
                 />
                 <div className="text-sm font-medium text-right pt-2 pr-1 font-mono">
-                  {Number(line.amount).toFixed(2)}
+                  {formatMoney(line.amount)}
                 </div>
                 <button
                   type="button"
@@ -336,7 +337,7 @@ export function FreightInvoiceForm({ invoice }: FreightInvoiceFormProps) {
               </div>
               {line.vat_percent > 0 && (
                 <p className="text-[11px] text-muted-foreground text-right pr-9">
-                  VAT: {line.vat_amount.toFixed(2)} ({line.vat_percent}% of {line.amount.toFixed(2)})
+                  VAT: {formatMoney(line.vat_amount)} ({line.vat_percent}% of {formatMoney(line.amount)})
                 </p>
               )}
             </div>
@@ -356,15 +357,15 @@ export function FreightInvoiceForm({ invoice }: FreightInvoiceFormProps) {
               <div className="space-y-1 text-right">
                 <div className="flex justify-between gap-12">
                   <span className="text-muted-foreground">Total</span>
-                  <span className="font-mono">{subtotal.toFixed(2)}</span>
+                  <span className="font-mono">{formatMoney(subtotal)}</span>
                 </div>
                 <div className="flex justify-between gap-12">
                   <span className="text-muted-foreground">VAT</span>
-                  <span className="font-mono">{totalVat.toFixed(2)}</span>
+                  <span className="font-mono">{formatMoney(totalVat)}</span>
                 </div>
                 <div className="flex justify-between gap-12 font-bold border-t pt-1">
                   <span>Total {form.currency}</span>
-                  <span className="font-mono">{total.toFixed(2)}</span>
+                  <span className="font-mono">{formatMoney(total)}</span>
                 </div>
               </div>
             </div>
