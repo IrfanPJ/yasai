@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth-role";
+import { queueRemoval } from "@/lib/manifest";
 import type { createServiceClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -60,13 +61,25 @@ export async function DELETE(_: NextRequest, { params }: RouteParams) {
   const { id, itemId } = await params;
   const auth = await requireRole(["admin", "operations", "warehouse", "warehouse_supervisor"]);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { serviceClient } = auth;
+  const { user, serviceClient } = auth;
 
-  const { data: sheet } = await serviceClient.from("consolidation_sheets").select("status").eq("id", id).single();
+  const { data: sheet } = await serviceClient.from("consolidation_sheets").select("status, zone").eq("id", id).single();
   if (!sheet) return NextResponse.json({ error: "Sheet not found" }, { status: 404 });
   if (sheet.status !== "pending") {
     return NextResponse.json({ error: "Cannot edit items on a finalized manifest" }, { status: 409 });
   }
+
+  const { data: item } = await serviceClient
+    .from("consolidation_sheet_items")
+    .select("gcn_id, sheet_id, position, pallet_count, cbm, remarks")
+    .eq("id", itemId)
+    .eq("sheet_id", id)
+    .single();
+  if (!item) return NextResponse.json({ error: "Item not found" }, { status: 404 });
+
+  // Log it into the zone's removal queue before deleting — so it can be
+  // undone immediately, or picked up automatically by the next pending sheet.
+  const removalId = await queueRemoval(serviceClient, sheet.zone, item, user.id);
 
   const { error } = await serviceClient
     .from("consolidation_sheet_items")
@@ -78,5 +91,5 @@ export async function DELETE(_: NextRequest, { params }: RouteParams) {
 
   await recalcSheetTotals(serviceClient, id);
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, removal_id: removalId });
 }

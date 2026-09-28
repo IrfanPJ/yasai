@@ -123,13 +123,36 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole }: Pr
     try {
       const res = await fetch(`/api/manifest/${sheet.id}/items/${itemId}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
+      const { removal_id } = await res.json();
       setItems((prev) => prev.filter((it) => it.id !== itemId));
-      toast.success("Removed from sheet");
+      toast.success("Removed — will join the next pending sheet for this zone", {
+        action: removal_id ? {
+          label: "Undo",
+          onClick: () => undoRemoval(removal_id),
+        } : undefined,
+        duration: 8000,
+      });
       router.refresh();
     } catch {
       toast.error("Failed to remove");
     } finally {
       setRemovingId(null);
+    }
+  }
+
+  async function undoRemoval(removalId: string) {
+    try {
+      const res = await fetch(`/api/manifest/removals/${removalId}/restore`, { method: "POST" });
+      if (!res.ok) throw new Error((await res.json()).error);
+      // Local `items` state won't pick up a router.refresh() on its own (it's
+      // only seeded from props on first mount) — re-fetch this sheet directly
+      // so the restored row actually reappears in the grid.
+      const fresh = await fetch(`/api/manifest/${sheet.id}`).then((r) => r.json());
+      setItems(fresh.items || []);
+      toast.success("Restored to this sheet");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to undo — it may already be on a newer sheet");
     }
   }
 

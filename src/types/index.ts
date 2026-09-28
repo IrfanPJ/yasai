@@ -91,6 +91,30 @@ export interface ConsolidationSheet {
   items?: ConsolidationSheetItem[];
 }
 
+export type RemovalStatus = "queued" | "requeued" | "restored";
+
+export interface ConsolidationSheetRemoval {
+  id: string;
+  zone: ManifestZone;
+  gcn_id: string;
+  original_sheet_id: string;
+  original_position: number;
+  pallet_count: number;
+  cbm: number;
+  remarks?: string | null;
+  removed_by?: string;
+  removed_at: string;
+  requeued_sheet_id?: string | null;
+  requeued_at?: string | null;
+  restored_at?: string | null;
+  restored_by?: string | null;
+  // Joined
+  gcn?: GoodsCollectionNote;
+  original_sheet?: ConsolidationSheet;
+  requeued_sheet?: ConsolidationSheet;
+  remover?: UserProfile;
+}
+
 export interface GoodsCollectionNote {
   id: string;
   collection_number: string;

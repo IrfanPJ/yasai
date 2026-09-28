@@ -110,7 +110,154 @@ async function createOpenSheet(serviceClient: ServiceClient, zone: string, userI
     }
     throw error;
   }
-  return data;
+
+  // A brand-new pending sheet automatically inherits anything still waiting in
+  // this zone's removal queue (removed from an earlier sheet, never made it
+  // into a manifest) — so removed GCNs surface again instead of disappearing.
+  return await requeuePendingRemovals(serviceClient, zone, data, userId);
+}
+
+async function requeuePendingRemovals(
+  serviceClient: ServiceClient,
+  zone: string,
+  sheet: SheetRow,
+  userId: string
+): Promise<SheetRow> {
+  const { data: queued } = await serviceClient
+    .from("consolidation_sheet_removals")
+    .select("id, gcn_id, pallet_count, cbm, remarks")
+    .eq("zone", zone)
+    .is("requeued_sheet_id", null)
+    .is("restored_at", null)
+    .order("removed_at");
+
+  if (!queued || queued.length === 0) return sheet;
+
+  let palletTotal = sheet.pallet_count;
+  let cbmTotal = sheet.cbm_total;
+  let itemTotal = sheet.item_count;
+
+  for (const removal of queued) {
+    itemTotal += 1;
+    await serviceClient.from("consolidation_sheet_items").insert({
+      sheet_id: sheet.id,
+      gcn_id: removal.gcn_id,
+      position: itemTotal,
+      pallet_count: removal.pallet_count,
+      cbm: removal.cbm,
+      remarks: removal.remarks,
+      added_by: userId,
+    });
+    await serviceClient
+      .from("consolidation_sheet_removals")
+      .update({ requeued_sheet_id: sheet.id, requeued_at: new Date().toISOString() })
+      .eq("id", removal.id);
+    palletTotal += removal.pallet_count;
+    cbmTotal += removal.cbm;
+  }
+
+  await serviceClient
+    .from("consolidation_sheets")
+    .update({ pallet_count: palletTotal, cbm_total: cbmTotal, item_count: itemTotal, updated_by: userId })
+    .eq("id", sheet.id);
+
+  return { id: sheet.id, pallet_count: palletTotal, cbm_total: cbmTotal, item_count: itemTotal };
+}
+
+/**
+ * Logs a sheet-item removal into the zone's removal queue before it's deleted,
+ * so it can either be undone immediately or picked up automatically by the
+ * next pending sheet created for that zone.
+ */
+export async function queueRemoval(
+  serviceClient: ServiceClient,
+  zone: string,
+  item: { gcn_id: string; sheet_id: string; position: number; pallet_count: number; cbm: number; remarks?: string | null },
+  userId: string
+): Promise<string> {
+  const { data, error } = await serviceClient
+    .from("consolidation_sheet_removals")
+    .insert({
+      zone,
+      gcn_id: item.gcn_id,
+      original_sheet_id: item.sheet_id,
+      original_position: item.position,
+      pallet_count: item.pallet_count,
+      cbm: item.cbm,
+      remarks: item.remarks || null,
+      removed_by: userId,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+/**
+ * Restores a queued removal back onto its original sheet, at its original
+ * position — only possible while that sheet is still pending and nothing has
+ * already picked the item up (a newer sheet's auto-requeue, or an earlier
+ * restore).
+ */
+export async function restoreRemoval(
+  serviceClient: ServiceClient,
+  removalId: string,
+  userId: string
+): Promise<{ error?: string }> {
+  const { data: removal } = await serviceClient
+    .from("consolidation_sheet_removals")
+    .select("*")
+    .eq("id", removalId)
+    .single();
+  if (!removal) return { error: "Removal not found" };
+  if (removal.restored_at) return { error: "Already restored" };
+  if (removal.requeued_sheet_id) return { error: "Already picked up by a newer sheet — can no longer restore to the original" };
+
+  const { data: originalSheet } = await serviceClient
+    .from("consolidation_sheets")
+    .select("status")
+    .eq("id", removal.original_sheet_id)
+    .single();
+  if (!originalSheet || originalSheet.status !== "pending") {
+    return { error: "Original sheet has since been converted to a manifest — cannot restore" };
+  }
+
+  const { data: maxPos } = await serviceClient
+    .from("consolidation_sheet_items")
+    .select("position")
+    .eq("sheet_id", removal.original_sheet_id)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { error: insertError } = await serviceClient.from("consolidation_sheet_items").insert({
+    sheet_id: removal.original_sheet_id,
+    gcn_id: removal.gcn_id,
+    position: (maxPos?.position ?? 0) + 1,
+    pallet_count: removal.pallet_count,
+    cbm: removal.cbm,
+    remarks: removal.remarks,
+    added_by: userId,
+  });
+  if (insertError) throw insertError;
+
+  const { data: items } = await serviceClient
+    .from("consolidation_sheet_items")
+    .select("pallet_count, cbm")
+    .eq("sheet_id", removal.original_sheet_id);
+  const palletCount = (items || []).reduce((s: number, it: { pallet_count: number }) => s + (it.pallet_count || 0), 0);
+  const cbmTotal = (items || []).reduce((s: number, it: { cbm: number }) => s + (it.cbm || 0), 0);
+  await serviceClient
+    .from("consolidation_sheets")
+    .update({ pallet_count: palletCount, cbm_total: cbmTotal, item_count: (items || []).length, updated_by: userId })
+    .eq("id", removal.original_sheet_id);
+
+  await serviceClient
+    .from("consolidation_sheet_removals")
+    .update({ restored_at: new Date().toISOString(), restored_by: userId })
+    .eq("id", removalId);
+
+  return {};
 }
 
 /**

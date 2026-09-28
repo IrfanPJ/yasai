@@ -4,14 +4,19 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Package, ClipboardList, ChevronRight } from "lucide-react";
+import { Package, ClipboardList, ChevronRight, Clock } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import type { ConsolidationSheet, ManifestZone } from "@/types";
 import { MANIFEST_ZONE_LABELS, CONSOLIDATION_CBM_LIMIT, CONSOLIDATION_PALLET_LIMIT } from "@/types";
 
 const ZONES: ManifestZone[] = ["mainland", "jafza"];
 
-export function ManifestOverview({ sheets }: { sheets: ConsolidationSheet[] }) {
+interface Props {
+  sheets: ConsolidationSheet[];
+  queuedCounts?: Record<ManifestZone, number>;
+}
+
+export function ManifestOverview({ sheets, queuedCounts }: Props) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       {ZONES.map((zone) => {
@@ -20,13 +25,24 @@ export function ManifestOverview({ sheets }: { sheets: ConsolidationSheet[] }) {
         const manifests = zoneSheets.filter((s) => s.status === "manifest");
         const cbmPct = pending ? Math.min(100, Math.round((pending.cbm_total / CONSOLIDATION_CBM_LIMIT) * 100)) : 0;
         const palletPct = pending ? Math.min(100, Math.round((pending.pallet_count / CONSOLIDATION_PALLET_LIMIT) * 100)) : 0;
+        const queued = queuedCounts?.[zone] || 0;
 
         return (
           <Card key={zone} className="border-none shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm text-[#071A3A] dark:text-white flex items-center gap-2">
-                <Package className="h-4 w-4 text-[#E67A32]" />
-                {MANIFEST_ZONE_LABELS[zone]}
+              <CardTitle className="text-sm text-[#071A3A] dark:text-white flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-[#E67A32]" />
+                  {MANIFEST_ZONE_LABELS[zone]}
+                </span>
+                {queued > 0 && (
+                  <Link href="/manifest/history">
+                    <Badge variant="outline" className="text-[10px] gap-1 font-normal text-amber-700 border-amber-300 hover:bg-amber-50">
+                      <Clock className="h-3 w-3" />
+                      {queued} waiting for next sheet
+                    </Badge>
+                  </Link>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
