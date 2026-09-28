@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Download, FileSpreadsheet, FileText, Trash2, CheckCircle2, ExternalLink, Loader2, Undo2, Clock, History } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, Trash2, CheckCircle2, ExternalLink, Loader2, Undo2, Clock, History, Check, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { cn, formatDateTime } from "@/lib/utils";
-import type { ConsolidationSheet, ConsolidationSheetItem, ConsolidationSheetRemoval, UserRole } from "@/types";
+import type { ConsolidationSheet, ConsolidationSheetItem, ConsolidationSheetRemoval, GrReportEntry, GrReportDocType, UserRole } from "@/types";
 import { CONSOLIDATION_CBM_LIMIT, CONSOLIDATION_PALLET_LIMIT } from "@/types";
 
 interface Props {
@@ -20,7 +20,14 @@ interface Props {
   userRole: UserRole;
   restorableRemovals?: ConsolidationSheetRemoval[];
   elsewhereQueuedCount?: number;
+  grReportByGcnId?: Record<string, GrReportEntry>;
 }
+
+const DOC_SLOTS: { key: GrReportDocType; label: string; urlField: keyof GrReportEntry }[] = [
+  { key: "freight_invoice", label: "Freight Invoice", urlField: "freight_invoice_url" },
+  { key: "delivery_note", label: "Delivery Note", urlField: "delivery_note_url" },
+  { key: "invoice", label: "Invoice", urlField: "invoice_url" },
+];
 
 const EDIT_ROLES: UserRole[] = ["admin", "operations", "warehouse", "warehouse_supervisor"];
 
@@ -41,7 +48,7 @@ const GCN_COLUMNS: { key: EditableGcnField; label: string; width: string; type?:
 
 const cellCls = "w-full px-1.5 py-1 text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-[#071A3A] rounded";
 
-export function ManifestSheetDetail({ sheet, items: initialItems, userRole, restorableRemovals: initialRemovals, elsewhereQueuedCount = 0 }: Props) {
+export function ManifestSheetDetail({ sheet, items: initialItems, userRole, restorableRemovals: initialRemovals, elsewhereQueuedCount = 0, grReportByGcnId: initialGrReportByGcnId }: Props) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
   const [removals, setRemovals] = useState(initialRemovals || []);
@@ -49,6 +56,77 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole, rest
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [convertOpen, setConvertOpen] = useState(false);
+  const [grReportByGcnId, setGrReportByGcnId] = useState(initialGrReportByGcnId || {});
+  const [uploadingCell, setUploadingCell] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingUpload = useRef<{ gcnId: string; entryId: string; docType: GrReportDocType } | null>(null);
+
+  const canUploadDocs = ["admin", "operations", "finance", "warehouse", "warehouse_supervisor"].includes(userRole);
+
+  function openUploadPicker(gcnId: string, docType: GrReportDocType) {
+    const entry = grReportByGcnId[gcnId];
+    if (!canUploadDocs || !entry) return;
+    pendingUpload.current = { gcnId, entryId: entry.id, docType };
+    fileInputRef.current?.click();
+  }
+
+  async function handleFileChosen(file: File) {
+    const pending = pendingUpload.current;
+    pendingUpload.current = null;
+    if (!pending) return;
+    const { gcnId, entryId, docType } = pending;
+    const cellKey = `${gcnId}-${docType}`;
+
+    setUploadingCell(cellKey);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", docType);
+      const res = await fetch(`/api/gr-report/${entryId}/upload`, { method: "POST", body: formData });
+      if (!res.ok) throw new Error();
+      const { record } = await res.json();
+      setGrReportByGcnId((prev) => ({ ...prev, [gcnId]: { ...prev[gcnId], ...record } }));
+      toast.success("Document uploaded");
+    } catch {
+      toast.error("Upload failed");
+    } finally {
+      setUploadingCell(null);
+    }
+  }
+
+  function renderDocCell(gcnId: string, slot: (typeof DOC_SLOTS)[number]) {
+    const entry = grReportByGcnId[gcnId];
+    const url = entry?.[slot.urlField] as string | null | undefined;
+    const cellKey = `${gcnId}-${slot.key}`;
+    const isUploading = uploadingCell === cellKey;
+
+    if (url) {
+      return (
+        <button
+          type="button"
+          onClick={() => window.open(url, "_blank")}
+          title={`View ${slot.label}`}
+          className="mx-auto flex items-center justify-center h-6 w-6 rounded-full bg-green-100 text-green-700 hover:bg-green-200"
+        >
+          <Check className="h-3.5 w-3.5" />
+        </button>
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => openUploadPicker(gcnId, slot.key)}
+        title={canUploadDocs ? `Upload ${slot.label}` : "Not uploaded"}
+        disabled={!canUploadDocs || !entry || isUploading}
+        className={cn(
+          "mx-auto flex items-center justify-center h-6 w-6 rounded-full",
+          canUploadDocs && entry ? "bg-red-100 text-red-600 hover:bg-red-200" : "bg-red-50 text-red-400"
+        )}
+      >
+        {isUploading ? <Upload className="h-3.5 w-3.5 animate-pulse" /> : <Upload className="h-3 w-3" />}
+      </button>
+    );
+  }
 
   const canEdit = sheet.status === "pending" && EDIT_ROLES.includes(userRole);
   const totalPallets = items.reduce((s, it) => s + (it.pallet_count || 0), 0);
@@ -198,6 +276,17 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole, rest
 
   return (
     <div className="space-y-4">
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleFileChosen(file);
+          e.target.value = "";
+        }}
+      />
+
       {/* ── Actions bar ── */}
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant={sheet.status === "manifest" ? "navy" : "outline"}>
@@ -302,7 +391,7 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole, rest
       {/* ── Editable grid ── */}
       <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden bg-white dark:bg-[#0d1a35]">
         <div className="overflow-x-auto">
-          <table className="w-full text-xs border-collapse min-w-[1200px]">
+          <table className="w-full text-xs border-collapse min-w-[1350px]">
             <thead>
               <tr className="bg-gray-50 dark:bg-[#071A3A]/40">
                 <th className="border border-gray-200 dark:border-gray-700 px-2 py-1.5 text-center font-semibold text-[#071A3A] dark:text-gray-200 w-10">#</th>
@@ -315,6 +404,9 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole, rest
                 <th className="border border-gray-200 dark:border-gray-700 px-2 py-1.5 text-center font-semibold text-[#071A3A] dark:text-gray-200 w-20">Pallets</th>
                 <th className="border border-gray-200 dark:border-gray-700 px-2 py-1.5 text-center font-semibold text-[#071A3A] dark:text-gray-200 w-24">Sheet CBM</th>
                 <th className="border border-gray-200 dark:border-gray-700 px-2 py-1.5 text-left font-semibold text-[#071A3A] dark:text-gray-200 w-36">Remarks</th>
+                <th title="Freight Invoice" className="border border-gray-200 dark:border-gray-700 px-1 py-1.5 text-center font-semibold text-[#071A3A] dark:text-gray-200 w-10">F</th>
+                <th title="Delivery Note" className="border border-gray-200 dark:border-gray-700 px-1 py-1.5 text-center font-semibold text-[#071A3A] dark:text-gray-200 w-10">D</th>
+                <th title="Invoice" className="border border-gray-200 dark:border-gray-700 px-1 py-1.5 text-center font-semibold text-[#071A3A] dark:text-gray-200 w-10">I</th>
                 {canEdit && <th className="border border-gray-200 dark:border-gray-700 w-8" />}
               </tr>
             </thead>
@@ -394,6 +486,11 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole, rest
                       <span className="block px-1.5 py-1">{item.remarks || "—"}</span>
                     )}
                   </td>
+                  {DOC_SLOTS.map((slot) => (
+                    <td key={slot.key} className="border border-gray-200 dark:border-gray-700 px-1 py-1 text-center">
+                      {renderDocCell(item.gcn_id, slot)}
+                    </td>
+                  ))}
                   {canEdit && (
                     <td className="border border-gray-200 dark:border-gray-700 px-1 py-1 text-center">
                       <button
@@ -410,7 +507,7 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole, rest
               ))}
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={GCN_COLUMNS.length + 5} className="border border-gray-200 dark:border-gray-700 px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={GCN_COLUMNS.length + 8} className="border border-gray-200 dark:border-gray-700 px-4 py-8 text-center text-muted-foreground">
                     No GCNs on this sheet yet.
                   </td>
                 </tr>
@@ -424,7 +521,7 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole, rest
                   </td>
                   <td className="border border-gray-200 dark:border-gray-700 px-2 py-1.5 text-center">{totalPallets} Pallets</td>
                   <td className="border border-gray-200 dark:border-gray-700 px-2 py-1.5 text-center">{totalCbm.toFixed(3)} CBM</td>
-                  <td className="border border-gray-200 dark:border-gray-700" colSpan={canEdit ? 2 : 1} />
+                  <td className="border border-gray-200 dark:border-gray-700" colSpan={canEdit ? 5 : 4} />
                 </tr>
               </tfoot>
             )}

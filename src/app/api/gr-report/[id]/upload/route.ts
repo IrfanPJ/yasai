@@ -14,9 +14,12 @@ const FIELD_MAP: Record<DocType, string> = {
   invoice: "invoice_url",
 };
 
+// Uploading a document is lower-stakes than editing the row's financial
+// fields (PATCH below stays finance-restricted) — anyone who can manage a
+// consolidation sheet should be able to attach these from there too.
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
-  const auth = await requireRole(["admin", "operations", "finance"]);
+  const auth = await requireRole(["admin", "operations", "finance", "warehouse", "warehouse_supervisor"]);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const { user, serviceClient } = auth;
 
@@ -55,7 +58,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
-  const auth = await requireRole(["admin", "operations", "finance"]);
+  const auth = await requireRole(["admin", "operations", "finance", "warehouse", "warehouse_supervisor"]);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const { user, serviceClient } = auth;
 
