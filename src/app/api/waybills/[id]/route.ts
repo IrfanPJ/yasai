@@ -32,7 +32,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   const body = await request.json();
   const { waybill_number, created_by, created_at, pdf_url: _pdf, ...rest } = body;
-  void waybill_number; void created_by; void created_at;
+  void waybill_number; void created_by; void created_at; void _pdf;
 
   const { data, error } = await serviceClient
     .from("waybills")

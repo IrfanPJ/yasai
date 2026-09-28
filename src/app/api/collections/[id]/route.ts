@@ -33,6 +33,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   const body = await request.json();
 
   // Remove read-only fields
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { id: _, collection_number, created_at, created_by, ...updateData } = body;
 
   // Append to status_history when status changes

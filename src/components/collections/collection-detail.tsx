@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { toast } from "sonner";
 import {
   Download, Mail, MessageCircle, Pencil, Printer,
@@ -543,9 +544,11 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
         <Card className="border-none shadow-sm mt-4">
           <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
             {collection.qr_url && (
-              <img
+              <Image
                 src={collection.qr_url}
                 alt="QR Code"
+                width={96}
+                height={96}
                 className="w-24 h-24 rounded-lg border"
               />
             )}
