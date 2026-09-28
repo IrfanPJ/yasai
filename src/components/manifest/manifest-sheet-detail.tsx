@@ -4,20 +4,22 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Download, FileSpreadsheet, FileText, Trash2, CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, Trash2, CheckCircle2, ExternalLink, Loader2, Undo2, Clock, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
-import type { ConsolidationSheet, ConsolidationSheetItem, UserRole } from "@/types";
+import { cn, formatDateTime } from "@/lib/utils";
+import type { ConsolidationSheet, ConsolidationSheetItem, ConsolidationSheetRemoval, UserRole } from "@/types";
 import { CONSOLIDATION_CBM_LIMIT, CONSOLIDATION_PALLET_LIMIT } from "@/types";
 
 interface Props {
   sheet: ConsolidationSheet;
   items: ConsolidationSheetItem[];
   userRole: UserRole;
+  restorableRemovals?: ConsolidationSheetRemoval[];
+  elsewhereQueuedCount?: number;
 }
 
 const EDIT_ROLES: UserRole[] = ["admin", "operations", "warehouse", "warehouse_supervisor"];
@@ -39,11 +41,13 @@ const GCN_COLUMNS: { key: EditableGcnField; label: string; width: string; type?:
 
 const cellCls = "w-full px-1.5 py-1 text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-[#071A3A] rounded";
 
-export function ManifestSheetDetail({ sheet, items: initialItems, userRole }: Props) {
+export function ManifestSheetDetail({ sheet, items: initialItems, userRole, restorableRemovals: initialRemovals, elsewhereQueuedCount = 0 }: Props) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
+  const [removals, setRemovals] = useState(initialRemovals || []);
   const [converting, setConverting] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
   const [convertOpen, setConvertOpen] = useState(false);
 
   const canEdit = sheet.status === "pending" && EDIT_ROLES.includes(userRole);
@@ -118,13 +122,30 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole }: Pr
     }
   }
 
-  async function removeItem(itemId: string) {
-    setRemovingId(itemId);
+  async function removeItem(item: ConsolidationSheetItem) {
+    setRemovingId(item.id);
     try {
-      const res = await fetch(`/api/manifest/${sheet.id}/items/${itemId}`, { method: "DELETE" });
+      const res = await fetch(`/api/manifest/${sheet.id}/items/${item.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
       const { removal_id } = await res.json();
-      setItems((prev) => prev.filter((it) => it.id !== itemId));
+      setItems((prev) => prev.filter((it) => it.id !== item.id));
+      if (removal_id) {
+        setRemovals((prev) => [
+          {
+            id: removal_id,
+            zone: sheet.zone,
+            gcn_id: item.gcn_id,
+            original_sheet_id: sheet.id,
+            original_position: item.position,
+            pallet_count: item.pallet_count,
+            cbm: item.cbm,
+            remarks: item.remarks,
+            removed_at: new Date().toISOString(),
+            gcn: item.gcn,
+          },
+          ...prev,
+        ]);
+      }
       toast.success("Removed — will join the next pending sheet for this zone", {
         action: removal_id ? {
           label: "Undo",
@@ -141,6 +162,7 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole }: Pr
   }
 
   async function undoRemoval(removalId: string) {
+    setRestoringId(removalId);
     try {
       const res = await fetch(`/api/manifest/removals/${removalId}/restore`, { method: "POST" });
       if (!res.ok) throw new Error((await res.json()).error);
@@ -149,10 +171,13 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole }: Pr
       // so the restored row actually reappears in the grid.
       const fresh = await fetch(`/api/manifest/${sheet.id}`).then((r) => r.json());
       setItems(fresh.items || []);
+      setRemovals((prev) => prev.filter((r) => r.id !== removalId));
       toast.success("Restored to this sheet");
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to undo — it may already be on a newer sheet");
+    } finally {
+      setRestoringId(null);
     }
   }
 
@@ -232,6 +257,47 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole }: Pr
           )}
         </div>
       </div>
+
+      {/* ── Removed from this sheet — undo/restore inline ── */}
+      {canEdit && (removals.length > 0 || elsewhereQueuedCount > 0) && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/10 p-3 space-y-2">
+          {removals.length > 0 && (
+            <>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-amber-800 dark:text-amber-400 flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" />
+                Removed from this sheet — restore if it shouldn&apos;t have left
+              </p>
+              <div className="space-y-1">
+                {removals.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between gap-3 bg-white dark:bg-[#0d1a35] rounded-md px-3 py-1.5 border border-amber-100 dark:border-amber-900/40">
+                    <div className="min-w-0 flex-1 text-xs">
+                      <Link href={`/collections/${r.gcn_id}`} className="font-medium text-[#071A3A] dark:text-orange-300 hover:underline">
+                        {r.gcn?.collection_number}
+                      </Link>
+                      <span className="text-muted-foreground"> &middot; {r.gcn?.consignee_name} &middot; {r.pallet_count} plt, {Number(r.cbm).toFixed(3)} CBM &middot; removed {formatDateTime(r.removed_at)}</span>
+                    </div>
+                    <Button
+                      size="sm" variant="outline" className="gap-1.5 shrink-0 h-7"
+                      disabled={restoringId === r.id}
+                      onClick={() => undoRemoval(r.id)}
+                    >
+                      {restoringId === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Undo2 className="h-3 w-3" />}
+                      Restore
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {elsewhereQueuedCount > 0 && (
+            <p className="text-[11px] text-amber-800 dark:text-amber-400 flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              {elsewhereQueuedCount} more GCN{elsewhereQueuedCount === 1 ? "" : "s"} removed from an earlier {sheet.zone === "jafza" ? "JAFZA" : "Mainland"} sheet {elsewhereQueuedCount === 1 ? "is" : "are"} still waiting for the next one —
+              {" "}<Link href="/manifest/history" className="underline hover:no-underline inline-flex items-center gap-0.5">see history <History className="h-3 w-3" /></Link>
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ── Editable grid ── */}
       <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden bg-white dark:bg-[#0d1a35]">
@@ -332,7 +398,7 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole }: Pr
                     <td className="border border-gray-200 dark:border-gray-700 px-1 py-1 text-center">
                       <button
                         type="button"
-                        onClick={() => removeItem(item.id)}
+                        onClick={() => removeItem(item)}
                         disabled={removingId === item.id}
                         className="text-red-400 hover:text-red-600 disabled:opacity-40"
                       >

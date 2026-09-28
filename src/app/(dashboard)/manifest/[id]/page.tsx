@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { ManifestSheetDetail } from "@/components/manifest/manifest-sheet-detail";
 import { createServiceClient, createClient } from "@/lib/supabase/server";
-import type { ConsolidationSheet, ConsolidationSheetItem, UserRole } from "@/types";
+import type { ConsolidationSheet, ConsolidationSheetItem, ConsolidationSheetRemoval, UserRole } from "@/types";
 import { MANIFEST_ZONE_LABELS } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +26,27 @@ export default async function ManifestSheetPage({ params }: PageProps) {
 
   if (error || !sheet) notFound();
 
+  // Items removed from THIS sheet, still waiting — can be undone right here.
+  // Items queued elsewhere in the zone (from an already-converted sheet) can't
+  // be restored to this sheet, only shown as a heads-up (they'll join whatever
+  // sheet opens after this one converts).
+  const [{ data: restorable }, { count: elsewhereQueuedCount }] = await Promise.all([
+    serviceClient
+      .from("consolidation_sheet_removals")
+      .select("*, gcn:goods_collection_notes(collection_number, consignee_name, shipper_name)")
+      .eq("original_sheet_id", id)
+      .is("requeued_sheet_id", null)
+      .is("restored_at", null)
+      .order("removed_at", { ascending: false }),
+    serviceClient
+      .from("consolidation_sheet_removals")
+      .select("id", { count: "exact", head: true })
+      .eq("zone", sheet.zone)
+      .neq("original_sheet_id", id)
+      .is("requeued_sheet_id", null)
+      .is("restored_at", null),
+  ]);
+
   let userRole: UserRole = "viewer";
   if (user) {
     const { data: profile } = await serviceClient.from("user_profiles").select("role").eq("id", user.id).single();
@@ -45,6 +66,8 @@ export default async function ManifestSheetPage({ params }: PageProps) {
           sheet={typedSheet}
           items={(items || []) as ConsolidationSheetItem[]}
           userRole={userRole}
+          restorableRemovals={(restorable || []) as ConsolidationSheetRemoval[]}
+          elsewhereQueuedCount={elsewhereQueuedCount ?? 0}
         />
       </div>
     </>
