@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { JobOrder } from "@/types";
+import { formatMoney } from "@/lib/utils";
+import type { Invoice, JobOrder } from "@/types";
 
 interface FreightLineItem {
   description: string;
@@ -18,6 +19,7 @@ interface FreightLineItem {
   qty: number;
   country_of_origin: string;
   rate: number;
+  vat_percent: number;
   vat_amount: number;
   amount: number;
 }
@@ -28,12 +30,18 @@ const EMPTY_LINE: FreightLineItem = {
   qty: 1,
   country_of_origin: "",
   rate: 0,
+  vat_percent: 0,
   vat_amount: 0,
   amount: 0,
 };
 
+const SUBUNIT_NAMES: Record<string, string> = {
+  SAR: "HALALAS",
+  AED: "FILS",
+  USD: "CENTS",
+};
+
 function toWords(n: number, currency = "SAR"): string {
-  if (n === 0) return `${currency} : ZERO ONLY`;
   const ones = ["", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE",
     "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTEEN", "NINETEEN"];
   const tens = ["", "", "TWENTY", "THIRTY", "FORTY", "FIFTY", "SIXTY", "SEVENTY", "EIGHTY", "NINETY"];
@@ -44,35 +52,65 @@ function toWords(n: number, currency = "SAR"): string {
     return ones[Math.floor(num / 100)] + " HUNDRED " + below1000(num % 100);
   }
   const intPart = Math.floor(n);
+  const subunit = Math.round((n - intPart) * 100);
+  const subunitName = SUBUNIT_NAMES[currency] || "CENTS";
+
+  if (intPart === 0 && subunit === 0) return `${currency} : ZERO ONLY`;
+
   let result = "";
   if (intPart >= 1000) result += below1000(Math.floor(intPart / 1000)) + "THOUSAND ";
   result += below1000(intPart % 1000);
-  return `${currency} : ${result.trim()} ONLY`;
+  result = result.trim();
+
+  if (subunit > 0) {
+    const subunitWords = below1000(subunit).trim();
+    result = result ? `${result} AND ${subunitWords} ${subunitName}` : `${subunitWords} ${subunitName}`;
+  }
+  return `${currency} : ${result} ONLY`;
 }
 
-export function FreightInvoiceForm() {
+interface FreightInvoiceFormProps {
+  invoice?: Invoice;
+}
+
+export function FreightInvoiceForm({ invoice }: FreightInvoiceFormProps) {
   const router = useRouter();
+  const isEdit = !!invoice;
   const [saving, setSaving] = useState(false);
   const [jobs, setJobs] = useState<JobOrder[]>([]);
 
   const [form, setForm] = useState({
-    invoice_number: "",
-    customer_name: "",
-    customer_address: "",
-    customer_phone: "",
-    customer_email: "",
-    customer_contact_person: "",
-    shipper: "",
-    payment_terms: "COD",
-    manual_job_number: "",
-    job_order_id: "none",
-    port_of_loading: "Jebel Ali, UAE",
-    packages_count: "",
-    final_destination: "",
-    currency: "SAR",
+    invoice_number: invoice?.invoice_number || "",
+    reference_number: invoice?.reference_number || "",
+    customer_name: invoice?.customer_name || "",
+    customer_address: invoice?.customer_address || "",
+    customer_phone: invoice?.customer_phone || "",
+    customer_email: invoice?.customer_email || "",
+    customer_contact_person: invoice?.customer_contact_person || "",
+    shipper: invoice?.shipper || "",
+    payment_terms: invoice?.payment_terms || "COD",
+    manual_job_number: invoice?.manual_job_number || "",
+    job_order_id: invoice?.job_order_id || "none",
+    port_of_loading: invoice?.port_of_loading || "Jebel Ali, UAE",
+    packages_count: invoice?.packages_count || "",
+    final_destination: invoice?.final_destination || "",
+    currency: invoice?.currency || "SAR",
   });
 
-  const [lines, setLines] = useState<FreightLineItem[]>([{ ...EMPTY_LINE, description: "LAND FREIGHT CHARGES (UAE to KSA)" }]);
+  const [lines, setLines] = useState<FreightLineItem[]>(
+    invoice?.line_items && invoice.line_items.length > 0
+      ? invoice.line_items.map((l) => ({
+          description: l.description,
+          model_description: l.model_description || "",
+          qty: l.qty,
+          country_of_origin: l.country_of_origin || "",
+          rate: l.unit_price,
+          vat_percent: l.vat_percent ?? 0,
+          vat_amount: l.vat_amount ?? 0,
+          amount: l.amount,
+        }))
+      : [{ ...EMPTY_LINE, description: "LAND FREIGHT CHARGES (UAE to KSA)" }]
+  );
 
   useEffect(() => {
     fetch("/api/jobs?limit=200")
@@ -90,6 +128,12 @@ export function FreightInvoiceForm() {
       if (field === "qty" || field === "rate") {
         item.amount = Math.round(Number(item.qty) * Number(item.rate) * 100) / 100;
       }
+      // VAT is opt-in: only applied when a percentage is actually entered.
+      if (field === "qty" || field === "rate" || field === "vat_percent") {
+        item.vat_amount = item.vat_percent > 0
+          ? Math.round(item.amount * (item.vat_percent / 100) * 100) / 100
+          : 0;
+      }
       next[i] = item;
       return next;
     });
@@ -106,43 +150,48 @@ export function FreightInvoiceForm() {
     if (lines.some(l => !l.description.trim())) { toast.error("All line items need a description"); return; }
     setSaving(true);
     try {
-      const res = await fetch("/api/invoices", {
-        method: "POST",
+      const payload = {
+        invoice_type: "freight",
+        invoice_number: form.invoice_number.trim(),
+        reference_number: form.reference_number || null,
+        customer_name: form.customer_name.trim(),
+        customer_address: form.customer_address || null,
+        customer_phone: form.customer_phone || null,
+        customer_email: form.customer_email || null,
+        customer_contact_person: form.customer_contact_person || null,
+        shipper: form.shipper || null,
+        payment_terms: form.payment_terms || null,
+        manual_job_number: form.manual_job_number || null,
+        job_order_id: form.job_order_id === "none" ? null : form.job_order_id,
+        currency: form.currency,
+        port_of_loading: form.port_of_loading || null,
+        packages_count: form.packages_count || null,
+        final_destination: form.final_destination || null,
+        tax_rate: 0,
+        line_items: lines.map(l => ({
+          description: l.description,
+          model_description: l.model_description,
+          qty: l.qty,
+          country_of_origin: l.country_of_origin,
+          unit_price: l.rate,
+          vat_percent: l.vat_percent,
+          vat_amount: l.vat_amount,
+          amount: l.amount,
+        })),
+      };
+
+      const res = await fetch(isEdit ? `/api/invoices/${invoice!.id}` : "/api/invoices", {
+        method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          invoice_type: "freight",
-          invoice_number: form.invoice_number.trim(),
-          customer_name: form.customer_name.trim(),
-          customer_address: form.customer_address || null,
-          customer_phone: form.customer_phone || null,
-          customer_email: form.customer_email || null,
-          customer_contact_person: form.customer_contact_person || null,
-          shipper: form.shipper || null,
-          payment_terms: form.payment_terms || null,
-          manual_job_number: form.manual_job_number || null,
-          job_order_id: form.job_order_id === "none" ? null : form.job_order_id,
-          currency: form.currency,
-          port_of_loading: form.port_of_loading || null,
-          packages_count: form.packages_count || null,
-          final_destination: form.final_destination || null,
-          tax_rate: 0,
-          line_items: lines.map(l => ({
-            description: l.description,
-            model_description: l.model_description,
-            qty: l.qty,
-            country_of_origin: l.country_of_origin,
-            unit_price: l.rate,
-            vat_amount: l.vat_amount,
-            amount: l.amount,
-          })),
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error((await res.json()).error);
       const inv = await res.json();
-      toast.success(`Freight invoice ${inv.invoice_number} created`);
+      toast.success(isEdit ? "Invoice updated" : `Freight invoice ${inv.invoice_number} created`);
       router.push(`/invoices/${inv.id}`);
+      router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create invoice");
+      toast.error(err instanceof Error ? err.message : "Failed to save invoice");
     } finally { setSaving(false); }
   }
 
@@ -157,6 +206,10 @@ export function FreightInvoiceForm() {
           <div className="space-y-1.5">
             <Label>Invoice Number <span className="text-red-500">*</span></Label>
             <Input value={form.invoice_number} onChange={e => setF("invoice_number", e.target.value)} placeholder="e.g. 364 or YSI-KSA-364" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Reference Number</Label>
+            <Input value={form.reference_number} onChange={e => setF("reference_number", e.target.value)} placeholder="Customer PO / reference no." />
           </div>
           <div className="space-y-1.5">
             <Label>Currency</Label>
@@ -218,19 +271,19 @@ export function FreightInvoiceForm() {
           <CardTitle className="text-sm text-[#071A3A] dark:text-white">Freight Line Items</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-[2fr_1fr_80px_80px_80px_80px_32px] gap-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground pb-1 border-b">
+          <div className="grid grid-cols-[2fr_1fr_70px_80px_70px_80px_32px] gap-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground pb-1 border-b">
             <span>Description</span>
             <span>Country of Origin</span>
             <span className="text-center">Qty</span>
             <span className="text-right">Rate</span>
-            <span className="text-right">VAT</span>
+            <span className="text-right">VAT %</span>
             <span className="text-right">Amount</span>
             <span />
           </div>
 
           {lines.map((line, i) => (
             <div key={i} className="space-y-1.5">
-              <div className="grid grid-cols-[2fr_1fr_80px_80px_80px_80px_32px] gap-2 items-start">
+              <div className="grid grid-cols-[2fr_1fr_70px_80px_70px_80px_32px] gap-2 items-start">
                 <div className="space-y-1">
                   <Input
                     value={line.description}
@@ -264,13 +317,14 @@ export function FreightInvoiceForm() {
                   className="text-sm text-right"
                 />
                 <Input
-                  type="number" min={0} step={0.01}
-                  value={line.vat_amount}
-                  onChange={e => updateLine(i, "vat_amount", Number(e.target.value))}
+                  type="number" min={0} max={100} step={0.01}
+                  value={line.vat_percent || ""}
+                  onChange={e => updateLine(i, "vat_percent", Number(e.target.value))}
+                  placeholder="0"
                   className="text-sm text-right"
                 />
                 <div className="text-sm font-medium text-right pt-2 pr-1 font-mono">
-                  {Number(line.amount).toFixed(2)}
+                  {formatMoney(line.amount)}
                 </div>
                 <button
                   type="button"
@@ -281,6 +335,11 @@ export function FreightInvoiceForm() {
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
+              {line.vat_percent > 0 && (
+                <p className="text-[11px] text-muted-foreground text-right pr-9">
+                  VAT: {formatMoney(line.vat_amount)} ({line.vat_percent}% of {formatMoney(line.amount)})
+                </p>
+              )}
             </div>
           ))}
 
@@ -298,15 +357,15 @@ export function FreightInvoiceForm() {
               <div className="space-y-1 text-right">
                 <div className="flex justify-between gap-12">
                   <span className="text-muted-foreground">Total</span>
-                  <span className="font-mono">{subtotal.toFixed(2)}</span>
+                  <span className="font-mono">{formatMoney(subtotal)}</span>
                 </div>
                 <div className="flex justify-between gap-12">
                   <span className="text-muted-foreground">VAT</span>
-                  <span className="font-mono">{totalVat.toFixed(2)}</span>
+                  <span className="font-mono">{formatMoney(totalVat)}</span>
                 </div>
                 <div className="flex justify-between gap-12 font-bold border-t pt-1">
                   <span>Total {form.currency}</span>
-                  <span className="font-mono">{total.toFixed(2)}</span>
+                  <span className="font-mono">{formatMoney(total)}</span>
                 </div>
               </div>
             </div>
@@ -351,7 +410,7 @@ export function FreightInvoiceForm() {
       <div className="flex gap-3">
         <Button type="submit" disabled={saving} className="gap-1.5 bg-[#071A3A] hover:bg-[#0d2a5e]">
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-          Create Freight Invoice
+          {isEdit ? "Save Changes" : "Create Freight Invoice"}
         </Button>
         <Button type="button" variant="outline" onClick={() => router.back()} disabled={saving}>Cancel</Button>
       </div>

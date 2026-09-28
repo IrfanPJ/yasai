@@ -12,27 +12,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import type { InvoiceLineItem, JobOrder } from "@/types";
+import type { Invoice, InvoiceLineItem, JobOrder } from "@/types";
 
 interface InvoiceFormProps {
   preselectedJobId?: string;
+  invoice?: Invoice;
 }
 
 const EMPTY_LINE: InvoiceLineItem = { description: "", qty: 1, unit_price: 0, amount: 0 };
 
-export function InvoiceForm({ preselectedJobId }: InvoiceFormProps) {
+export function InvoiceForm({ preselectedJobId, invoice }: InvoiceFormProps) {
   const router = useRouter();
+  const isEdit = !!invoice;
   const [saving, setSaving] = useState(false);
 
-  const [customerName, setCustomerName] = useState("");
-  const [customerEmail, setCustomerEmail] = useState("");
-  const [customerAddress, setCustomerAddress] = useState("");
-  const [currency, setCurrency] = useState("SAR");
-  const [taxRate, setTaxRate] = useState(15);
-  const [dueDate, setDueDate] = useState("");
-  const [jobOrderId, setJobOrderId] = useState(preselectedJobId || "none");
+  const [customerName, setCustomerName] = useState(invoice?.customer_name || "");
+  const [customerEmail, setCustomerEmail] = useState(invoice?.customer_email || "");
+  const [customerAddress, setCustomerAddress] = useState(invoice?.customer_address || "");
+  const [referenceNumber, setReferenceNumber] = useState(invoice?.reference_number || "");
+  const [currency, setCurrency] = useState(invoice?.currency || "SAR");
+  const [taxRate, setTaxRate] = useState(invoice?.tax_rate ?? 15);
+  const [dueDate, setDueDate] = useState(invoice?.due_date || "");
+  const [jobOrderId, setJobOrderId] = useState(invoice?.job_order_id || preselectedJobId || "none");
   const [jobs, setJobs] = useState<JobOrder[]>([]);
-  const [lineItems, setLineItems] = useState<InvoiceLineItem[]>([{ ...EMPTY_LINE }]);
+  const [lineItems, setLineItems] = useState<InvoiceLineItem[]>(
+    invoice?.line_items && invoice.line_items.length > 0 ? invoice.line_items : [{ ...EMPTY_LINE }]
+  );
 
   // Totals
   const subtotal = lineItems.reduce((s, l) => s + l.amount, 0);
@@ -64,29 +69,33 @@ export function InvoiceForm({ preselectedJobId }: InvoiceFormProps) {
 
     setSaving(true);
     try {
-      const res = await fetch("/api/invoices", {
-        method: "POST",
+      const payload = {
+        customer_name: customerName.trim(),
+        customer_email: customerEmail || null,
+        customer_address: customerAddress || null,
+        reference_number: referenceNumber || null,
+        currency,
+        tax_rate: taxRate,
+        due_date: dueDate || null,
+        job_order_id: jobOrderId === "none" ? null : jobOrderId,
+        line_items: lineItems,
+      };
+
+      const res = await fetch(isEdit ? `/api/invoices/${invoice!.id}` : "/api/invoices", {
+        method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customer_name: customerName.trim(),
-          customer_email: customerEmail || null,
-          customer_address: customerAddress || null,
-          currency,
-          tax_rate: taxRate,
-          due_date: dueDate || null,
-          job_order_id: jobOrderId === "none" ? null : jobOrderId,
-          line_items: lineItems,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Failed to create invoice");
+        throw new Error(err.error || "Failed to save invoice");
       }
       const inv = await res.json();
-      toast.success(`Invoice ${inv.invoice_number} created`);
+      toast.success(isEdit ? "Invoice updated" : `Invoice ${inv.invoice_number} created`);
       router.push(`/invoices/${inv.id}`);
+      router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create invoice");
+      toast.error(err instanceof Error ? err.message : "Failed to save invoice");
     } finally {
       setSaving(false);
     }
@@ -117,6 +126,10 @@ export function InvoiceForm({ preselectedJobId }: InvoiceFormProps) {
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-wide">Customer Address</Label>
             <Textarea value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} rows={2} placeholder="Billing address" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-wide">Reference Number</Label>
+            <Input value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} placeholder="Customer PO / reference no." />
           </div>
         </CardContent>
       </Card>
@@ -245,7 +258,7 @@ export function InvoiceForm({ preselectedJobId }: InvoiceFormProps) {
       <div className="flex gap-3">
         <Button onClick={handleSubmit} disabled={saving} className="gap-1.5 bg-[#071A3A] hover:bg-[#0d2550]">
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-          Create Invoice
+          {isEdit ? "Save Changes" : "Create Invoice"}
         </Button>
         <Button variant="outline" onClick={() => router.back()} disabled={saving}>Cancel</Button>
       </div>

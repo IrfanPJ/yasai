@@ -4,6 +4,7 @@ import { generateQRCode } from "@/lib/qr";
 import { generateCollectionPDF } from "@/lib/pdf";
 import { getLogoDataUrl } from "@/lib/logo";
 import { attachGcnToConsolidationSheet } from "@/lib/manifest";
+import { gcnToGrReportInsert } from "@/lib/gr-report";
 import type { GoodsCollectionNote } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -162,5 +163,13 @@ export async function POST(request: NextRequest) {
     details: { collection_number: collectionNumber },
   });
 
-  return NextResponse.json(updated || gcn, { status: 201 });
+  // 7. Seed the matching GR Report row
+  const finalGcn = (updated || gcn) as GoodsCollectionNote;
+  await serviceClient.from("gr_report_entries").insert({
+    ...gcnToGrReportInsert(finalGcn),
+    created_by: user.id,
+    updated_by: user.id,
+  });
+
+  return NextResponse.json(finalGcn, { status: 201 });
 }

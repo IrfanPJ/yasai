@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, formatMoney } from "@/lib/utils";
 import type { Invoice } from "@/types";
 import { INVOICE_STATUS_LABELS, INVOICE_STATUS_COLORS } from "@/types";
 import { Receipt } from "lucide-react";
@@ -52,7 +52,7 @@ export function InvoiceTable({ invoices }: InvoiceTableProps) {
                 ) : "—"}
               </td>
               <td className="px-4 py-3 text-right font-semibold">
-                {inv.currency} {inv.total_amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                {inv.currency} {formatMoney(inv.total_amount)}
               </td>
               <td className="px-4 py-3 text-muted-foreground text-sm">
                 {inv.due_date ? new Date(inv.due_date).toLocaleDateString("en-GB") : <span className="text-xs italic">No due date</span>}

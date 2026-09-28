@@ -1,6 +1,7 @@
 import type { GoodsCollectionNote, DeliveryNote, DeliveryNoteItem, JobOrder, Invoice, InvoiceLineItem, Waybill, WaybillCargoItem, ConsolidationSheet, ConsolidationSheetItem } from "@/types";
 import { MANIFEST_ZONE_LABELS } from "@/types";
 import { format } from "date-fns";
+import { formatMoney } from "@/lib/utils";
 
 const NAVY         = "#0B1F3F";
 const ORANGE       = "#E67A32";
@@ -2586,8 +2587,13 @@ export async function generateCollectionReceiptPDF(collection: CollectionReceipt
 
 // ─── Freight Invoice PDF ──────────────────────────────────────
 
+const FREIGHT_SUBUNIT_NAMES: Record<string, string> = {
+  SAR: "HALALAS",
+  AED: "FILS",
+  USD: "CENTS",
+};
+
 function freightToWords(n: number, currency = "SAR"): string {
-  if (n === 0) return `${currency} : ZERO ONLY`;
   const ones = ["", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE",
     "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTEEN", "NINETEEN"];
   const tens = ["", "", "TWENTY", "THIRTY", "FORTY", "FIFTY", "SIXTY", "SEVENTY", "EIGHTY", "NINETY"];
@@ -2598,11 +2604,22 @@ function freightToWords(n: number, currency = "SAR"): string {
     return ones[Math.floor(num / 100)] + " HUNDRED " + below1000(num % 100);
   }
   const intPart = Math.floor(n);
+  const subunit = Math.round((n - intPart) * 100);
+  const subunitName = FREIGHT_SUBUNIT_NAMES[currency] || "CENTS";
+
+  if (intPart === 0 && subunit === 0) return `${currency} : ZERO ONLY`;
+
   let result = "";
   if (intPart >= 1000000) result += below1000(Math.floor(intPart / 1000000)) + "MILLION ";
   if (intPart >= 1000) result += below1000(Math.floor((intPart % 1000000) / 1000)) + "THOUSAND ";
   result += below1000(intPart % 1000);
-  return `${currency} : ${result.trim()} ONLY`;
+  result = result.trim();
+
+  if (subunit > 0) {
+    const subunitWords = below1000(subunit).trim();
+    result = result ? `${result} AND ${subunitWords} ${subunitName}` : `${subunitWords} ${subunitName}`;
+  }
+  return `${currency} : ${result} ONLY`;
 }
 
 function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string {
@@ -2626,9 +2643,9 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
         ${item.model_description ? `<div style="font-size:7.5pt;color:#555;margin-top:2px;">${esc(item.model_description)}</div>` : ""}
       </td>
       <td class="c bd">${esc(String(item.qty))}</td>
-      <td class="r bd">${Number(item.unit_price).toFixed(2)}</td>
-      <td class="r bd">${Number(item.vat_amount ?? 0).toFixed(2)}</td>
-      <td class="r bd">${Number(item.amount).toFixed(2)}</td>
+      <td class="r bd">${formatMoney(item.unit_price)}</td>
+      <td class="r bd">${formatMoney(item.vat_amount)}</td>
+      <td class="r bd">${formatMoney(item.amount)}</td>
     </tr>`).join("");
 
   const emptyCount = Math.max(0, MIN_ROWS - items.length);
@@ -2808,7 +2825,7 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
   <!-- CONTACT ROW -->
   <div class="contact-row">
     <div class="ci">H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
-    <div class="ci">Tel: +966 55 932 6687</div>
+    <div class="ci">Tel: +971 52 214 5822</div>
     <div class="ci">info@yasailogistics.com</div>
     <div class="ci">www.yasailogistics.com</div>
   </div>
@@ -2844,6 +2861,10 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
         ${invoice.shipper ? `<div class="meta-row">
           <div class="meta-key">Shipper</div><div class="meta-colon">:</div>
           <div class="meta-val">${esc(invoice.shipper)}</div>
+        </div>` : ""}
+        ${invoice.reference_number ? `<div class="meta-row">
+          <div class="meta-key">Ref No</div><div class="meta-colon">:</div>
+          <div class="meta-val">${esc(invoice.reference_number)}</div>
         </div>` : ""}
         ${invoice.final_destination ? `<div class="meta-row">
           <div class="meta-key">Destination</div><div class="meta-colon">:</div>
@@ -2881,19 +2902,19 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
       <tr class="words-row">
         <td colspan="3" style="width:62%;" class="words-bold">${freightToWords(total, currency)}</td>
         <td style="width:13%;text-align:center;font-weight:700;border:1px solid ${BORDER};color:#444;">Total</td>
-        <td style="text-align:right;font-family:monospace;font-weight:700;border:1px solid ${BORDER};color:${NAVY};" colspan="2">${subtotal.toFixed(2)}</td>
+        <td style="text-align:right;font-family:monospace;font-weight:700;border:1px solid ${BORDER};color:${NAVY};" colspan="2">${formatMoney(subtotal)}</td>
       </tr>
       <tr class="tot-row">
         <td colspan="3" style="border:1px solid ${BORDER};font-size:7.5pt;color:#555;padding:4px 8px;">
           ${shippingParts.map(p => `<div>${p}</div>`).join("")}
         </td>
         <td class="tot-lbl" style="border:1px solid ${BORDER};">VAT</td>
-        <td class="tot-num" style="border:1px solid ${BORDER};" colspan="2">${totalVat.toFixed(2)}</td>
+        <td class="tot-num" style="border:1px solid ${BORDER};" colspan="2">${formatMoney(totalVat)}</td>
       </tr>
       <tr class="grand-row">
         <td colspan="3" style="background:white;border:1px solid ${BORDER};"></td>
         <td class="grand-lbl">Total ${esc(currency)}</td>
-        <td class="grand-num" colspan="2">${total.toFixed(2)}</td>
+        <td class="grand-num" colspan="2">${formatMoney(total)}</td>
       </tr>
     </table>
 
@@ -2940,7 +2961,7 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
 
   <!-- BOTTOM BAR -->
   <div class="bottom-bar">
-    YASAI Logistics Company &nbsp;|&nbsp; Tel: +966 55 932 6687 &nbsp;|&nbsp; info@yasailogistics.com &nbsp;|&nbsp; www.yasailogistics.com &nbsp;|&nbsp; Trusted Name in Cargo Consolidation
+    YASAI Logistics Company &nbsp;|&nbsp; Tel: +971 52 214 5822 &nbsp;|&nbsp; info@yasailogistics.com &nbsp;|&nbsp; www.yasailogistics.com &nbsp;|&nbsp; Trusted Name in Cargo Consolidation
   </div>
 
 </body>

@@ -31,7 +31,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   const { data: existing } = await serviceClient
     .from("invoices")
-    .select("status")
+    .select("status, invoice_type")
     .eq("id", id)
     .single();
 
@@ -46,13 +46,28 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     ? lineItems.reduce((s: number, item: { amount?: number }) => s + (item.amount || 0), 0)
     : undefined;
   const taxRate = body.tax_rate !== undefined ? Number(body.tax_rate) : undefined;
-  const taxAmount = subtotal !== undefined && taxRate !== undefined ? subtotal * (taxRate / 100) : undefined;
+  // Freight invoices track VAT per line item (vat_amount), not a flat invoice-level
+  // rate — sum those instead of subtotal * tax_rate, which is always 0 for freight.
+  const taxAmount = subtotal === undefined ? undefined
+    : existing.invoice_type === "freight"
+      ? lineItems!.reduce((s: number, item: { vat_amount?: number }) => s + (item.vat_amount || 0), 0)
+      : taxRate !== undefined ? subtotal * (taxRate / 100) : undefined;
   const totalAmount = subtotal !== undefined && taxAmount !== undefined ? subtotal + taxAmount : undefined;
 
   const updates: Record<string, unknown> = { updated_by: user.id };
+  if (body.invoice_number) updates.invoice_number = String(body.invoice_number).trim();
+  if ("reference_number" in body) updates.reference_number = body.reference_number || null;
   if (body.customer_name) updates.customer_name = body.customer_name;
   if ("customer_email" in body) updates.customer_email = body.customer_email || null;
   if ("customer_address" in body) updates.customer_address = body.customer_address || null;
+  if ("customer_phone" in body) updates.customer_phone = body.customer_phone || null;
+  if ("customer_contact_person" in body) updates.customer_contact_person = body.customer_contact_person || null;
+  if ("shipper" in body) updates.shipper = body.shipper || null;
+  if ("payment_terms" in body) updates.payment_terms = body.payment_terms || null;
+  if ("manual_job_number" in body) updates.manual_job_number = body.manual_job_number || null;
+  if ("port_of_loading" in body) updates.port_of_loading = body.port_of_loading || null;
+  if ("packages_count" in body) updates.packages_count = body.packages_count || null;
+  if ("final_destination" in body) updates.final_destination = body.final_destination || null;
   if (lineItems) updates.line_items = lineItems;
   if (subtotal !== undefined) updates.subtotal = subtotal;
   if (taxRate !== undefined) updates.tax_rate = taxRate;

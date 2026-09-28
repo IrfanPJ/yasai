@@ -24,6 +24,14 @@ export function formatVolume(volume?: number) {
   return `${volume.toFixed(3)} CBM`;
 }
 
+// Accounting-style number formatting: 17456 -> "17,456.00"
+export function formatMoney(amount?: number | null): string {
+  return Number(amount ?? 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 export function buildReceiptFilename(consigneeName: string): string {
   const safe = consigneeName.replace(/[\\/:*?"<>|]/g, "").trim() || "Receipt";
   return `Goods Collection Receipt - ${safe}.pdf`;

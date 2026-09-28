@@ -115,6 +115,36 @@ export interface ConsolidationSheetRemoval {
   remover?: UserProfile;
 }
 
+export type PackageType = "pallet" | "piece" | "box" | "carton" | "each";
+
+export const PACKAGE_TYPE_LABELS: Record<PackageType, string> = {
+  pallet: "Pallet",
+  piece: "Piece",
+  box: "Box",
+  carton: "Carton",
+  each: "Each",
+};
+
+export const PACKAGE_TYPE_SHORT: Record<PackageType, string> = {
+  pallet: "PAL",
+  piece: "PCS",
+  box: "BOX",
+  carton: "CRTN",
+  each: "EA",
+};
+
+// One line of a GCN's cargo: a quantity of a single package type. A GCN can
+// mix several lines (e.g. 3 pallets + 20 pieces + 5 cartons). Pallet lines
+// compute their own volume from per-pallet dimensions; other types are
+// entered manually since they have no per-unit dimension model.
+export interface PackageLineItem {
+  package_type: PackageType;
+  quantity: number;
+  weight_kg: number;
+  volume_cbm: number;
+  pallet_dimensions?: PalletDimension[];
+}
+
 export interface GoodsCollectionNote {
   id: string;
   collection_number: string;
@@ -142,6 +172,7 @@ export interface GoodsCollectionNote {
   volume_cbm?: number;
   pallet_dimensions?: PalletDimension[];
   weight_kg?: number;
+  package_items?: PackageLineItem[];
 
   // UAE warehouse zone this GCN was collected in
   origin_zone?: ManifestZone;
@@ -193,6 +224,47 @@ export interface GoodsCollectionNote {
 
   // Joined
   creator?: UserProfile;
+}
+
+export type GrReportDocType = "freight_invoice" | "delivery_note" | "invoice";
+
+export interface GrReportEntry {
+  id: string;
+  gcn_id: string;
+
+  entry_date?: string | null;
+  cr_number?: string | null;
+  shipper?: string | null;
+  consignee?: string | null;
+  doc_ref_number?: string | null;
+  item_category?: string | null;
+  item_package?: string | null;
+  total_package_qty?: number | null;
+  cbm?: number | null;
+
+  items?: string | null;
+  pickup_point?: string | null;
+
+  job_order_id?: string | null;
+  job_number?: string | null;
+  job_date?: string | null;
+
+  delivered_qty: number;
+  balance: number;
+  tracking?: string | null;
+  invoiced_amount: number;
+
+  freight_invoice_url?: string | null;
+  delivery_note_url?: string | null;
+  invoice_url?: string | null;
+
+  created_by?: string;
+  updated_by?: string;
+  created_at: string;
+  updated_at: string;
+
+  // Joined
+  gcn?: GoodsCollectionNote;
 }
 
 export interface DeliveryNoteItem {
@@ -555,6 +627,7 @@ export interface InvoiceLineItem {
   qty: number;
   unit_price: number;
   country_of_origin?: string;
+  vat_percent?: number;
   vat_amount?: number;
   amount: number;
 }
@@ -571,6 +644,7 @@ export interface Invoice {
   shipper?: string;
   payment_terms?: string;
   manual_job_number?: string;
+  reference_number?: string;
   line_items: InvoiceLineItem[];
   subtotal: number;
   tax_rate: number;
