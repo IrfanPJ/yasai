@@ -151,6 +151,47 @@ export interface GoodsCollectionNote {
   creator?: UserProfile;
 }
 
+export type GrReportDocType = "freight_invoice" | "delivery_note" | "invoice";
+
+export interface GrReportEntry {
+  id: string;
+  gcn_id: string;
+
+  entry_date?: string | null;
+  cr_number?: string | null;
+  shipper?: string | null;
+  consignee?: string | null;
+  doc_ref_number?: string | null;
+  item_category?: string | null;
+  item_package?: string | null;
+  total_package_qty?: number | null;
+  cbm?: number | null;
+
+  items?: string | null;
+  pickup_point?: string | null;
+
+  job_order_id?: string | null;
+  job_number?: string | null;
+  job_date?: string | null;
+
+  delivered_qty: number;
+  balance: number;
+  tracking?: string | null;
+  invoiced_amount: number;
+
+  freight_invoice_url?: string | null;
+  delivery_note_url?: string | null;
+  invoice_url?: string | null;
+
+  created_by?: string;
+  updated_by?: string;
+  created_at: string;
+  updated_at: string;
+
+  // Joined
+  gcn?: GoodsCollectionNote;
+}
+
 export interface DeliveryNoteItem {
   item_description: string;
   qty: string | number;
