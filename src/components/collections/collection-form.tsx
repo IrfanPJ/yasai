@@ -9,7 +9,8 @@ import { toast } from "sonner";
 import { Loader2, FileText, Save, X, ImagePlus, Trash2, Plus } from "lucide-react";
 import { SignaturePad } from "./signature-pad";
 import { cn } from "@/lib/utils";
-import type { GoodsCollectionNote, CargoType, BillingType, DeliveryNoteItem, PalletDimension } from "@/types";
+import type { GoodsCollectionNote, CargoType, BillingType, DeliveryNoteItem, PalletDimension, PackageLineItem, PackageType } from "@/types";
+import { PACKAGE_TYPE_LABELS, PACKAGE_TYPE_SHORT } from "@/types";
 
 const schema = z.object({
   shipper_name: z.string().min(1, "Required"),
@@ -25,6 +26,8 @@ const schema = z.object({
   weight_kg: z.coerce.number().optional(),
   billing_type: z.enum(["customer", "supplier"]).optional(),
 });
+
+const PACKAGE_TYPES: PackageType[] = ["pallet", "piece", "carton", "box"];
 
 type FormData = z.infer<typeof schema>;
 
@@ -132,34 +135,98 @@ export function CollectionForm({
   function addDnItem() { setDnItems(p => [...p, { item_description: "", qty: "", unit: "", total_pallets: "", remark: "" }]); }
   function removeDnItem(i: number) { setDnItems(p => p.filter((_, idx) => idx !== i)); }
 
-  // Pallets → volume (CBM)
-  // `palletsTouched` guards against clobbering a pre-existing GCN's saved volume_cbm /
-  // num_packages the instant the edit form mounts: legacy records (saved before this
-  // feature existed) have no pallet_dimensions, so the calculator starts from one empty
-  // pallet — it must NOT auto-sync until the user actually interacts with it.
-  const emptyPallet = (): PalletDimension => ({ length_m: 0, width_m: 0, height_m: 0 });
-  const hasSavedPallets = !!(defaultValues?.pallet_dimensions && defaultValues.pallet_dimensions.length > 0);
-  const [pallets, setPallets] = useState<PalletDimension[]>(
-    hasSavedPallets ? defaultValues!.pallet_dimensions! : [emptyPallet()]
-  );
-  const [palletsTouched, setPalletsTouched] = useState(!isEdit || hasSavedPallets);
-
-  function handlePalletCountChange(count: number) {
-    setPalletsTouched(true);
-    setPallets((prev) =>
-      count > prev.length
-        ? [...prev, ...Array.from({ length: count - prev.length }, emptyPallet)]
-        : prev.slice(0, count)
-    );
-  }
-  function updatePallet(index: number, field: keyof PalletDimension, value: number) {
-    setPalletsTouched(true);
-    setPallets((prev) => prev.map((p, i) => (i === index ? { ...p, [field]: value } : p)));
-  }
+  // Package lines — a GCN can mix types (e.g. 3 pallets + 20 pieces + 5 cartons).
+  // Pallet lines compute their own CBM from per-pallet L×W×H; other types are
+  // entered manually since there's no per-unit dimension model for them.
+  function emptyPallet(): PalletDimension { return { length_m: 0, width_m: 0, height_m: 0 }; }
   function palletVolumeCbm(p: PalletDimension) {
     return (p.length_m || 0) * (p.width_m || 0) * (p.height_m || 0);
   }
-  const totalVolumeCbm = pallets.reduce((sum, p) => sum + palletVolumeCbm(p), 0);
+  function emptyLine(type: PackageType = "pallet"): PackageLineItem {
+    return {
+      package_type: type,
+      quantity: 1,
+      weight_kg: 0,
+      volume_cbm: 0,
+      pallet_dimensions: type === "pallet" ? [emptyPallet()] : undefined,
+    };
+  }
+  // Legacy records (saved before mixed package lines existed) only have the old
+  // flat pallet_dimensions/weight_kg/volume_cbm fields — reconstruct one line
+  // from those so editing an old GCN starts from its real saved totals, not zero.
+  function legacyLine(): PackageLineItem | null {
+    if (!defaultValues) return null;
+    const hasLegacyData =
+      (defaultValues.pallet_dimensions && defaultValues.pallet_dimensions.length > 0) ||
+      !!defaultValues.weight_kg || !!defaultValues.volume_cbm || !!defaultValues.num_packages;
+    if (!hasLegacyData) return null;
+    const dims = defaultValues.pallet_dimensions && defaultValues.pallet_dimensions.length > 0
+      ? defaultValues.pallet_dimensions
+      : [emptyPallet()];
+    return {
+      package_type: "pallet",
+      quantity: dims.length,
+      weight_kg: defaultValues.weight_kg || 0,
+      volume_cbm: defaultValues.volume_cbm || 0,
+      pallet_dimensions: dims,
+    };
+  }
+  const hasPackageItems = !!(defaultValues?.package_items && defaultValues.package_items.length > 0);
+  const initialLines: PackageLineItem[] = hasPackageItems
+    ? defaultValues!.package_items!
+    : (isEdit ? (legacyLine() ? [legacyLine()!] : [emptyLine()]) : [emptyLine()]);
+  const [packageLines, setPackageLines] = useState<PackageLineItem[]>(initialLines);
+
+  function updateLine(i: number, patch: Partial<PackageLineItem>) {
+    setPackageLines((prev) => prev.map((line, idx) => (idx === i ? { ...line, ...patch } : line)));
+  }
+  function setLineType(i: number, type: PackageType) {
+    const isPallet = type === "pallet";
+    updateLine(i, {
+      package_type: type,
+      pallet_dimensions: isPallet ? [emptyPallet()] : undefined,
+      quantity: isPallet ? 1 : packageLines[i].quantity || 1,
+      volume_cbm: isPallet ? 0 : packageLines[i].volume_cbm,
+    });
+  }
+  function setLineQuantity(i: number, qty: number) {
+    const line = packageLines[i];
+    if (line.package_type === "pallet") {
+      const dims = line.pallet_dimensions || [];
+      const newDims = qty > dims.length
+        ? [...dims, ...Array.from({ length: qty - dims.length }, emptyPallet)]
+        : dims.slice(0, qty);
+      updateLine(i, {
+        quantity: qty,
+        pallet_dimensions: newDims,
+        volume_cbm: newDims.reduce((s, p) => s + palletVolumeCbm(p), 0),
+      });
+    } else {
+      updateLine(i, { quantity: qty });
+    }
+  }
+  function updateLinePalletDim(i: number, palletIdx: number, field: keyof PalletDimension, value: number) {
+    const line = packageLines[i];
+    const newDims = (line.pallet_dimensions || []).map((p, idx) => (idx === palletIdx ? { ...p, [field]: value } : p));
+    updateLine(i, { pallet_dimensions: newDims, volume_cbm: newDims.reduce((s, p) => s + palletVolumeCbm(p), 0) });
+  }
+  function addLine() {
+    setPackageLines((prev) => [...prev, emptyLine("pallet")]);
+  }
+  function removeLine(i: number) {
+    setPackageLines((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  const totalWeightKg = packageLines.reduce((s, l) => s + (Number(l.weight_kg) || 0), 0);
+  const totalVolumeCbm = packageLines.reduce((s, l) => s + (Number(l.volume_cbm) || 0), 0);
+  const packagesSummary = (() => {
+    const byType = new Map<PackageType, number>();
+    for (const l of packageLines) {
+      if (!l.quantity) continue;
+      byType.set(l.package_type, (byType.get(l.package_type) || 0) + Number(l.quantity));
+    }
+    return Array.from(byType.entries()).map(([t, q]) => `${q} ${PACKAGE_TYPE_SHORT[t]}`).join(", ");
+  })();
 
   const {
     register,
@@ -190,14 +257,10 @@ export function CollectionForm({
   const billingType = watch("billing_type");
 
   useEffect(() => {
-    if (!palletsTouched) return;
+    setValue("weight_kg", Number(totalWeightKg.toFixed(3)));
     setValue("volume_cbm", Number(totalVolumeCbm.toFixed(3)));
-  }, [totalVolumeCbm, palletsTouched, setValue]);
-
-  useEffect(() => {
-    if (!palletsTouched) return;
-    setValue("num_packages", `${pallets.length} PLT`);
-  }, [pallets.length, palletsTouched, setValue]);
+    setValue("num_packages", packagesSummary);
+  }, [totalWeightKg, totalVolumeCbm, packagesSummary, setValue]);
 
   async function handleGoodsImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -219,7 +282,7 @@ export function CollectionForm({
     setReceiverSig(undefined);
     setStaffSig(undefined);
     setGoodsImage(undefined);
-    setPallets([emptyPallet()]);
+    setPackageLines([emptyLine()]);
   }
 
   async function onSubmit(data: FormData) {
@@ -227,7 +290,7 @@ export function CollectionForm({
     try {
       const payload = {
         ...data,
-        ...(palletsTouched ? { pallet_dimensions: pallets } : {}),
+        package_items: packageLines,
         receiver_signature: receiverSig,
         staff_signature: staffSig,
         goods_image_url: goodsImage,
@@ -355,7 +418,7 @@ export function CollectionForm({
 
         {/* ── SHIPPING DETAILS ── */}
         <SectionHeader>Shipping Details</SectionHeader>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+        <div className="grid grid-cols-1 gap-4 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
           <Field label="Destination" required error={errors.destination?.message}>
             <input
               {...register("destination")}
@@ -363,75 +426,146 @@ export function CollectionForm({
               className={cn(inputCls, errors.destination && "border-red-400")}
             />
           </Field>
-          <Field label="No. of Packages (Pallets)">
-            <select
-              value={pallets.length}
-              onChange={(e) => handlePalletCountChange(Number(e.target.value))}
-              className={selectCls}
-            >
-              {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={n}>{n} PLT</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Weight (Kgs)">
-            <input
-              {...register("weight_kg")}
-              type="number" step="0.01" min="0"
-              placeholder="e.g. 328.00"
-              className={inputCls}
-            />
-          </Field>
         </div>
 
-        {/* ── PALLET DIMENSIONS → VOLUME ── */}
-        <SectionHeader>Pallet Dimensions (m)</SectionHeader>
-        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 space-y-3">
-          {pallets.map((pallet, i) => (
-            <div key={i} className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-end">
-              <Field label={`Pallet ${i + 1} — Length`}>
-                <input
-                  type="number" step="0.01" min="0"
-                  value={pallet.length_m || ""}
-                  onChange={(e) => updatePallet(i, "length_m", Number(e.target.value))}
-                  placeholder="m"
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Width">
-                <input
-                  type="number" step="0.01" min="0"
-                  value={pallet.width_m || ""}
-                  onChange={(e) => updatePallet(i, "width_m", Number(e.target.value))}
-                  placeholder="m"
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Height">
-                <input
-                  type="number" step="0.01" min="0"
-                  value={pallet.height_m || ""}
-                  onChange={(e) => updatePallet(i, "height_m", Number(e.target.value))}
-                  placeholder="m"
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Volume">
-                <div className={cn(inputCls, "bg-gray-50 dark:bg-[#071A3A]/60 text-gray-500")}>
-                  {palletVolumeCbm(pallet).toFixed(3)} m³
+        {/* ── PACKAGE LINES ── */}
+        <SectionHeader>Packages</SectionHeader>
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 space-y-4">
+          {packageLines.map((line, i) => (
+            <div key={i} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-end">
+                <Field label="Package Type">
+                  <select
+                    value={line.package_type}
+                    onChange={(e) => setLineType(i, e.target.value as PackageType)}
+                    className={selectCls}
+                  >
+                    {PACKAGE_TYPES.map((t) => (
+                      <option key={t} value={t}>{PACKAGE_TYPE_LABELS[t]}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Quantity">
+                  {line.package_type === "pallet" ? (
+                    <select
+                      value={line.quantity}
+                      onChange={(e) => setLineQuantity(i, Number(e.target.value))}
+                      className={selectCls}
+                    >
+                      {Array.from({ length: 20 }, (_, n) => n + 1).map((n) => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="number" min="0" step="1"
+                      value={line.quantity || ""}
+                      onChange={(e) => setLineQuantity(i, Number(e.target.value))}
+                      placeholder="Qty"
+                      className={inputCls}
+                    />
+                  )}
+                </Field>
+                {line.package_type !== "pallet" && (
+                  <>
+                    <Field label="Weight (Kgs)">
+                      <input
+                        type="number" step="0.01" min="0"
+                        value={line.weight_kg || ""}
+                        onChange={(e) => updateLine(i, { weight_kg: Number(e.target.value) })}
+                        placeholder="e.g. 120.00"
+                        className={inputCls}
+                      />
+                    </Field>
+                    <Field label="Volume (CBM)">
+                      <input
+                        type="number" step="0.001" min="0"
+                        value={line.volume_cbm || ""}
+                        onChange={(e) => updateLine(i, { volume_cbm: Number(e.target.value) })}
+                        placeholder="e.g. 1.250"
+                        className={inputCls}
+                      />
+                    </Field>
+                  </>
+                )}
+                {packageLines.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeLine(i)}
+                    className="flex items-center justify-center gap-1.5 h-[38px] px-3 rounded-md border border-red-200 dark:border-red-900 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-all"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Remove Line
+                  </button>
+                )}
+              </div>
+
+              {line.package_type === "pallet" && (
+                <div className="space-y-2 pt-1">
+                  <Field label="Weight (Kgs) — this line's total">
+                    <input
+                      type="number" step="0.01" min="0"
+                      value={line.weight_kg || ""}
+                      onChange={(e) => updateLine(i, { weight_kg: Number(e.target.value) })}
+                      placeholder="e.g. 328.00"
+                      className={cn(inputCls, "max-w-xs")}
+                    />
+                  </Field>
+                  {(line.pallet_dimensions || []).map((pallet, pIdx) => (
+                    <div key={pIdx} className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-end">
+                      <Field label={`Pallet ${pIdx + 1} — Length (m)`}>
+                        <input
+                          type="number" step="0.01" min="0"
+                          value={pallet.length_m || ""}
+                          onChange={(e) => updateLinePalletDim(i, pIdx, "length_m", Number(e.target.value))}
+                          placeholder="m"
+                          className={inputCls}
+                        />
+                      </Field>
+                      <Field label="Width (m)">
+                        <input
+                          type="number" step="0.01" min="0"
+                          value={pallet.width_m || ""}
+                          onChange={(e) => updateLinePalletDim(i, pIdx, "width_m", Number(e.target.value))}
+                          placeholder="m"
+                          className={inputCls}
+                        />
+                      </Field>
+                      <Field label="Height (m)">
+                        <input
+                          type="number" step="0.01" min="0"
+                          value={pallet.height_m || ""}
+                          onChange={(e) => updateLinePalletDim(i, pIdx, "height_m", Number(e.target.value))}
+                          placeholder="m"
+                          className={inputCls}
+                        />
+                      </Field>
+                      <Field label="Volume">
+                        <div className={cn(inputCls, "bg-gray-50 dark:bg-[#071A3A]/60 text-gray-500")}>
+                          {palletVolumeCbm(pallet).toFixed(3)} m³
+                        </div>
+                      </Field>
+                    </div>
+                  ))}
                 </div>
-              </Field>
+              )}
             </div>
           ))}
-          {!palletsTouched && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              This record&apos;s existing volume ({(defaultValues?.volume_cbm ?? 0).toFixed(3)} CBM) is kept as-is
-              until you enter pallet dimensions above.
-            </p>
-          )}
-          <div className="flex justify-end pt-2 border-t border-gray-100 dark:border-gray-800">
+
+          <button
+            type="button"
+            onClick={addLine}
+            className="flex items-center gap-1.5 text-xs text-[#E67A32] hover:text-[#d06820] font-medium"
+          >
+            <Plus className="h-3.5 w-3.5" /> Add Package Line
+          </button>
+
+          <div className="flex flex-wrap justify-between items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+            <div className="text-xs text-muted-foreground">
+              {packagesSummary || "No packages added yet"}
+            </div>
             <div className="text-sm font-semibold text-[#071A3A] dark:text-white">
-              Total Volume: {(palletsTouched ? totalVolumeCbm : defaultValues?.volume_cbm ?? 0).toFixed(3)} CBM
+              Total: {totalWeightKg.toFixed(2)} Kg &middot; {totalVolumeCbm.toFixed(3)} CBM
             </div>
           </div>
         </div>
