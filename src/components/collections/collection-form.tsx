@@ -27,7 +27,7 @@ const schema = z.object({
   billing_type: z.enum(["customer", "supplier"]).optional(),
 });
 
-const PACKAGE_TYPES: PackageType[] = ["pallet", "piece", "carton", "box"];
+const PACKAGE_TYPES: PackageType[] = ["pallet", "piece", "box", "carton", "each"];
 
 type FormData = z.infer<typeof schema>;
 
