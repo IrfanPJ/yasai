@@ -1771,8 +1771,8 @@ function buildInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string {
   <div class="lh-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1575;&#1578;</div>
 </div>
 <div class="contact-row">
-  <div class="ci"><span class="ci-dot">&#9679;</span> H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
-  <div class="ci"><span class="ci-dot">&#9990;</span> +966 55 932 6687</div>
+  <div class="ci"><span class="ci-dot">&#9679;</span> Warehouse No. S3, Thumamah 08 Building, Al Qusais Ind 4, Dubai &#8211; UAE</div>
+  <div class="ci"><span class="ci-dot">&#9990;</span> +971 58 601 8464</div>
   <div class="ci"><span class="ci-dot">&#9993;</span> info@yasailogistics.com</div>
   <div class="ci"><span class="ci-dot">&#8853;</span> www.yasailogistics.com</div>
 </div>
@@ -1801,9 +1801,10 @@ function buildInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string {
   </div>
   <div class="bill-col">
     <div class="bill-label">Bill From</div>
-    <div class="bill-name">YASAI LOGISTICS COMPANY</div>
-    <div class="bill-line">H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
-    <div class="bill-line">info@yasailogistics.com &nbsp;|&nbsp; +966 55 932 6687</div>
+    <div class="bill-name">YASAI LOGISTICS LLC</div>
+    <div class="bill-line">Warehouse No. S3, Thumamah 08 Building, Al Qusais Ind 4, Dubai, United Arab Emirates</div>
+    <div class="bill-line">info@yasailogistics.com &nbsp;|&nbsp; +971 58 601 8464</div>
+    <div class="bill-line">TRN: 105507741400003</div>
   </div>
 </div>
 
@@ -1851,7 +1852,7 @@ function buildInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string {
 <div class="footer">
   <div class="f-left">
     <div class="fpin"><span>&#9679;</span></div>
-    <div><div class="f-co">YASAI LOGISTICS COMPANY</div><div class="f-ad">H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div></div>
+    <div><div class="f-co">YASAI LOGISTICS LLC</div><div class="f-ad">Warehouse No. S3, Al Qusais Ind 4, Dubai &#8211; UAE</div></div>
   </div>
   <div class="f-right">
     <div><div class="f-ar">&#1588;&#1585;&#1603;&#1577; &#1610;&#1575;&#1587;&#1575;&#1610; &#1604;&#1604;&#1608;&#1580;&#1587;&#1578;&#1610;&#1577;</div><div class="f-ad-ar">&#1607;&#1607; &#1575;&#1604;&#1588;&#1610;&#1582; &#1587;&#1593;&#1608;&#1583; &#1576;&#1606; &#1589;&#1602;&#1585;&#1548; &#1583;&#1576;&#1610; &#8211; &#1575;&#1604;&#1573;&#1605;&#1575;&#1585;&#1575;&#1578;</div></div>
@@ -2703,10 +2704,11 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
 
   <!-- CONTACT ROW -->
   <div class="contact-row">
-    <div class="ci">H.H Shaikh Saud Bin Saqar, Al Muteena, Dubai &#8211; UAE</div>
-    <div class="ci">Tel: +971 52 214 5822</div>
+    <div class="ci">Warehouse No. S3, Thumamah 08 Building, Al Qusais Ind 4, Dubai &#8211; UAE</div>
+    <div class="ci">Tel: +971 58 601 8464</div>
     <div class="ci">info@yasailogistics.com</div>
     <div class="ci">www.yasailogistics.com</div>
+    <div class="ci">TRN: 105507741400003</div>
   </div>
 
   <!-- CONTENT -->
@@ -2840,7 +2842,7 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
 
   <!-- BOTTOM BAR -->
   <div class="bottom-bar">
-    YASAI Logistics Company &nbsp;|&nbsp; Tel: +971 52 214 5822 &nbsp;|&nbsp; info@yasailogistics.com &nbsp;|&nbsp; www.yasailogistics.com &nbsp;|&nbsp; Trusted Name in Cargo Consolidation
+    YASAI Logistics LLC &nbsp;|&nbsp; Tel: +971 58 601 8464 &nbsp;|&nbsp; info@yasailogistics.com &nbsp;|&nbsp; www.yasailogistics.com &nbsp;|&nbsp; Trusted Name in Cargo Consolidation
   </div>
 
 </body>
