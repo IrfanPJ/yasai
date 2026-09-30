@@ -43,7 +43,7 @@ export interface PalletDimension {
   height_m: number;
 }
 
-export type PackageType = "pallet" | "piece" | "box" | "carton" | "each";
+export type PackageType = "pallet" | "piece" | "box" | "carton" | "each" | "package";
 
 export const PACKAGE_TYPE_LABELS: Record<PackageType, string> = {
   pallet: "Pallet",
@@ -51,6 +51,7 @@ export const PACKAGE_TYPE_LABELS: Record<PackageType, string> = {
   box: "Box",
   carton: "Carton",
   each: "Each",
+  package: "Package",
 };
 
 export const PACKAGE_TYPE_SHORT: Record<PackageType, string> = {
@@ -59,6 +60,7 @@ export const PACKAGE_TYPE_SHORT: Record<PackageType, string> = {
   box: "BOX",
   carton: "CRTN",
   each: "EA",
+  package: "PKG",
 };
 
 // One line of a GCN's cargo: a quantity of a single package type. A GCN can
