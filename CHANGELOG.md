@@ -9,6 +9,7 @@ All notable updates to YASAI Logistics, by date. Newest first.
 - Production data backfill from the 29-09-26 KSA pending consolidation PDFs (Mainland + JAFZA): fixed `origin_zone` on 9 already-existing GCNs, created 21 new GCNs for shipments that had never been entered, seeded 25 missing `gr_report_entries` rows, and built the two zones' first-ever pending consolidation sheets (19 items/19 pallets Mainland, 11 items/27 pallets JAFZA) — both stay pending, well under the auto-conversion thresholds
 - Added a new "Package" package type (dropdown + PackageType enum) for generic/unspecified packages that aren't a Pallet/Piece/Box/Carton/Each
 - Fixed the 21 backfilled GCNs' package data to use real dropdown-defined types (Ctn/Ctns -> Carton, Pallet/Pallets -> Pallet, Pkgs -> the new Package type) instead of raw PDF wording, matching how the form itself would save them
+- Normalized 135 of the remaining 138 production GCNs (all the pre-existing ones that had never been through the structured package-lines UI) to real `package_items` — fixed casing/spelling/abbreviation inconsistencies (PLT/PLTS/Ctns/pkgs/etc.) and split the 9 rows that mixed two types in one string into two lines each. Left 3 alone as agreed: 2 with blank package data, 1 ("8 cartoon 3 bundle") with a type that doesn't map cleanly
 
 ## 2026-09-29
 - Invoice PDFs: new warehouse address, updated mobile number, legal name → YASAI LOGISTICS LLC, added TRN (`main`)
