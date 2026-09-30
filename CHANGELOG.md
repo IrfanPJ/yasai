@@ -8,6 +8,7 @@ All notable updates to YASAI Logistics, by date. Newest first.
 - Applied `025_manifest_cbm_threshold.sql` to production (was missing — schema had `consolidation_sheets`/`items` but no `cbm`/`cbm_total` columns)
 - Production data backfill from the 29-09-26 KSA pending consolidation PDFs (Mainland + JAFZA): fixed `origin_zone` on 9 already-existing GCNs, created 21 new GCNs for shipments that had never been entered, seeded 25 missing `gr_report_entries` rows, and built the two zones' first-ever pending consolidation sheets (19 items/19 pallets Mainland, 11 items/27 pallets JAFZA) — both stay pending, well under the auto-conversion thresholds
 - Added a new "Package" package type (dropdown + PackageType enum) for generic/unspecified packages that aren't a Pallet/Piece/Box/Carton/Each
+- Fixed the 21 backfilled GCNs' package data to use real dropdown-defined types (Ctn/Ctns -> Carton, Pallet/Pallets -> Pallet, Pkgs -> the new Package type) instead of raw PDF wording, matching how the form itself would save them
 
 ## 2026-09-29
 - Invoice PDFs: new warehouse address, updated mobile number, legal name → YASAI LOGISTICS LLC, added TRN (`main`)
