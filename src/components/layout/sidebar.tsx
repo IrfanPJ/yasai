@@ -14,6 +14,8 @@ import {
   Receipt,
   FileCheck2,
   Banknote,
+  ClipboardList,
+  FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { YasaiLogo } from "./logo";
@@ -43,9 +45,19 @@ const navItems = [
     icon: Truck,
   },
   {
+    label: "Manifest",
+    href: "/manifest",
+    icon: ClipboardList,
+  },
+  {
     label: "Invoices",
     href: "/invoices",
     icon: Receipt,
+  },
+  {
+    label: "GR Report",
+    href: "/gr-report",
+    icon: FileSpreadsheet,
   },
   {
     label: "Records",

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { Header } from "@/components/layout/header";
 import { CollectionDetail } from "@/components/collections/collection-detail";
-import type { GoodsCollectionNote, DeliveryNote } from "@/types";
+import type { GoodsCollectionNote, DeliveryNote, GrReportEntry } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,7 @@ export default async function CollectionDetailPage({ params }: PageProps) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [{ data: profile }, { data: deliveryNote }] = await Promise.all([
+  const [{ data: profile }, { data: deliveryNote }, { data: grReportEntry }] = await Promise.all([
     user
       ? serviceClient.from("user_profiles").select("role").eq("id", user.id).single()
       : Promise.resolve({ data: null }),
@@ -34,6 +34,11 @@ export default async function CollectionDetailPage({ params }: PageProps) {
       .from("delivery_notes")
       .select("*")
       .eq("collection_id", id)
+      .maybeSingle(),
+    serviceClient
+      .from("gr_report_entries")
+      .select("*")
+      .eq("gcn_id", id)
       .maybeSingle(),
   ]);
 
@@ -49,6 +54,7 @@ export default async function CollectionDetailPage({ params }: PageProps) {
             collection={data as GoodsCollectionNote}
             userRole={profile?.role || "viewer"}
             deliveryNote={(deliveryNote as DeliveryNote | null) ?? null}
+            grReportEntry={(grReportEntry as GrReportEntry | null) ?? null}
           />
         </div>
       </div>

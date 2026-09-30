@@ -25,7 +25,7 @@ export default async function JobDetailPage({ params }: PageProps) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [{ data: profile }, { data: gcnLinks }, { data: updates }, { data: trucks }, { data: statusUpdates }] = await Promise.all([
+  const [{ data: profile }, { data: gcnLinks }, { data: updates }, { data: trucks }, { data: statusUpdates }, { data: manifestSheet }] = await Promise.all([
     user
       ? service.from("user_profiles").select("role").eq("id", user.id).single()
       : Promise.resolve({ data: null }),
@@ -48,6 +48,13 @@ export default async function JobDetailPage({ params }: PageProps) {
       .select("*")
       .eq("job_order_id", id)
       .order("created_at", { ascending: false }),
+    // This Job Order may have been created automatically from a converted
+    // Manifest sheet — if so, its document replaces the generic Packing List.
+    service
+      .from("consolidation_sheets")
+      .select("id, sheet_number")
+      .eq("job_order_id", id)
+      .maybeSingle(),
   ]);
 
   const gcns = (gcnLinks || [])
@@ -65,6 +72,7 @@ export default async function JobDetailPage({ params }: PageProps) {
           trucks={(trucks || []) as JobOrderTruck[]}
           statusUpdates={(statusUpdates || []) as JobStatusUpdate[]}
           userRole={profile?.role || "viewer"}
+          manifestSheet={manifestSheet as { id: string; sheet_number: string } | null}
         />
       </div>
     </>

@@ -26,15 +26,16 @@ import {
   DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { StatusBadge } from "./status-badge";
-import { formatDate, formatWeight, generateWhatsAppMessage, openWhatsApp, downloadFile, buildReceiptFilename, buildPdfPath } from "@/lib/utils";
+import { cn, formatDate, formatWeight, generateWhatsAppMessage, openWhatsApp, downloadFile, buildReceiptFilename, buildPdfPath } from "@/lib/utils";
 import type { GoodsCollectionNote, CargoType } from "@/types";
-import { STATUS_LABELS, CARGO_TYPE_LABELS } from "@/types";
+import { STATUS_LABELS, CARGO_TYPE_LABELS, MANIFEST_ZONE_LABELS } from "@/types";
 
 interface CollectionsTableProps {
   data: GoodsCollectionNote[];
   initialSearch?: string;
   initialCargo?: string;
   initialStatus?: string;
+  initialZone?: string;
 }
 
 const CARGO_ICONS: Record<CargoType, React.ReactNode> = {
@@ -48,11 +49,13 @@ export function CollectionsTable({
   initialSearch = "",
   initialCargo = "all",
   initialStatus = "all",
+  initialZone = "all",
 }: CollectionsTableProps) {
   const router = useRouter();
   const [search, setSearch] = useState(initialSearch);
   const [cargoFilter, setCargoFilter] = useState(initialCargo);
   const [statusFilter, setStatusFilter] = useState(initialStatus);
+  const [zoneFilter, setZoneFilter] = useState(initialZone);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -67,10 +70,11 @@ export function CollectionsTable({
 
       const matchCargo = cargoFilter === "all" || item.cargo_type === cargoFilter;
       const matchStatus = statusFilter === "all" || item.status === statusFilter;
+      const matchZone = zoneFilter === "all" || item.origin_zone === zoneFilter;
 
-      return matchSearch && matchCargo && matchStatus;
+      return matchSearch && matchCargo && matchStatus && matchZone;
     });
-  }, [data, search, cargoFilter, statusFilter]);
+  }, [data, search, cargoFilter, statusFilter, zoneFilter]);
 
   async function handleDelete() {
     if (!deleteId) return;
@@ -130,7 +134,7 @@ export function CollectionsTable({
   function exportToExcel() {
     const headers = [
       "Collection #", "Shipper", "Consignee", "Destination", "Commodity",
-      "Cargo Type", "Weight (KG)", "Volume (CBM)", "Packages", "Status",
+      "Cargo Type", "Zone", "Weight (KG)", "Volume (CBM)", "Packages", "Status",
       "Doc Ref", "Date",
     ];
     const rows = filtered.map((item) => [
@@ -140,6 +144,7 @@ export function CollectionsTable({
       item.destination,
       item.commodity,
       CARGO_TYPE_LABELS[item.cargo_type],
+      item.origin_zone ? MANIFEST_ZONE_LABELS[item.origin_zone] : "",
       item.weight_kg,
       item.volume_cbm,
       item.num_packages,
@@ -169,9 +174,10 @@ export function CollectionsTable({
     setSearch("");
     setCargoFilter("all");
     setStatusFilter("all");
+    setZoneFilter("all");
   };
 
-  const hasFilters = search || cargoFilter !== "all" || statusFilter !== "all";
+  const hasFilters = search || cargoFilter !== "all" || statusFilter !== "all" || zoneFilter !== "all";
 
   return (
     <>
@@ -216,6 +222,24 @@ export function CollectionsTable({
               </SelectContent>
             </Select>
 
+            <div className="flex items-center rounded-md border h-9 p-0.5 gap-0.5 shrink-0">
+              {(["all", ...Object.keys(MANIFEST_ZONE_LABELS)] as const).map((z) => (
+                <button
+                  key={z}
+                  type="button"
+                  onClick={() => setZoneFilter(z)}
+                  className={cn(
+                    "px-2.5 h-full rounded text-xs font-medium transition-colors",
+                    zoneFilter === z
+                      ? "bg-[#071A3A] text-white"
+                      : "text-muted-foreground hover:bg-[#F7F0EA]"
+                  )}
+                >
+                  {z === "all" ? "All Zones" : MANIFEST_ZONE_LABELS[z as keyof typeof MANIFEST_ZONE_LABELS]}
+                </button>
+              ))}
+            </div>
+
             {hasFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 gap-1.5 text-muted-foreground shrink-0">
                 <X className="h-3.5 w-3.5" />
@@ -251,6 +275,7 @@ export function CollectionsTable({
                 <TableHead>Consignee</TableHead>
                 <TableHead>Destination</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Zone</TableHead>
                 <TableHead>Weight</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Date</TableHead>
@@ -260,7 +285,7 @@ export function CollectionsTable({
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
                     No collections found.{" "}
                     <Link href="/collections/new" className="text-[#E67A32] hover:underline">
                       Create one
@@ -290,6 +315,9 @@ export function CollectionsTable({
                         {CARGO_ICONS[item.cargo_type]}
                         {CARGO_TYPE_LABELS[item.cargo_type].split(" ")[0]}
                       </span>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {item.origin_zone ? MANIFEST_ZONE_LABELS[item.origin_zone] : "—"}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatWeight(item.weight_kg)}

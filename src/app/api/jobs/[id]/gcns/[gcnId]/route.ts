@@ -19,6 +19,13 @@ export async function DELETE(_: NextRequest, { params }: RouteParams) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Clear Job #/Job Date on this GCN's GR Report row
+  await serviceClient
+    .from("gr_report_entries")
+    .update({ job_order_id: null, job_number: null, job_date: null, updated_by: user.id })
+    .eq("gcn_id", gcnId)
+    .eq("job_order_id", jobId);
+
   // Recalculate totals
   const { data: links } = await serviceClient
     .from("job_order_gcns")

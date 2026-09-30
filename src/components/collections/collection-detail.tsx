@@ -30,14 +30,16 @@ import {
 import { formatDateTime, formatWeight, formatVolume,
   generateWhatsAppMessage, openWhatsApp, copyToClipboard, buildReceiptFilename, buildPdfPath,
 } from "@/lib/utils";
-import type { GoodsCollectionNote, CollectionStatus, UserRole, DeliveryNote } from "@/types";
+import type { GoodsCollectionNote, CollectionStatus, UserRole, DeliveryNote, GrReportEntry, GrReportDocType } from "@/types";
 import { STATUS_LABELS, CARGO_TYPE_LABELS } from "@/types";
+import { GR_REPORT_UPLOAD_ROLES } from "@/lib/gr-report";
 import { useRouter } from "next/navigation";
 
 interface CollectionDetailProps {
   collection: GoodsCollectionNote;
   userRole: UserRole;
   deliveryNote: DeliveryNote | null;
+  grReportEntry: GrReportEntry | null;
 }
 
 const STATUS_ORDER: CollectionStatus[] = [
@@ -45,7 +47,13 @@ const STATUS_ORDER: CollectionStatus[] = [
   "customs_clearance", "out_for_delivery", "delivered",
 ];
 
-export function CollectionDetail({ collection, userRole, deliveryNote }: CollectionDetailProps) {
+const GR_DOC_SLOTS: { type: GrReportDocType; label: string; urlField: keyof GrReportEntry }[] = [
+  { type: "freight_invoice", label: "Freight Invoice", urlField: "freight_invoice_url" },
+  { type: "delivery_note", label: "Delivery Note", urlField: "delivery_note_url" },
+  { type: "invoice", label: "Invoice", urlField: "invoice_url" },
+];
+
+export function CollectionDetail({ collection, userRole, deliveryNote, grReportEntry }: CollectionDetailProps) {
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
@@ -56,6 +64,8 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
   const [savingPDF, setSavingPDF] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
   const [deletingDoc, setDeletingDoc] = useState<string | null>(null);
+  const [uploadingGrDoc, setUploadingGrDoc] = useState<GrReportDocType | null>(null);
+  const canUploadGrDocs = GR_REPORT_UPLOAD_ROLES.includes(userRole);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ||
     (typeof window !== "undefined" ? window.location.origin : "");
@@ -150,6 +160,27 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
       toast.error("Failed to remove document");
     } finally {
       setDeletingDoc(null);
+    }
+  }
+
+  async function handleGrDocUpload(type: GrReportDocType, file: File) {
+    if (!grReportEntry) return;
+    setUploadingGrDoc(type);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("type", type);
+      const res = await fetch(`/api/gr-report/${grReportEntry.id}/upload`, {
+        method: "POST",
+        body: form,
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast.success("Document uploaded");
+      router.refresh();
+    } catch {
+      toast.error("Failed to upload document");
+    } finally {
+      setUploadingGrDoc(null);
     }
   }
 
@@ -532,6 +563,71 @@ export function CollectionDetail({ collection, userRole, deliveryNote }: Collect
               </div>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      {/* ── GR Report Documents (Freight Invoice / Delivery Note / Invoice) ── */}
+      <Card className="border-none shadow-sm mt-6">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base text-[#071A3A] dark:text-white flex items-center gap-2">
+            <FileText className="h-4 w-4" /> GR Report Documents
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {GR_DOC_SLOTS.map(({ type, label, urlField }) => {
+            const url = grReportEntry?.[urlField] as string | null | undefined;
+            return (
+              <div key={type} className="flex items-center justify-between rounded-lg border px-4 py-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{label}</p>
+                    {url ? (
+                      <p className="text-xs text-green-600 dark:text-green-400">Uploaded</p>
+                    ) : grReportEntry ? (
+                      <p className="text-xs text-muted-foreground">Not uploaded</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Not tracked in GR Report yet</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {url && (
+                    <Button size="sm" variant="outline" className="gap-1.5 h-8" asChild>
+                      <a href={url} target="_blank" rel="noopener noreferrer">
+                        <Eye className="h-3.5 w-3.5" /> View
+                      </a>
+                    </Button>
+                  )}
+                  {canUploadGrDocs && grReportEntry && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 h-8 relative overflow-hidden"
+                      disabled={uploadingGrDoc === type}
+                    >
+                      {uploadingGrDoc === type ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="h-3.5 w-3.5" />
+                      )}
+                      {url ? "Replace" : "Upload"}
+                      <input
+                        type="file"
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        disabled={uploadingGrDoc === type}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleGrDocUpload(type, file);
+                          e.target.value = "";
+                        }}
+                      />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
 

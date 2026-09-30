@@ -35,6 +35,29 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Fill in Job #/Job Date on this GCN's GR Report row
+  const { data: job } = await serviceClient
+    .from("job_orders")
+    .select("job_number, departure_date")
+    .eq("id", jobId)
+    .single();
+
+  // A GCN can technically be linked to more than one Job Order, but the
+  // report row only has room for one — don't clobber whichever Job Order
+  // is already shown there; only fill it in if it's still unset.
+  if (job) {
+    await serviceClient
+      .from("gr_report_entries")
+      .update({
+        job_order_id: jobId,
+        job_number: job.job_number,
+        job_date: job.departure_date,
+        updated_by: user.id,
+      })
+      .eq("gcn_id", gcnId)
+      .is("job_order_id", null);
+  }
+
   // Recalculate totals
   const { data: links } = await serviceClient
     .from("job_order_gcns")

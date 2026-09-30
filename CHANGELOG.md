@@ -11,6 +11,10 @@ All notable updates to YASAI Logistics, by date. Newest first.
 - Fixed the 21 backfilled GCNs' package data to use real dropdown-defined types (Ctn/Ctns -> Carton, Pallet/Pallets -> Pallet, Pkgs -> the new Package type) instead of raw PDF wording, matching how the form itself would save them
 - Normalized 135 of the remaining 138 production GCNs (all the pre-existing ones that had never been through the structured package-lines UI) to real `package_items` — fixed casing/spelling/abbreviation inconsistencies (PLT/PLTS/Ctns/pkgs/etc.) and split the 9 rows that mixed two types in one string into two lines each. Left 3 alone as agreed: 2 with blank package data, 1 ("8 cartoon 3 bundle") with a type that doesn't map cleanly
 - Fixed the last one too — "8 cartoon 3 bundle" (`YAS-10020`) -> 8 Carton + 3 Each. Only the 2 blank ones remain untouched (no data to parse)
+- Added a Mainland/JAFZA zone filter (+ column, + CSV export) to the main Collections list
+- Changed the zone filter from a dropdown to one-click toggle buttons (All / Mainland / JAFZA)
+- GCN detail page now shows a "GR Report Documents" section (Freight Invoice / Delivery Note / Invoice) with view/upload, same data as GR Report and the Manifest sheet
+- Merged `feature/manifest` into `main` — Manifest/consolidation sheets, GR Report, and everything built on top of them are now part of `main`
 
 ## 2026-09-29
 - Invoice PDFs: new warehouse address, updated mobile number, legal name → YASAI LOGISTICS LLC, added TRN (`main`)

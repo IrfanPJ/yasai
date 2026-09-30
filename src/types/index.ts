@@ -43,6 +43,78 @@ export interface PalletDimension {
   height_m: number;
 }
 
+export type ManifestZone = "mainland" | "jafza";
+
+export const MANIFEST_ZONE_LABELS: Record<ManifestZone, string> = {
+  mainland: "Mainland",
+  jafza: "JAFZA",
+};
+
+export type ConsolidationSheetStatus = "pending" | "manifest";
+export type ConsolidationConversionType = "auto" | "manual";
+
+// Sheets auto-convert once EITHER threshold is reached — whichever comes
+// first. CBM covers non-palletized cargo too (not every GCN is palletized,
+// but every GCN has a CBM figure); pallet count is the truck-capacity cap.
+export const CONSOLIDATION_CBM_LIMIT = 40.5;
+export const CONSOLIDATION_PALLET_LIMIT = 45;
+
+export interface ConsolidationSheetItem {
+  id: string;
+  sheet_id: string;
+  gcn_id: string;
+  position: number;
+  pallet_count: number;
+  cbm: number;
+  remarks?: string | null;
+  added_by?: string;
+  added_at: string;
+  gcn?: GoodsCollectionNote;
+}
+
+export interface ConsolidationSheet {
+  id: string;
+  sheet_number: string;
+  zone: ManifestZone;
+  status: ConsolidationSheetStatus;
+  pallet_count: number;
+  cbm_total: number;
+  item_count: number;
+  converted_at?: string | null;
+  converted_by?: string | null;
+  conversion_type?: ConsolidationConversionType | null;
+  job_order_id?: string | null;
+  created_by?: string;
+  updated_by?: string;
+  created_at: string;
+  updated_at: string;
+  items?: ConsolidationSheetItem[];
+}
+
+export type RemovalStatus = "queued" | "requeued" | "restored";
+
+export interface ConsolidationSheetRemoval {
+  id: string;
+  zone: ManifestZone;
+  gcn_id: string;
+  original_sheet_id: string;
+  original_position: number;
+  pallet_count: number;
+  cbm: number;
+  remarks?: string | null;
+  removed_by?: string;
+  removed_at: string;
+  requeued_sheet_id?: string | null;
+  requeued_at?: string | null;
+  restored_at?: string | null;
+  restored_by?: string | null;
+  // Joined
+  gcn?: GoodsCollectionNote;
+  original_sheet?: ConsolidationSheet;
+  requeued_sheet?: ConsolidationSheet;
+  remover?: UserProfile;
+}
+
 export type PackageType = "pallet" | "piece" | "box" | "carton" | "each" | "package";
 
 export const PACKAGE_TYPE_LABELS: Record<PackageType, string> = {
@@ -104,6 +176,9 @@ export interface GoodsCollectionNote {
   weight_kg?: number;
   package_items?: PackageLineItem[];
 
+  // UAE warehouse zone this GCN was collected in
+  origin_zone?: ManifestZone;
+
   // Billing
   billing_type?: BillingType;
 
@@ -151,6 +226,47 @@ export interface GoodsCollectionNote {
 
   // Joined
   creator?: UserProfile;
+}
+
+export type GrReportDocType = "freight_invoice" | "delivery_note" | "invoice";
+
+export interface GrReportEntry {
+  id: string;
+  gcn_id: string;
+
+  entry_date?: string | null;
+  cr_number?: string | null;
+  shipper?: string | null;
+  consignee?: string | null;
+  doc_ref_number?: string | null;
+  item_category?: string | null;
+  item_package?: string | null;
+  total_package_qty?: number | null;
+  cbm?: number | null;
+
+  items?: string | null;
+  pickup_point?: string | null;
+
+  job_order_id?: string | null;
+  job_number?: string | null;
+  job_date?: string | null;
+
+  delivered_qty: number;
+  balance: number;
+  tracking?: string | null;
+  invoiced_amount: number;
+
+  freight_invoice_url?: string | null;
+  delivery_note_url?: string | null;
+  invoice_url?: string | null;
+
+  created_by?: string;
+  updated_by?: string;
+  created_at: string;
+  updated_at: string;
+
+  // Joined
+  gcn?: GoodsCollectionNote;
 }
 
 export interface DeliveryNoteItem {

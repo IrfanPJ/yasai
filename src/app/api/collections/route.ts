@@ -3,6 +3,8 @@ import { createServiceClient, createClient } from "@/lib/supabase/server";
 import { generateQRCode } from "@/lib/qr";
 import { generateCollectionPDF } from "@/lib/pdf";
 import { getLogoDataUrl } from "@/lib/logo";
+import { attachGcnToConsolidationSheet } from "@/lib/manifest";
+import { gcnToGrReportInsert } from "@/lib/gr-report";
 import type { GoodsCollectionNote } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -80,6 +82,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // 2b. Attach to this zone's pending consolidation sheet (auto-converts to a
+  // manifest + Job Order once the sheet's pallet total hits the threshold)
+  try {
+    await attachGcnToConsolidationSheet(serviceClient, gcn, user.id);
+  } catch (manifestErr) {
+    console.error("Consolidation sheet attach failed:", manifestErr);
+  }
+
   // 3. Generate QR code
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://your-domain.com";
   const trackingUrl = `${appUrl}/track/${collectionNumber}`;
@@ -153,5 +163,18 @@ export async function POST(request: NextRequest) {
     details: { collection_number: collectionNumber },
   });
 
-  return NextResponse.json(updated || gcn, { status: 201 });
+  // 7. Seed the matching GR Report row
+  const finalGcn = (updated || gcn) as GoodsCollectionNote;
+  try {
+    const { error: grReportError } = await serviceClient.from("gr_report_entries").insert({
+      ...gcnToGrReportInsert(finalGcn),
+      created_by: user.id,
+      updated_by: user.id,
+    });
+    if (grReportError) throw grReportError;
+  } catch (grReportErr) {
+    console.error("GR Report seed failed:", grReportErr);
+  }
+
+  return NextResponse.json(finalGcn, { status: 201 });
 }

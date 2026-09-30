@@ -97,6 +97,7 @@ interface JobOrderDetailProps {
   trucks: JobOrderTruck[];
   statusUpdates: JobStatusUpdate[];
   userRole: UserRole;
+  manifestSheet?: { id: string; sheet_number: string } | null;
 }
 
 async function postAction(url: string, body?: Record<string, unknown>) {
@@ -391,7 +392,7 @@ function AddTruckForm({ jobId, onAdded }: { jobId: string; onAdded: () => void }
 
 /* ── Main component ── */
 export function JobOrderDetail({
-  job, gcns, transitUpdates, trucks, statusUpdates, userRole,
+  job, gcns, transitUpdates, trucks, statusUpdates, userRole, manifestSheet,
 }: JobOrderDetailProps) {
   const router = useRouter();
   const isAdmin = userRole === "admin";
@@ -485,9 +486,17 @@ export function JobOrderDetail({
           <Badge className={`${JOB_STATUS_COLORS[job.status]} font-semibold`}>
             {JOB_STATUS_LABELS[job.status]}
           </Badge>
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => window.open(`${base}/packing-list/pdf`, "_blank")}>
-            <Download className="h-3.5 w-3.5" /> Packing List PDF
-          </Button>
+          {manifestSheet ? (
+            <Button asChild size="sm" variant="outline" className="gap-1.5">
+              <Link href={`/manifest/${manifestSheet.id}`}>
+                <FileText className="h-3.5 w-3.5" /> View Manifest ({manifestSheet.sheet_number})
+              </Link>
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => window.open(`${base}/packing-list/pdf`, "_blank")}>
+              <Download className="h-3.5 w-3.5" /> Packing List PDF
+            </Button>
+          )}
           {isOps && job.status === "draft" && (
             <Button
               size="sm"
