@@ -13,6 +13,7 @@ All notable updates to YASAI Logistics, by date. Newest first.
 - Fixed the last one too — "8 cartoon 3 bundle" (`YAS-10020`) -> 8 Carton + 3 Each. Only the 2 blank ones remain untouched (no data to parse)
 - Added a Mainland/JAFZA zone filter (+ column, + CSV export) to the main Collections list
 - Changed the zone filter from a dropdown to one-click toggle buttons (All / Mainland / JAFZA)
+- GCN detail page now shows a "GR Report Documents" section (Freight Invoice / Delivery Note / Invoice) with view/upload, same data as GR Report and the Manifest sheet
 
 ## 2026-09-29
 - Invoice PDFs: new warehouse address, updated mobile number, legal name → YASAI LOGISTICS LLC, added TRN (`main`)
