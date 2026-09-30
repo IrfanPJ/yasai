@@ -13,6 +13,7 @@ interface SearchParams {
   search?: string;
   cargo?: string;
   status?: string;
+  zone?: string;
   page?: string;
 }
 
@@ -66,6 +67,7 @@ export default async function CollectionsPage({ searchParams }: PageProps) {
           initialSearch={params.search}
           initialCargo={params.cargo}
           initialStatus={params.status}
+          initialZone={params.zone}
         />
       </div>
     </>
