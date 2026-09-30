@@ -12,6 +12,7 @@ All notable updates to YASAI Logistics, by date. Newest first.
 - Normalized 135 of the remaining 138 production GCNs (all the pre-existing ones that had never been through the structured package-lines UI) to real `package_items` — fixed casing/spelling/abbreviation inconsistencies (PLT/PLTS/Ctns/pkgs/etc.) and split the 9 rows that mixed two types in one string into two lines each. Left 3 alone as agreed: 2 with blank package data, 1 ("8 cartoon 3 bundle") with a type that doesn't map cleanly
 - Fixed the last one too — "8 cartoon 3 bundle" (`YAS-10020`) -> 8 Carton + 3 Each. Only the 2 blank ones remain untouched (no data to parse)
 - Added a Mainland/JAFZA zone filter (+ column, + CSV export) to the main Collections list
+- Changed the zone filter from a dropdown to one-click toggle buttons (All / Mainland / JAFZA)
 
 ## 2026-09-29
 - Invoice PDFs: new warehouse address, updated mobile number, legal name → YASAI LOGISTICS LLC, added TRN (`main`)

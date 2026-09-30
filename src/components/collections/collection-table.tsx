@@ -26,7 +26,7 @@ import {
   DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { StatusBadge } from "./status-badge";
-import { formatDate, formatWeight, generateWhatsAppMessage, openWhatsApp, downloadFile, buildReceiptFilename, buildPdfPath } from "@/lib/utils";
+import { cn, formatDate, formatWeight, generateWhatsAppMessage, openWhatsApp, downloadFile, buildReceiptFilename, buildPdfPath } from "@/lib/utils";
 import type { GoodsCollectionNote, CargoType } from "@/types";
 import { STATUS_LABELS, CARGO_TYPE_LABELS, MANIFEST_ZONE_LABELS } from "@/types";
 
@@ -222,17 +222,23 @@ export function CollectionsTable({
               </SelectContent>
             </Select>
 
-            <Select value={zoneFilter} onValueChange={setZoneFilter}>
-              <SelectTrigger className="h-9 flex-1 sm:flex-none sm:w-36 text-sm">
-                <SelectValue placeholder="Zone" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Zones</SelectItem>
-                {Object.entries(MANIFEST_ZONE_LABELS).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>{v}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center rounded-md border h-9 p-0.5 gap-0.5 shrink-0">
+              {(["all", ...Object.keys(MANIFEST_ZONE_LABELS)] as const).map((z) => (
+                <button
+                  key={z}
+                  type="button"
+                  onClick={() => setZoneFilter(z)}
+                  className={cn(
+                    "px-2.5 h-full rounded text-xs font-medium transition-colors",
+                    zoneFilter === z
+                      ? "bg-[#071A3A] text-white"
+                      : "text-muted-foreground hover:bg-[#F7F0EA]"
+                  )}
+                >
+                  {z === "all" ? "All Zones" : MANIFEST_ZONE_LABELS[z as keyof typeof MANIFEST_ZONE_LABELS]}
+                </button>
+              ))}
+            </div>
 
             {hasFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 gap-1.5 text-muted-foreground shrink-0">
