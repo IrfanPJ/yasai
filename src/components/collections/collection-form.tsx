@@ -244,7 +244,9 @@ export function CollectionForm({
       destination: defaultValues?.destination || "",
       commodity: defaultValues?.commodity || "",
       cargo_type: defaultValues?.cargo_type || "land",
-      origin_zone: defaultValues?.origin_zone || "mainland",
+      origin_zone: (defaultValues?.origin_zone === "mainland" || defaultValues?.origin_zone === "jafza")
+        ? defaultValues.origin_zone
+        : "mainland",
       shipping_mark: defaultValues?.shipping_mark || "",
       doc_ref_number: defaultValues?.doc_ref_number || "",
       special_instructions: defaultValues?.special_instructions || "",
