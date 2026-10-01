@@ -25,7 +25,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const { id, itemId } = await params;
   const auth = await requireRole(["admin", "operations", "warehouse", "warehouse_supervisor"]);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { serviceClient } = auth;
+  const { user, serviceClient } = auth;
 
   const { data: sheet } = await serviceClient.from("consolidation_sheets").select("status").eq("id", id).single();
   if (!sheet) return NextResponse.json({ error: "Sheet not found" }, { status: 404 });
@@ -53,6 +53,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if ("pallet_count" in updateData || "cbm" in updateData) {
     await recalcSheetTotals(serviceClient, id);
   }
+
+  await serviceClient.from("activity_logs").insert({
+    user_id: user.id,
+    action: "MANIFEST_ITEM_UPDATED",
+    entity_type: "consolidation_sheet_items",
+    entity_id: itemId,
+    details: { sheet_id: id, fields: Object.keys(updateData) },
+  });
 
   return NextResponse.json(data);
 }
@@ -90,6 +98,14 @@ export async function DELETE(_: NextRequest, { params }: RouteParams) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   await recalcSheetTotals(serviceClient, id);
+
+  await serviceClient.from("activity_logs").insert({
+    user_id: user.id,
+    action: "MANIFEST_ITEM_REMOVED",
+    entity_type: "consolidation_sheet_items",
+    entity_id: itemId,
+    details: { sheet_id: id, gcn_id: item.gcn_id, removal_id: removalId },
+  });
 
   return NextResponse.json({ success: true, removal_id: removalId });
 }

@@ -20,6 +20,7 @@ All notable updates to YASAI Logistics, by date. Newest first.
 - Invoice detail page shows who created it and when, with an admin-only edit control to correct the creation date and reassign the creator (works regardless of invoice status, not just drafts)
 - Added an "Invoice Date" field to all three invoice creation forms (standard, freight, uploaded) so the creator can backdate it instead of always defaulting to today — open to anyone who can already create invoices, same as before
 - Opened up the invoice creation-date/creator edit control to all users, not just admins (for now)
+- Closed audit-log gaps across Manifest, GR Report, Invoices, and Job Orders: sheet items added/updated/removed/restored, requeue batches, GR Report field edits and F/D/I uploads/removals, invoice edits and creation-date/creator corrections, job order edits/deletes, and GCN link/unlink on job orders all now write to activity_logs (previously silent)
 
 ## 2026-09-29
 - Invoice PDFs: new warehouse address, updated mobile number, legal name → YASAI LOGISTICS LLC, added TRN (`main`)

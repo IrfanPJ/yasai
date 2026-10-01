@@ -74,6 +74,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 });
 
+  await serviceClient.from("activity_logs").insert({
+    user_id: user.id,
+    action: "GR_REPORT_DOC_UPLOADED",
+    entity_type: "gr_report_entries",
+    entity_id: id,
+    details: { doc_type: docType },
+  });
+
   return NextResponse.json({ url: publicUrl, record: data });
 }
 
@@ -107,5 +115,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await serviceClient.from("activity_logs").insert({
+    user_id: user.id,
+    action: "GR_REPORT_DOC_REMOVED",
+    entity_type: "gr_report_entries",
+    entity_id: id,
+    details: { doc_type: docType },
+  });
+
   return NextResponse.json({ record: data });
 }

@@ -74,6 +74,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await serviceClient.from("activity_logs").insert({
+    user_id: user.id,
+    action: "JOB_UPDATED",
+    entity_type: "job_orders",
+    entity_id: id,
+    details: { fields: Object.keys(updates).filter((f) => f !== "updated_by") },
+  });
+
   return NextResponse.json(data);
 }
 
@@ -81,11 +90,11 @@ export async function DELETE(_: NextRequest, { params }: RouteParams) {
   const { id } = await params;
   const auth = await requireRole(["admin", "operations"]);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { serviceClient } = auth;
+  const { user, serviceClient } = auth;
 
   const { data: job } = await serviceClient
     .from("job_orders")
-    .select("status")
+    .select("status, job_number")
     .eq("id", id)
     .single();
 
@@ -96,5 +105,14 @@ export async function DELETE(_: NextRequest, { params }: RouteParams) {
 
   const { error } = await serviceClient.from("job_orders").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await serviceClient.from("activity_logs").insert({
+    user_id: user.id,
+    action: "JOB_DELETED",
+    entity_type: "job_orders",
+    entity_id: id,
+    details: { job_number: job.job_number },
+  });
+
   return NextResponse.json({ success: true });
 }

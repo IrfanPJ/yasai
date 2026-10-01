@@ -38,5 +38,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await serviceClient.from("activity_logs").insert({
+    user_id: user.id,
+    action: "GR_REPORT_UPDATED",
+    entity_type: "gr_report_entries",
+    entity_id: id,
+    details: { fields: Object.keys(updates) },
+  });
+
   return NextResponse.json(data);
 }

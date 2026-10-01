@@ -44,5 +44,13 @@ export async function DELETE(_: NextRequest, { params }: RouteParams) {
     .update({ total_weight_kg: totalWeight, total_cbm: totalCbm, updated_by: user.id })
     .eq("id", jobId);
 
+  await serviceClient.from("activity_logs").insert({
+    user_id: user.id,
+    action: "JOB_GCN_UNLINKED",
+    entity_type: "job_orders",
+    entity_id: jobId,
+    details: { gcn_id: gcnId },
+  });
+
   return NextResponse.json({ success: true });
 }

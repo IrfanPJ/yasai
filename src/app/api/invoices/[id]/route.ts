@@ -86,6 +86,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await serviceClient.from("activity_logs").insert({
+    user_id: user.id,
+    action: "INVOICE_UPDATED",
+    entity_type: "invoices",
+    entity_id: id,
+    details: { fields: Object.keys(updates).filter((f) => f !== "updated_by") },
+  });
+
   return NextResponse.json(data);
 }
 
@@ -129,5 +138,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await serviceClient.from("activity_logs").insert({
+    user_id: user.id,
+    action: "INVOICE_META_CORRECTED",
+    entity_type: "invoices",
+    entity_id: id,
+    details: { fields: Object.keys(updates).filter((f) => f !== "updated_by") },
+  });
+
   return NextResponse.json(data);
 }

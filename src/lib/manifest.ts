@@ -70,6 +70,14 @@ export async function attachGcnToConsolidationSheet(
     .update({ pallet_count: newPalletTotal, cbm_total: newCbmTotal, item_count: newItemTotal, updated_by: userId })
     .eq("id", sheet.id);
 
+  await serviceClient.from("activity_logs").insert({
+    user_id: userId,
+    action: "MANIFEST_ITEM_ADDED",
+    entity_type: "consolidation_sheet_items",
+    entity_id: gcn.id,
+    details: { sheet_id: sheet.id, pallet_count: palletCount, cbm },
+  });
+
   if (newCbmTotal >= CONSOLIDATION_CBM_LIMIT || newPalletTotal >= CONSOLIDATION_PALLET_LIMIT) {
     await convertSheetToManifest(serviceClient, sheet.id, userId, "auto");
   }
@@ -160,6 +168,14 @@ async function requeuePendingRemovals(
     .from("consolidation_sheets")
     .update({ pallet_count: palletTotal, cbm_total: cbmTotal, item_count: itemTotal, updated_by: userId })
     .eq("id", sheet.id);
+
+  await serviceClient.from("activity_logs").insert({
+    user_id: userId,
+    action: "MANIFEST_ITEMS_REQUEUED",
+    entity_type: "consolidation_sheets",
+    entity_id: sheet.id,
+    details: { zone, count: queued.length, gcn_ids: queued.map((r) => r.gcn_id) },
+  });
 
   return { id: sheet.id, pallet_count: palletTotal, cbm_total: cbmTotal, item_count: itemTotal };
 }
@@ -256,6 +272,14 @@ export async function restoreRemoval(
     .from("consolidation_sheet_removals")
     .update({ restored_at: new Date().toISOString(), restored_by: userId })
     .eq("id", removalId);
+
+  await serviceClient.from("activity_logs").insert({
+    user_id: userId,
+    action: "MANIFEST_ITEM_RESTORED",
+    entity_type: "consolidation_sheet_items",
+    entity_id: removal.gcn_id,
+    details: { sheet_id: removal.original_sheet_id, removal_id: removalId },
+  });
 
   return {};
 }
