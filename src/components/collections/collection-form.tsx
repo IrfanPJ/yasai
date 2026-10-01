@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -339,10 +339,25 @@ export function CollectionForm({
     }
   }
 
+  // react-hook-form silently refuses to submit on a validation failure and
+  // otherwise gives no feedback at all beyond per-field error text — surface
+  // it explicitly so a failed save is never invisible.
+  function onInvalid(formErrors: FieldErrors<FormData>) {
+    const fieldNames: Record<string, string> = {
+      shipper_name: "Shipper", consignee_name: "Consignee", destination: "Destination",
+      commodity: "Cargo Particulars", cargo_type: "Mode of Transport", origin_zone: "Shipment In",
+    };
+    const firstField = Object.keys(formErrors)[0];
+    const label = fieldNames[firstField] || firstField;
+    toast.error(`Can't save — "${label}" needs a value`, {
+      description: Object.keys(formErrors).length > 1 ? `${Object.keys(formErrors).length} fields need attention` : undefined,
+    });
+  }
+
   const today = new Date().toLocaleDateString("en-GB").replace(/\//g, "/");
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form onSubmit={handleSubmit(onSubmit, onInvalid)}>
       <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-[#0d1a35]">
 
         {/* ── Card title ── */}
