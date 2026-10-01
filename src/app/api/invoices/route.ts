@@ -54,6 +54,10 @@ export async function POST(request: NextRequest) {
     : subtotal * (taxRate / 100);
   const totalAmount = subtotal + taxAmount;
 
+  // Lets the creator backdate the invoice (e.g. recording one from a prior
+  // day) instead of always stamping it with the moment it was saved.
+  const createdAt = body.created_at ? new Date(body.created_at).toISOString() : undefined;
+
   const { data, error } = await serviceClient
     .from("invoices")
     .insert({
@@ -82,6 +86,7 @@ export async function POST(request: NextRequest) {
       final_destination: body.final_destination || null,
       created_by: user.id,
       updated_by: user.id,
+      ...(createdAt ? { created_at: createdAt, updated_at: createdAt } : {}),
     })
     .select()
     .single();

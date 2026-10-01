@@ -23,6 +23,7 @@ export function UploadInvoiceForm() {
     customer_name: "",
     currency: "SAR",
     job_order_id: "none",
+    invoice_date: new Date().toISOString().slice(0, 10),
   });
   const [file, setFile] = useState<File | null>(null);
 
@@ -53,6 +54,7 @@ export function UploadInvoiceForm() {
           job_order_id: form.job_order_id === "none" ? null : form.job_order_id,
           line_items: [],
           tax_rate: 0,
+          created_at: form.invoice_date || undefined,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
@@ -98,6 +100,10 @@ export function UploadInvoiceForm() {
           <div className="md:col-span-2 space-y-1.5">
             <Label>Customer Name <span className="text-red-500">*</span></Label>
             <Input value={form.customer_name} onChange={e => setF("customer_name", e.target.value)} placeholder="Customer or company name" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Invoice Date</Label>
+            <Input type="date" value={form.invoice_date} onChange={e => setF("invoice_date", e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label>Linked Job Order</Label>

@@ -95,6 +95,9 @@ export function FreightInvoiceForm({ invoice }: FreightInvoiceFormProps) {
     packages_count: invoice?.packages_count || "",
     final_destination: invoice?.final_destination || "",
     currency: invoice?.currency || "SAR",
+    invoice_date: invoice?.created_at
+      ? invoice.created_at.slice(0, 10)
+      : new Date().toISOString().slice(0, 10),
   });
 
   const [lines, setLines] = useState<FreightLineItem[]>(
@@ -164,6 +167,7 @@ export function FreightInvoiceForm({ invoice }: FreightInvoiceFormProps) {
         manual_job_number: form.manual_job_number || null,
         job_order_id: form.job_order_id === "none" ? null : form.job_order_id,
         currency: form.currency,
+        created_at: isEdit ? undefined : form.invoice_date || undefined,
         port_of_loading: form.port_of_loading || null,
         packages_count: form.packages_count || null,
         final_destination: form.final_destination || null,
@@ -220,6 +224,12 @@ export function FreightInvoiceForm({ invoice }: FreightInvoiceFormProps) {
               </SelectContent>
             </Select>
           </div>
+          {!isEdit && (
+            <div className="space-y-1.5">
+              <Label>Invoice Date</Label>
+              <Input type="date" value={form.invoice_date} onChange={e => setF("invoice_date", e.target.value)} />
+            </div>
+          )}
           <div className="md:col-span-2 space-y-1.5">
             <Label>Customer Name <span className="text-red-500">*</span></Label>
             <Input value={form.customer_name} onChange={e => setF("customer_name", e.target.value)} placeholder="Customer or company name" />

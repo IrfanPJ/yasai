@@ -32,6 +32,9 @@ export function InvoiceForm({ preselectedJobId, invoice }: InvoiceFormProps) {
   const [referenceNumber, setReferenceNumber] = useState(invoice?.reference_number || "");
   const [currency, setCurrency] = useState(invoice?.currency || "SAR");
   const [taxRate, setTaxRate] = useState(invoice?.tax_rate ?? 15);
+  const [invoiceDate, setInvoiceDate] = useState(
+    invoice?.created_at ? invoice.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)
+  );
   const [dueDate, setDueDate] = useState(invoice?.due_date || "");
   const [jobOrderId, setJobOrderId] = useState(invoice?.job_order_id || preselectedJobId || "none");
   const [jobs, setJobs] = useState<JobOrder[]>([]);
@@ -76,6 +79,7 @@ export function InvoiceForm({ preselectedJobId, invoice }: InvoiceFormProps) {
         reference_number: referenceNumber || null,
         currency,
         tax_rate: taxRate,
+        created_at: isEdit ? undefined : invoiceDate || undefined,
         due_date: dueDate || null,
         job_order_id: jobOrderId === "none" ? null : jobOrderId,
         line_items: lineItems,
@@ -118,6 +122,12 @@ export function InvoiceForm({ preselectedJobId, invoice }: InvoiceFormProps) {
               <Label className="text-xs uppercase tracking-wide">Customer Email</Label>
               <Input type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} placeholder="billing@customer.com" />
             </div>
+            {!isEdit && (
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wide">Invoice Date</Label>
+                <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wide">Due Date</Label>
               <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
