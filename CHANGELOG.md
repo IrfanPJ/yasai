@@ -21,6 +21,8 @@ All notable updates to YASAI Logistics, by date. Newest first.
 - Added an "Invoice Date" field to all three invoice creation forms (standard, freight, uploaded) so the creator can backdate it instead of always defaulting to today — open to anyone who can already create invoices, same as before
 - Opened up the invoice creation-date/creator edit control to all users, not just admins (for now)
 - Closed audit-log gaps across Manifest, GR Report, Invoices, and Job Orders: sheet items added/updated/removed/restored, requeue batches, GR Report field edits and F/D/I uploads/removals, invoice edits and creation-date/creator corrections, job order edits/deletes, and GCN link/unlink on job orders all now write to activity_logs (previously silent)
+- Added an onInvalid handler to the GCN edit form so a failed client-side validation now shows a toast naming the problem field, instead of the Save button silently doing nothing
+- **Fixed the real bug behind "Save Changes does nothing"**: `billing_type` was `z.enum(...).optional()`, which does not accept `null` — but the DB stores `NULL` for any GCN where billing was never set, so editing *any* such GCN (the majority) silently failed validation unless the user happened to pick a billing type first. Changed to `.nullable().optional()`.
 
 ## 2026-09-29
 - Invoice PDFs: new warehouse address, updated mobile number, legal name → YASAI LOGISTICS LLC, added TRN (`main`)

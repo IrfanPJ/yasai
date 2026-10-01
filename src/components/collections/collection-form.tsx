@@ -25,7 +25,7 @@ const schema = z.object({
   num_packages: z.string().optional(),
   volume_cbm: z.coerce.number().optional(),
   weight_kg: z.coerce.number().optional(),
-  billing_type: z.enum(["customer", "supplier"]).optional(),
+  billing_type: z.enum(["customer", "supplier"]).nullable().optional(),
 });
 
 const PACKAGE_TYPES: PackageType[] = ["pallet", "piece", "box", "carton", "each", "package"];
