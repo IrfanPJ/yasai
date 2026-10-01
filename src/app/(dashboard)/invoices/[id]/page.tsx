@@ -31,8 +31,8 @@ export default async function InvoiceDetailPage({ params }: PageProps) {
 
   const userRole = profile?.role || "viewer";
 
-  // Only needed for the admin-only "reassign creator" control
-  const { data: allUsers } = userRole === "admin"
+  // Needed for the "reassign creator" control — open to anyone for now
+  const { data: allUsers } = user
     ? await service.from("user_profiles").select("id, full_name, email").eq("is_active", true).order("full_name")
     : { data: null };
 

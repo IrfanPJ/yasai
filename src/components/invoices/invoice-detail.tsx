@@ -36,7 +36,9 @@ export function InvoiceDetail({ invoice: initialInvoice, userRole, allUsers }: I
   const router = useRouter();
   const [invoice, setInvoice] = useState(initialInvoice);
   const canManage = ["admin", "operations", "finance"].includes(userRole);
-  const isAdmin = userRole === "admin";
+  // Open to anyone for now, not just admins — correcting who/when an
+  // invoice was recorded shouldn't require an admin to step in.
+  const canEditMeta = true;
   const [loading, setLoading] = useState<string | null>(null);
   const [editingMeta, setEditingMeta] = useState(false);
   const [savingMeta, setSavingMeta] = useState(false);
@@ -372,7 +374,7 @@ export function InvoiceDetail({ invoice: initialInvoice, userRole, allUsers }: I
                 </p>
                 <p>Updated: {formatDateTime(invoice.updated_at)}</p>
               </div>
-              {isAdmin && (
+              {canEditMeta && (
                 <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs text-muted-foreground" onClick={startEditMeta}>
                   <Pencil className="h-3 w-3" />
                   Edit

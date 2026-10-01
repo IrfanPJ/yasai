@@ -19,6 +19,7 @@ All notable updates to YASAI Logistics, by date. Newest first.
 ## 2026-10-01
 - Invoice detail page shows who created it and when, with an admin-only edit control to correct the creation date and reassign the creator (works regardless of invoice status, not just drafts)
 - Added an "Invoice Date" field to all three invoice creation forms (standard, freight, uploaded) so the creator can backdate it instead of always defaulting to today — open to anyone who can already create invoices, same as before
+- Opened up the invoice creation-date/creator edit control to all users, not just admins (for now)
 
 ## 2026-09-29
 - Invoice PDFs: new warehouse address, updated mobile number, legal name → YASAI LOGISTICS LLC, added TRN (`main`)

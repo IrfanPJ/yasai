@@ -89,12 +89,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   return NextResponse.json(data);
 }
 
-// Admin-only correction of the invoice's creation date/attribution — unlike
-// PUT above, this isn't restricted to draft invoices, since fixing who/when
-// an invoice was recorded can be needed after it's already been sent or paid.
+// Correction of the invoice's creation date/attribution — unlike PUT above,
+// this isn't restricted to draft invoices, since fixing who/when an invoice
+// was recorded can be needed after it's already been sent or paid. Open to
+// any authenticated user for now.
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
-  const auth = await requireRole(["admin"]);
+  const auth = await requireRole(["admin", "operations", "warehouse", "warehouse_supervisor", "finance", "viewer"]);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const { user, serviceClient } = auth;
 
