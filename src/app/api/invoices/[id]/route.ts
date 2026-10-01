@@ -88,3 +88,45 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
 }
+
+// Admin-only correction of the invoice's creation date/attribution — unlike
+// PUT above, this isn't restricted to draft invoices, since fixing who/when
+// an invoice was recorded can be needed after it's already been sent or paid.
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  const { id } = await params;
+  const auth = await requireRole(["admin"]);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { user, serviceClient } = auth;
+
+  const body = await request.json();
+  const updates: Record<string, unknown> = { updated_by: user.id };
+
+  if ("created_at" in body) {
+    if (!body.created_at) return NextResponse.json({ error: "created_at cannot be empty" }, { status: 400 });
+    updates.created_at = new Date(body.created_at).toISOString();
+  }
+  if ("created_by" in body) {
+    if (!body.created_by) return NextResponse.json({ error: "created_by cannot be empty" }, { status: 400 });
+    const { data: creatorExists } = await serviceClient
+      .from("user_profiles")
+      .select("id")
+      .eq("id", body.created_by)
+      .single();
+    if (!creatorExists) return NextResponse.json({ error: "Selected user not found" }, { status: 400 });
+    updates.created_by = body.created_by;
+  }
+
+  if (Object.keys(updates).length === 1) {
+    return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+  }
+
+  const { data, error } = await serviceClient
+    .from("invoices")
+    .update(updates)
+    .eq("id", id)
+    .select("*, job_order:job_orders(job_number, destination), creator:user_profiles!invoices_created_by_fkey(id, full_name, email)")
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
+}

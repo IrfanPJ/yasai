@@ -670,6 +670,7 @@ export interface Invoice {
 
   // Joined
   job_order?: JobOrder;
+  creator?: UserProfile;
 }
 
 // ─── Finance Module Types ──────────────────────────────────────

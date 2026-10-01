@@ -5,26 +5,71 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Loader2, Download, Send, CheckCircle2, Truck, FileText, ExternalLink, Pencil,
+  Loader2, Download, Send, CheckCircle2, Truck, FileText, ExternalLink, Pencil, Check, X,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { formatDateTime, formatMoney } from "@/lib/utils";
-import type { Invoice, UserRole } from "@/types";
+import type { Invoice, UserRole, UserProfile } from "@/types";
 import { INVOICE_STATUS_LABELS, INVOICE_STATUS_COLORS } from "@/types";
 
 interface InvoiceDetailProps {
   invoice: Invoice;
   userRole: UserRole;
+  allUsers: Pick<UserProfile, "id" | "full_name" | "email">[];
 }
 
-export function InvoiceDetail({ invoice, userRole }: InvoiceDetailProps) {
+// Local <input type="datetime-local"> wants "YYYY-MM-DDTHH:mm" in the
+// viewer's own timezone, not the UTC ISO string the API stores.
+function toDatetimeLocal(iso: string) {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+export function InvoiceDetail({ invoice: initialInvoice, userRole, allUsers }: InvoiceDetailProps) {
   const router = useRouter();
+  const [invoice, setInvoice] = useState(initialInvoice);
   const canManage = ["admin", "operations", "finance"].includes(userRole);
+  const isAdmin = userRole === "admin";
   const [loading, setLoading] = useState<string | null>(null);
+  const [editingMeta, setEditingMeta] = useState(false);
+  const [savingMeta, setSavingMeta] = useState(false);
+  const [draftCreatedAt, setDraftCreatedAt] = useState(() => toDatetimeLocal(invoice.created_at));
+  const [draftCreatedBy, setDraftCreatedBy] = useState(invoice.created_by || "");
   const base = `/api/invoices/${invoice.id}`;
+
+  function startEditMeta() {
+    setDraftCreatedAt(toDatetimeLocal(invoice.created_at));
+    setDraftCreatedBy(invoice.created_by || "");
+    setEditingMeta(true);
+  }
+
+  async function saveMeta() {
+    setSavingMeta(true);
+    try {
+      const res = await fetch(base, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ created_at: draftCreatedAt, created_by: draftCreatedBy }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "Failed to save");
+      const updated = await res.json();
+      setInvoice(updated);
+      setEditingMeta(false);
+      toast.success("Updated");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSavingMeta(false);
+    }
+  }
 
   async function act(key: string, fn: () => Promise<unknown>) {
     setLoading(key);
@@ -275,10 +320,68 @@ export function InvoiceDetail({ invoice, userRole }: InvoiceDetailProps) {
       )}
 
       {/* Status history */}
-      <div className="text-xs text-muted-foreground space-y-1">
-        <p>Created: {formatDateTime(invoice.created_at)}</p>
-        <p>Updated: {formatDateTime(invoice.updated_at)}</p>
-      </div>
+      <Card className="border-none shadow-sm">
+        <CardContent className="pt-4">
+          {editingMeta ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground block uppercase tracking-wide mb-1">
+                    Created Date
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={draftCreatedAt}
+                    onChange={(e) => setDraftCreatedAt(e.target.value)}
+                    className="w-full h-9 rounded-md border px-2.5 text-sm bg-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block uppercase tracking-wide mb-1">
+                    Creator
+                  </label>
+                  <Select value={draftCreatedBy} onValueChange={setDraftCreatedBy}>
+                    <SelectTrigger className="h-9 text-sm w-full">
+                      <SelectValue placeholder="Select user" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allUsers.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>{u.full_name || u.email}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" className="gap-1.5" disabled={savingMeta} onClick={saveMeta}>
+                  {savingMeta ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  Save
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1.5" disabled={savingMeta} onClick={() => setEditingMeta(false)}>
+                  <X className="h-3.5 w-3.5" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-start justify-between gap-3">
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>
+                  Created: {formatDateTime(invoice.created_at)}
+                  {invoice.creator && <> by {invoice.creator.full_name || invoice.creator.email}</>}
+                </p>
+                <p>Updated: {formatDateTime(invoice.updated_at)}</p>
+              </div>
+              {isAdmin && (
+                <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs text-muted-foreground" onClick={startEditMeta}>
+                  <Pencil className="h-3 w-3" />
+                  Edit
+                </Button>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

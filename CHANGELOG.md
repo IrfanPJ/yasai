@@ -16,6 +16,9 @@ All notable updates to YASAI Logistics, by date. Newest first.
 - GCN detail page now shows a "GR Report Documents" section (Freight Invoice / Delivery Note / Invoice) with view/upload, same data as GR Report and the Manifest sheet
 - Merged `feature/manifest` into `main` — Manifest/consolidation sheets, GR Report, and everything built on top of them are now part of `main`
 
+## 2026-10-01
+- Invoice detail page shows who created it and when, with an admin-only edit control to correct the creation date and reassign the creator (works regardless of invoice status, not just drafts)
+
 ## 2026-09-29
 - Invoice PDFs: new warehouse address, updated mobile number, legal name → YASAI LOGISTICS LLC, added TRN (`main`)
 
