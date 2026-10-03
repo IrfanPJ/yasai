@@ -51,13 +51,10 @@ export const MANIFEST_ZONE_LABELS: Record<ManifestZone, string> = {
 };
 
 export type ConsolidationSheetStatus = "pending" | "manifest";
+// "auto" is kept for historical rows converted before auto-conversion was
+// removed — every new conversion is "manual" now (the Convert to Manifest
+// button is the only way to convert a sheet).
 export type ConsolidationConversionType = "auto" | "manual";
-
-// Sheets auto-convert once EITHER threshold is reached — whichever comes
-// first. CBM covers non-palletized cargo too (not every GCN is palletized,
-// but every GCN has a CBM figure); pallet count is the truck-capacity cap.
-export const CONSOLIDATION_CBM_LIMIT = 40.5;
-export const CONSOLIDATION_PALLET_LIMIT = 45;
 
 export interface ConsolidationSheetItem {
   id: string;

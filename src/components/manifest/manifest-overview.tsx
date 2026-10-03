@@ -3,11 +3,10 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Package, ClipboardList, ChevronRight, Clock } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import type { ConsolidationSheet, ManifestZone } from "@/types";
-import { MANIFEST_ZONE_LABELS, CONSOLIDATION_CBM_LIMIT, CONSOLIDATION_PALLET_LIMIT } from "@/types";
+import { MANIFEST_ZONE_LABELS } from "@/types";
 
 const ZONES: ManifestZone[] = ["mainland", "jafza"];
 
@@ -23,8 +22,6 @@ export function ManifestOverview({ sheets, queuedCounts }: Props) {
         const zoneSheets = sheets.filter((s) => s.zone === zone);
         const pending = zoneSheets.find((s) => s.status === "pending");
         const manifests = zoneSheets.filter((s) => s.status === "manifest");
-        const cbmPct = pending ? Math.min(100, Math.round((pending.cbm_total / CONSOLIDATION_CBM_LIMIT) * 100)) : 0;
-        const palletPct = pending ? Math.min(100, Math.round((pending.pallet_count / CONSOLIDATION_PALLET_LIMIT) * 100)) : 0;
         const queued = queuedCounts?.[zone] || 0;
 
         return (
@@ -56,24 +53,14 @@ export function ManifestOverview({ sheets, queuedCounts }: Props) {
                     <span className="text-xs font-semibold text-muted-foreground">{pending.sheet_number}</span>
                     <Badge variant="outline" className="text-[10px]">Pending</Badge>
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="flex items-center gap-4 text-xs">
                     <div>
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-muted-foreground">CBM</span>
-                        <span className="font-semibold text-[#071A3A] dark:text-white">
-                          {pending.cbm_total.toFixed(3)} / {CONSOLIDATION_CBM_LIMIT}
-                        </span>
-                      </div>
-                      <Progress value={cbmPct} className="h-2" />
+                      <span className="text-muted-foreground">CBM </span>
+                      <span className="font-semibold text-[#071A3A] dark:text-white">{pending.cbm_total.toFixed(3)}</span>
                     </div>
                     <div>
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-muted-foreground">Pallets</span>
-                        <span className="font-semibold text-[#071A3A] dark:text-white">
-                          {pending.pallet_count} / {CONSOLIDATION_PALLET_LIMIT}
-                        </span>
-                      </div>
-                      <Progress value={palletPct} className="h-2" />
+                      <span className="text-muted-foreground">Pallets </span>
+                      <span className="font-semibold text-[#071A3A] dark:text-white">{pending.pallet_count}</span>
                     </div>
                   </div>
                   <div className="text-xs text-muted-foreground mt-2">{pending.item_count} GCNs</div>

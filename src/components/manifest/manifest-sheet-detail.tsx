@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dialog";
 import { cn, formatDateTime } from "@/lib/utils";
 import type { ConsolidationSheet, ConsolidationSheetItem, ConsolidationSheetRemoval, GrReportEntry, GrReportDocType, UserRole } from "@/types";
-import { CONSOLIDATION_CBM_LIMIT, CONSOLIDATION_PALLET_LIMIT } from "@/types";
 
 interface Props {
   sheet: ConsolidationSheet;
@@ -293,7 +292,7 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole, rest
           {sheet.status === "manifest" ? "Manifest" : "Pending"}
         </Badge>
         <span className="text-sm text-muted-foreground">
-          {items.length} GCNs &middot; {totalPallets} / {CONSOLIDATION_PALLET_LIMIT} pallets &middot; {totalCbm.toFixed(3)} / {CONSOLIDATION_CBM_LIMIT} CBM
+          {items.length} GCNs &middot; {totalPallets} pallets &middot; {totalCbm.toFixed(3)} CBM
         </span>
 
         <div className="ml-auto flex items-center gap-2">

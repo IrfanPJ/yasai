@@ -16,6 +16,13 @@ All notable updates to YASAI Logistics, by date. Newest first.
 - GCN detail page now shows a "GR Report Documents" section (Freight Invoice / Delivery Note / Invoice) with view/upload, same data as GR Report and the Manifest sheet
 - Merged `feature/manifest` into `main` — Manifest/consolidation sheets, GR Report, and everything built on top of them are now part of `main`
 
+## 2026-10-03
+- Ran a full 14-point security audit (read-only, no fixes applied) — report delivered, awaiting decision on what to fix and in what order
+- Production data cleanup on the Mainland pending consolidation sheet: added GCN `FC-2026-0111`, permanently deleted the stale `FC-2026-0112` removal-history record
+- Reserved manifest sheet number 24 for whichever zone (Mainland or JAFZA) converts to a manifest next, without touching the two sheets that exist right now
+- Deleted the two old converted-to-manifest `consolidation_sheets` rows (`CS-MAINLAND-2026-0002`, `CS-JAFZA-2026-0003`) and their linked Job Orders (`JOB-2026-0004`, `JOB-2026-0005`) — no GCNs were deleted
+- **Removed automatic CBM/pallet-count conversion entirely.** Converting a pending sheet to a manifest is now manual-only via the "Convert to Manifest" button; the 40.5 CBM / 45 pallet auto-trigger and its UI progress bars are gone (dashboard cards and sheet detail page now just show the running totals, no limit)
+
 ## 2026-10-01
 - Invoice detail page shows who created it and when, with an admin-only edit control to correct the creation date and reassign the creator (works regardless of invoice status, not just drafts)
 - Added an "Invoice Date" field to all three invoice creation forms (standard, freight, uploaded) so the creator can backdate it instead of always defaulting to today — open to anyone who can already create invoices, same as before

@@ -1,5 +1,4 @@
 import type { createServiceClient } from "@/lib/supabase/server";
-import { CONSOLIDATION_CBM_LIMIT, CONSOLIDATION_PALLET_LIMIT } from "@/types";
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 
@@ -16,10 +15,9 @@ function derivePalletCount(gcn: {
 
 /**
  * Attaches a newly-created GCN to its zone's open pending consolidation sheet,
- * creating that sheet if none is open yet. Auto-converts the sheet to a
- * manifest (and spins off a pre-filled Job Order) once EITHER its running CBM
- * total reaches CONSOLIDATION_CBM_LIMIT or its pallet total reaches
- * CONSOLIDATION_PALLET_LIMIT — whichever happens first.
+ * creating that sheet if none is open yet. Conversion to a manifest is manual
+ * only (via the "Convert to Manifest" button) — there is no pallet/CBM limit
+ * that triggers it automatically.
  */
 export async function attachGcnToConsolidationSheet(
   serviceClient: ServiceClient,
@@ -77,10 +75,6 @@ export async function attachGcnToConsolidationSheet(
     entity_id: gcn.id,
     details: { sheet_id: sheet.id, pallet_count: palletCount, cbm },
   });
-
-  if (newCbmTotal >= CONSOLIDATION_CBM_LIMIT || newPalletTotal >= CONSOLIDATION_PALLET_LIMIT) {
-    await convertSheetToManifest(serviceClient, sheet.id, userId, "auto");
-  }
 }
 
 interface SheetRow {
