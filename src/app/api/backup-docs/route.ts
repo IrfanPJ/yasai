@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth-role";
+import { requireModuleApiAccess } from "@/lib/require-module-access";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const moduleCheck = await requireModuleApiAccess("finance");
+  if (!moduleCheck.ok) return NextResponse.json({ error: moduleCheck.error }, { status: moduleCheck.status });
+
   const supabase = await createClient();
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search");
@@ -32,6 +36,9 @@ export async function POST(request: NextRequest) {
   const auth = await requireRole(["admin", "finance"]);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const { user, serviceClient } = auth;
+
+  const moduleCheck = await requireModuleApiAccess("finance");
+  if (!moduleCheck.ok) return NextResponse.json({ error: moduleCheck.error }, { status: moduleCheck.status });
 
   const body = await request.json();
 

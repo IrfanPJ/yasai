@@ -21,8 +21,16 @@ import { cn } from "@/lib/utils";
 import { YasaiLogo } from "./logo";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { useNavAccess } from "./nav-access-context";
+import { hasModuleAccess, type ModuleKey } from "@/lib/modules";
 
-const navItems = [
+const navItems: {
+  label: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+  highlight?: boolean;
+  moduleKey?: ModuleKey;
+}[] = [
   {
     label: "Dashboard",
     href: "/",
@@ -33,49 +41,58 @@ const navItems = [
     href: "/collections/new",
     icon: PlusCircle,
     highlight: true,
+    moduleKey: "collections",
   },
   {
     label: "Collections",
     href: "/collections",
     icon: FileText,
+    moduleKey: "collections",
   },
   {
     label: "Job Orders",
     href: "/jobs",
     icon: Truck,
+    moduleKey: "job_orders",
   },
   {
     label: "Manifest",
     href: "/manifest",
     icon: ClipboardList,
+    moduleKey: "manifest",
   },
   {
     label: "Invoices",
     href: "/invoices",
     icon: Receipt,
+    moduleKey: "invoices",
   },
   {
     label: "GR Report",
     href: "/gr-report",
     icon: FileSpreadsheet,
+    moduleKey: "gr_report",
   },
   {
     label: "Records",
     href: "/records",
     icon: Archive,
+    moduleKey: "records",
   },
   {
     label: "Waybills",
     href: "/waybills",
     icon: FileCheck2,
+    moduleKey: "waybills",
   },
   ...(process.env.NEXT_PUBLIC_SHOW_FINANCE === "true"
-    ? [{ label: "Finance", href: "/finance", icon: Banknote }]
+    ? [{ label: "Finance", href: "/finance", icon: Banknote, moduleKey: "finance" as ModuleKey }]
     : []),
   {
     label: "Audit Logs",
     href: "/audit-logs",
     icon: Activity,
+    moduleKey: "audit_logs",
   },
   {
     label: "Settings",
@@ -88,6 +105,10 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const { moduleAccess } = useNavAccess();
+  const visibleItems = navItems.filter(
+    (item) => !item.moduleKey || hasModuleAccess(moduleAccess, item.moduleKey)
+  );
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -104,7 +125,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const isActive =
             item.href === "/"
               ? pathname === "/"
@@ -149,6 +170,10 @@ export function MobileNav({ onClose }: { onClose: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const { moduleAccess } = useNavAccess();
+  const visibleItems = navItems.filter(
+    (item) => !item.moduleKey || hasModuleAccess(moduleAccess, item.moduleKey)
+  );
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -159,7 +184,7 @@ export function MobileNav({ onClose }: { onClose: () => void }) {
   return (
     <div className="flex flex-col h-full">
       <nav className="flex flex-col gap-1 py-4 flex-1">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const isActive =
             item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           return (

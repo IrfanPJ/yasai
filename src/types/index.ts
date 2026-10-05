@@ -33,6 +33,7 @@ export interface UserProfile {
   is_active: boolean;
   warehouse_id?: string | null;
   warehouse?: Warehouse;
+  module_access?: string[] | null;
   created_at: string;
   updated_at: string;
 }

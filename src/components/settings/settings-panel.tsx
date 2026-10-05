@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -22,11 +23,12 @@ import {
   DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import type { UserProfile, UserRole, Warehouse } from "@/types";
+import { MODULE_KEYS, MODULE_LABELS } from "@/lib/modules";
 import { useTheme } from "next-themes";
 import {
   Loader2, Shield, User, Building2, Sun, Users,
   UserCheck, UserX, Crown, Eye, Wrench, Warehouse as WarehouseIcon, Calculator,
-  Plus, MapPin, Pencil, Check, X, KeyRound,
+  Plus, MapPin, Pencil, Check, X, KeyRound, LayoutGrid,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -75,6 +77,9 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
   const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null);
   const [newPasswordAdmin, setNewPasswordAdmin] = useState("");
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [accessTarget, setAccessTarget] = useState<{ id: string; name: string } | null>(null);
+  const [accessSelection, setAccessSelection] = useState<string[]>([]);
+  const [savingAccess, setSavingAccess] = useState(false);
 
   const isAdmin = currentUser?.role === "admin";
 
@@ -239,6 +244,34 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
       toast.error(err instanceof Error ? err.message : "Failed to update user");
     } finally {
       setUpdatingUser(null);
+    }
+  }
+
+  function openAccessDialog(u: UserProfile) {
+    setAccessTarget({ id: u.id, name: u.full_name || u.email });
+    setAccessSelection(u.module_access ?? [...MODULE_KEYS]);
+  }
+
+  async function handleSaveModuleAccess(moduleAccess: string[] | null) {
+    if (!accessTarget) return;
+    setSavingAccess(true);
+    try {
+      const res = await fetch(`/api/users/${accessTarget.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ module_access: moduleAccess }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to update module access");
+      }
+      toast.success(`Module access updated for ${accessTarget.name}`);
+      setAccessTarget(null);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update module access");
+    } finally {
+      setSavingAccess(false);
     }
   }
 
@@ -488,6 +521,7 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
                       <TableHead className="font-semibold">Change Role</TableHead>
                       <TableHead className="font-semibold">Warehouse</TableHead>
                       <TableHead className="font-semibold text-center">Status</TableHead>
+                      <TableHead className="font-semibold text-center">Modules</TableHead>
                       <TableHead className="font-semibold text-center">Password</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -595,6 +629,22 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
                                 onCheckedChange={(v) => handleToggleActive(u.id, v)}
                                 disabled={isUpdating}
                               />
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {isSelf ? (
+                              <span className="text-xs text-muted-foreground italic">All (own account)</span>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-orange-600"
+                                onClick={() => openAccessDialog(u)}
+                                title="Manage module access"
+                              >
+                                <LayoutGrid className="h-3.5 w-3.5" />
+                                {u.module_access ? `${u.module_access.length}/${MODULE_KEYS.length}` : "All"}
+                              </Button>
                             )}
                           </TableCell>
                           <TableCell className="text-center">
@@ -880,6 +930,63 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 : <KeyRound className="h-3.5 w-3.5" />}
               Set Password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Module Access Dialog ── */}
+      <Dialog
+        open={!!accessTarget}
+        onOpenChange={(o) => { if (!o) setAccessTarget(null); }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Module Access</DialogTitle>
+            <DialogDescription>
+              Choose which modules <strong>{accessTarget?.name}</strong> can see and use. Unchecking a module hides it from
+              their sidebar and blocks the pages/API for it — this only narrows what their role already allows, it never
+              grants more.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <div className="flex justify-end gap-2 mb-2">
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setAccessSelection([...MODULE_KEYS])}>
+                Select all
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setAccessSelection([])}>
+                Clear all
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              {MODULE_KEYS.map((key) => (
+                <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={accessSelection.includes(key)}
+                    onCheckedChange={(checked) =>
+                      setAccessSelection((prev) =>
+                        checked ? [...prev, key] : prev.filter((k) => k !== key)
+                      )
+                    }
+                  />
+                  {MODULE_LABELS[key]}
+                </label>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAccessTarget(null)} disabled={savingAccess}>
+              Cancel
+            </Button>
+            <Button
+              disabled={savingAccess}
+              className="gap-1.5"
+              onClick={() =>
+                handleSaveModuleAccess(accessSelection.length === MODULE_KEYS.length ? null : accessSelection)
+              }
+            >
+              {savingAccess ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LayoutGrid className="h-3.5 w-3.5" />}
+              Save Access
             </Button>
           </DialogFooter>
         </DialogContent>

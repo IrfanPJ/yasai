@@ -2,6 +2,9 @@
 
 All notable updates to YASAI Logistics, by date. Newest first.
 
+## 2026-10-05 (2)
+- Added per-user module access control. Admins can now restrict a specific user to only certain sidebar modules (Collections, Job Orders, Manifest, Invoices, GR Report, Records, Waybills, Finance, Audit Logs) from Settings → Users & Roles — it only narrows what their role already allows, never grants more. Enforced at three layers: the sidebar hides restricted items, a new per-module page `layout.tsx` redirects home if a restricted user navigates there directly, and each module's top-level list/create API route rejects restricted users server-side. Requires migration `027_user_module_access.sql` (`user_profiles.module_access`, nullable — `NULL` = unrestricted, so every existing user is unaffected by default). Nested action routes (e.g. `/api/jobs/[id]/approve`) are not individually re-gated in this first pass — a deliberate v1 scope call, not an oversight
+
 ## 2026-10-05
 - Fixed the SAR (Alinma Bank) account number and IBAN on the Freight Invoice — both the printed PDF and the read-only preview in the invoice form had the wrong trailing digit and transposed IBAN check digits (`...42000`/`SA 410...` instead of the correct `...42001`/`SA 140...`), per the bank's own customer-info certificate
 

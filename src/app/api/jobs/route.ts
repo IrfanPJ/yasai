@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth-role";
+import { requireModuleApiAccess } from "@/lib/require-module-access";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,9 @@ export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const moduleCheck = await requireModuleApiAccess("job_orders");
+  if (!moduleCheck.ok) return NextResponse.json({ error: moduleCheck.error }, { status: moduleCheck.status });
 
   const serviceClient = createServiceClient();
   const { data, error } = await serviceClient
@@ -23,6 +27,9 @@ export async function POST(request: NextRequest) {
   const auth = await requireRole(["admin", "operations"]);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const { user, serviceClient } = auth;
+
+  const moduleCheck = await requireModuleApiAccess("job_orders");
+  if (!moduleCheck.ok) return NextResponse.json({ error: moduleCheck.error }, { status: moduleCheck.status });
 
   const body = await request.json();
   const destination = typeof body.destination === "string" ? body.destination.trim() : "";

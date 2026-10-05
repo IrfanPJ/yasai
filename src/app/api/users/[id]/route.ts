@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types";
+import { MODULE_KEYS } from "@/lib/modules";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,20 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   // warehouse_id (nullable)
   if ("warehouse_id" in body) {
     updates.warehouse_id = body.warehouse_id || null;
+  }
+
+  // module_access (nullable array) — null means unrestricted
+  if ("module_access" in body) {
+    if (body.module_access === null) {
+      updates.module_access = null;
+    } else if (
+      Array.isArray(body.module_access) &&
+      body.module_access.every((k: unknown) => typeof k === "string" && MODULE_KEYS.includes(k as typeof MODULE_KEYS[number]))
+    ) {
+      updates.module_access = body.module_access;
+    } else {
+      return NextResponse.json({ error: `module_access must be null or an array of: ${MODULE_KEYS.join(", ")}` }, { status: 400 });
+    }
   }
 
   if (Object.keys(updates).length === 0) {

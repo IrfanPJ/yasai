@@ -5,11 +5,15 @@ import { generateCollectionPDF } from "@/lib/pdf";
 import { getLogoDataUrl } from "@/lib/logo";
 import { attachGcnToConsolidationSheet } from "@/lib/manifest";
 import { gcnToGrReportInsert } from "@/lib/gr-report";
+import { requireModuleApiAccess } from "@/lib/require-module-access";
 import type { GoodsCollectionNote } from "@/types";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const moduleCheck = await requireModuleApiAccess("collections");
+  if (!moduleCheck.ok) return NextResponse.json({ error: moduleCheck.error }, { status: moduleCheck.status });
+
   const supabase = await createClient();
   const { searchParams } = new URL(request.url);
 
@@ -47,6 +51,9 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const moduleCheck = await requireModuleApiAccess("collections");
+  if (!moduleCheck.ok) return NextResponse.json({ error: moduleCheck.error }, { status: moduleCheck.status });
 
   const body = await request.json();
 
