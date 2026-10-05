@@ -343,6 +343,20 @@ export async function convertSheetToManifest(
       .from("job_orders")
       .update({ total_weight_kg: totalWeight, total_cbm: totalCbm })
       .eq("id", jobOrder.id);
+
+    // Fill in Job #/Job Date on each linked GCN's GR Report row — same as the
+    // single-GCN "link to job" route does. Only where still unset, so an
+    // existing link from elsewhere isn't clobbered.
+    await serviceClient
+      .from("gr_report_entries")
+      .update({
+        job_order_id: jobOrder.id,
+        job_number: jobNumber as string,
+        job_date: null,
+        updated_by: userId,
+      })
+      .in("gcn_id", gcnIds)
+      .is("job_order_id", null);
   }
 
   await serviceClient

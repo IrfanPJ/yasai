@@ -2,6 +2,11 @@
 
 All notable updates to YASAI Logistics, by date. Newest first.
 
+## 2026-10-05 (5)
+- **Fixed a real bug**: converting a Manifest sheet to a Job Order never filled in the GR Report's Job#/Job Date for the GCNs it linked — only the separate "link a single GCN to a job" action did that. Since Manifest conversion is the main way jobs get created, this had been silently leaving GR Report job numbers blank for every bulk-converted sheet. `convertSheetToManifest()` now fills them in the same way the single-link route does
+- Backfilled production GR Report: Zone filled on 48 rows (from each entry's GCN's `origin_zone`), Destination filled on 177 rows. Job#/Job Date backfill found 0 rows needing it — the previously-converted manifests that would've needed it were since deleted (their `job_order_gcns` links went with them), so there's nothing currently broken, just the forward-fix
+- 129 GR Report rows still have no Zone — their underlying GCN never had `origin_zone` set in the first place (pre-dates the zone-collection workflow), so there's no source data to backfill from. Needs manual correction if those need filling
+
 ## 2026-10-05 (4)
 - Fixed Settings page layout: the whole page (including the Users & Roles and Warehouses tabs) was capped at `max-w-4xl`, which is right for the narrow Profile/Appearance/Company forms but left wide stat-card grids and the Users & Roles table needlessly cramped with a horizontal scrollbar and a large unused gap on wide screens. The width cap now only applies to the three narrow tabs; Users & Roles and Warehouses use the full available width
 - Role overview cards (6 roles) now lay out up to 6-per-row on large screens instead of always wrapping to 2 rows
