@@ -16,7 +16,7 @@ export async function GET(_: unknown, { params }: RouteParams) {
   const serviceClient = createServiceClient();
 
   const [{ data: sheet, error }, { data: items }] = await Promise.all([
-    serviceClient.from("consolidation_sheets").select("*").eq("id", id).single(),
+    serviceClient.from("consolidation_sheets").select("*, job_order:job_orders(job_number)").eq("id", id).single(),
     serviceClient
       .from("consolidation_sheet_items")
       .select("*, gcn:goods_collection_notes(*)")

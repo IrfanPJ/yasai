@@ -17,6 +17,7 @@ import {
 import { formatDateTime, formatMoney } from "@/lib/utils";
 import type { Invoice, UserRole, UserProfile } from "@/types";
 import { INVOICE_STATUS_LABELS, INVOICE_STATUS_COLORS } from "@/types";
+import { effectiveJobNumber } from "@/lib/invoice-job-number";
 
 interface InvoiceDetailProps {
   invoice: Invoice;
@@ -173,15 +174,27 @@ export function InvoiceDetail({ invoice: initialInvoice, userRole, allUsers }: I
                 <span className="font-medium">{invoice.reference_number}</span>
               </div>
             )}
-            {invoice.job_order_id && (
-              <div>
-                <span className="text-xs text-muted-foreground block uppercase tracking-wide">Job Order</span>
-                <Link href={`/jobs/${invoice.job_order_id}`} className="font-medium text-[#E67A32] hover:underline flex items-center gap-1">
-                  <Truck className="h-3.5 w-3.5" />
-                  {(invoice.job_order as { job_number?: string })?.job_number || "View"}
-                </Link>
-              </div>
-            )}
+            {(() => {
+              const jobNo = effectiveJobNumber(invoice);
+              if (!jobNo) return null;
+              const label = jobNo.source === "manual" ? "Manual entry" : "Linked Job Order";
+              return (
+                <div>
+                  <span className="text-xs text-muted-foreground block uppercase tracking-wide">Job No ({label})</span>
+                  {invoice.job_order_id ? (
+                    <Link href={`/jobs/${invoice.job_order_id}`} className="font-medium text-[#E67A32] hover:underline flex items-center gap-1">
+                      <Truck className="h-3.5 w-3.5" />
+                      {jobNo.value}
+                    </Link>
+                  ) : (
+                    <span className="font-medium flex items-center gap-1">
+                      <Truck className="h-3.5 w-3.5 text-muted-foreground" />
+                      {jobNo.value}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
           </div>
           {invoice.paid_at && (
             <div className="mt-3 pt-3 border-t flex items-center gap-2 text-sm text-green-700 dark:text-green-400">

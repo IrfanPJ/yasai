@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import type { GoodsCollectionNote, UserRole } from "@/types";
+import { MANIFEST_ZONE_LABELS } from "@/types";
 
 // Editing a row's financial fields (PATCH) is finance-restricted. Uploading
 // a document (POST/DELETE on /upload) is lower-stakes and also opened up to
@@ -15,8 +16,10 @@ export function totalPackageQtyFromGcn(gcn: Pick<GoodsCollectionNote, "package_i
 }
 
 // Builds the gr_report_entries insert payload auto-filled from a freshly
-// created GCN. Fields the GCN has no equivalent for (items, pickup_point)
-// are left for manual entry on the GR Report grid.
+// created GCN. "items" is left for manual entry — the GCN has no equivalent.
+// pickup_point is the GCN's collection zone (Mainland/JAFZA), and destination
+// mirrors the GCN's own destination; both stay editable on the grid in case
+// of correction.
 export function gcnToGrReportInsert(gcn: GoodsCollectionNote) {
   return {
     gcn_id: gcn.id,
@@ -29,6 +32,8 @@ export function gcnToGrReportInsert(gcn: GoodsCollectionNote) {
     item_package: gcn.num_packages || null,
     total_package_qty: totalPackageQtyFromGcn(gcn),
     cbm: gcn.volume_cbm ?? null,
+    pickup_point: gcn.origin_zone ? MANIFEST_ZONE_LABELS[gcn.origin_zone] : null,
+    destination: gcn.destination || null,
   };
 }
 

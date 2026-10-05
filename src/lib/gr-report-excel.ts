@@ -5,7 +5,7 @@ import type { GrReportEntry } from "@/types";
 const HEADERS = [
   "Sl No", "Date", "CR#", "Shipper", "Consignee", "Doc Ref#",
   "Total Qty", "Balance", "Delivered Qty", "Job#", "Item Category",
-  "Items", "Item Package", "Tracking", "Pickup Point",
+  "Items", "Item Package", "Tracking", "Zone", "Destination",
   "Freight Invoice", "Delivery Note", "Invoice", "Invoiced Amount", "CBM",
 ];
 
@@ -42,6 +42,7 @@ export async function generateGrReportExcel(entries: GrReportEntry[], rangeLabel
       e.item_package || "",
       e.tracking || "",
       e.pickup_point || "",
+      e.destination || "",
       e.freight_invoice_url ? "Uploaded" : "Missing",
       e.delivery_note_url ? "Uploaded" : "Missing",
       e.invoice_url ? "Uploaded" : "Missing",
@@ -56,7 +57,7 @@ export async function generateGrReportExcel(entries: GrReportEntry[], rangeLabel
   footerCell.font = { bold: true };
 
   ws.columns.forEach((col, i) => {
-    col.width = [6, 12, 12, 18, 18, 14, 10, 10, 12, 12, 16, 16, 14, 14, 16, 14, 14, 10, 14, 9][i] || 14;
+    col.width = [6, 12, 12, 18, 18, 14, 10, 10, 12, 12, 16, 16, 14, 14, 16, 16, 14, 14, 10, 14, 9][i] || 14;
   });
 
   const buffer = await workbook.xlsx.writeBuffer();

@@ -82,6 +82,7 @@ export interface ConsolidationSheet {
   converted_by?: string | null;
   conversion_type?: ConsolidationConversionType | null;
   job_order_id?: string | null;
+  job_order?: { job_number?: string } | null;
   created_by?: string;
   updated_by?: string;
   created_at: string;
@@ -244,6 +245,7 @@ export interface GrReportEntry {
 
   items?: string | null;
   pickup_point?: string | null;
+  destination?: string | null;
 
   job_order_id?: string | null;
   job_number?: string | null;

@@ -10,7 +10,7 @@ interface RouteParams { params: Promise<{ id: string }> }
 // Balance is a generated column. Everything else on the grid is fair game.
 const EDITABLE_FIELDS = [
   "entry_date", "cr_number", "shipper", "consignee", "doc_ref_number",
-  "item_category", "items", "item_package", "pickup_point",
+  "item_category", "items", "item_package", "pickup_point", "destination",
   "total_package_qty", "cbm", "delivered_qty", "tracking", "invoiced_amount",
 ] as const;
 

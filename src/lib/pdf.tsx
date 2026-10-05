@@ -2,6 +2,7 @@ import type { GoodsCollectionNote, DeliveryNote, DeliveryNoteItem, JobOrder, Inv
 import { MANIFEST_ZONE_LABELS } from "@/types";
 import { format } from "date-fns";
 import { formatMoney } from "@/lib/utils";
+import { effectiveJobNumber } from "@/lib/invoice-job-number";
 
 const NAVY         = "#0B1F3F";
 const ORANGE       = "#E67A32";
@@ -1738,6 +1739,7 @@ function buildManifestHtml(sheet: ConsolidationSheet, items: ConsolidationSheetI
   </div>
   <div class="hdr-meta">
     <div class="hdr-meta-lbl">Sheet No</div><div class="hdr-meta-val">${esc(sheet.sheet_number)}</div>
+    ${sheet.job_order?.job_number ? `<div class="hdr-meta-lbl" style="margin-top:4px;">Job No</div><div class="hdr-meta-val">${esc(sheet.job_order.job_number)}</div>` : ""}
   </div>
 </div>
 
@@ -1811,6 +1813,7 @@ function buildGrReportHtml(entries: GrReportEntry[], rangeLabel: string, logoDat
       <td class="td">${esc(e.item_package)}</td>
       <td class="td">${esc(e.tracking)}</td>
       <td class="td">${esc(e.pickup_point)}</td>
+      <td class="td">${esc(e.destination)}</td>
       <td class="td ctr">${e.freight_invoice_url ? "&#10003;" : "&#10007;"}</td>
       <td class="td ctr">${e.delivery_note_url ? "&#10003;" : "&#10007;"}</td>
       <td class="td ctr">${e.invoice_url ? "&#10003;" : "&#10007;"}</td>
@@ -1882,7 +1885,8 @@ function buildGrReportHtml(entries: GrReportEntry[], rangeLabel: string, logoDat
       <th style="width:6%">Items</th>
       <th style="width:6%">Item Package</th>
       <th style="width:6%">Tracking</th>
-      <th style="width:6%">Pickup Point</th>
+      <th style="width:6%">Zone</th>
+      <th style="width:6%">Destination</th>
       <th style="width:3%">F</th>
       <th style="width:3%">D</th>
       <th style="width:3%">I</th>
@@ -1891,7 +1895,7 @@ function buildGrReportHtml(entries: GrReportEntry[], rangeLabel: string, logoDat
     </tr>
   </thead>
   <tbody>
-    ${rows || `<tr><td class="td ctr" colspan="20">No entries in this range.</td></tr>`}
+    ${rows || `<tr><td class="td ctr" colspan="21">No entries in this range.</td></tr>`}
   </tbody>
 </table>
 
@@ -2754,6 +2758,7 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
   const totalVat = items.reduce((s, i) => s + Number(i.vat_amount ?? 0), 0);
   const total = subtotal + totalVat;
   const currency = invoice.currency || "SAR";
+  const jobNo = effectiveJobNumber(invoice);
 
   const fmtDate = (d?: string | null) => {
     if (!d) return "—";
@@ -2981,9 +2986,9 @@ function buildFreightInvoiceHtml(invoice: Invoice, logoDataUrl?: string): string
           <div class="meta-key">Date</div><div class="meta-colon">:</div>
           <div class="meta-val">${fmtDate(invoice.issued_at || invoice.created_at)}</div>
         </div>
-        ${((invoice.job_order as { job_number?: string } | null)?.job_number || invoice.manual_job_number) ? `<div class="meta-row">
+        ${jobNo ? `<div class="meta-row">
           <div class="meta-key">Job No</div><div class="meta-colon">:</div>
-          <div class="meta-val">${esc((invoice.job_order as { job_number?: string } | null)?.job_number || invoice.manual_job_number || "")}</div>
+          <div class="meta-val">${esc(jobNo.value)}</div>
         </div>` : ""}
         ${invoice.shipper ? `<div class="meta-row">
           <div class="meta-key">Shipper</div><div class="meta-colon">:</div>

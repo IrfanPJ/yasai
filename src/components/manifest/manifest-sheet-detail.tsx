@@ -300,7 +300,7 @@ export function ManifestSheetDetail({ sheet, items: initialItems, userRole, rest
             <Button asChild size="sm" variant="outline" className="gap-1.5">
               <Link href={`/jobs/${sheet.job_order_id}`}>
                 <ExternalLink className="h-3.5 w-3.5" />
-                View Job Order
+                {sheet.job_order?.job_number || "View Job Order"}
               </Link>
             </Button>
           )}

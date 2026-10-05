@@ -15,7 +15,7 @@ export default async function ManifestSheetPage({ params }: PageProps) {
   const supabase = await createClient();
 
   const [{ data: sheet, error }, { data: items }, { data: { user } }] = await Promise.all([
-    serviceClient.from("consolidation_sheets").select("*").eq("id", id).single(),
+    serviceClient.from("consolidation_sheets").select("*, job_order:job_orders(job_number)").eq("id", id).single(),
     serviceClient
       .from("consolidation_sheet_items")
       .select("*, gcn:goods_collection_notes(*)")

@@ -2,6 +2,13 @@
 
 All notable updates to YASAI Logistics, by date. Newest first.
 
+## 2026-10-05 (3)
+- Fixed Freight Invoice job number precedence: a manually-typed job number now correctly overrides a linked Job Order's number wherever it's shown (PDF, invoice list, invoice detail) — it was backwards before, with the linked job always winning even when a manual number was explicitly entered
+- Invoice list and invoice detail page previously showed nothing for a manual-only job number (no linked Job Order) — now both display it, tagged "(Manual)" or "(Linked)" so the source is always clear
+- Manifest exports (PDF, Excel) and the Manifest sheet detail page now show the Job Number once a sheet has been converted — previously the converted sheet's linked Job Order existed in the data but was never surfaced on the exported document, only reachable by clicking through
+- GR Report: the "Pickup Point" column is actually always the GCN's collection zone (Mainland/JAFZA), so relabeled it "Zone" everywhere (grid, PDF export, Excel export) and it's now auto-filled from the GCN at entry creation instead of being left blank for manual entry
+- Added a "Destination" column to the GR Report (grid, PDF export, Excel export), auto-filled from the GCN's destination. Requires migration `028_gr_report_destination.sql` (`gr_report_entries.destination`)
+
 ## 2026-10-05 (2)
 - Added per-user module access control. Admins can now restrict a specific user to only certain sidebar modules (Collections, Job Orders, Manifest, Invoices, GR Report, Records, Waybills, Finance, Audit Logs) from Settings → Users & Roles — it only narrows what their role already allows, never grants more. Enforced at three layers: the sidebar hides restricted items, a new per-module page `layout.tsx` redirects home if a restricted user navigates there directly, and each module's top-level list/create API route rejects restricted users server-side. Requires migration `027_user_module_access.sql` (`user_profiles.module_access`, nullable — `NULL` = unrestricted, so every existing user is unaffected by default). Nested action routes (e.g. `/api/jobs/[id]/approve`) are not individually re-gated in this first pass — a deliberate v1 scope call, not an oversight
 

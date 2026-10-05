@@ -26,7 +26,7 @@ const DOC_SLOTS: { key: GrReportDocType; label: string; urlField: keyof GrReport
 
 type EditableField =
   | "entry_date" | "cr_number" | "shipper" | "consignee" | "doc_ref_number"
-  | "item_category" | "items" | "item_package" | "pickup_point"
+  | "item_category" | "items" | "item_package" | "pickup_point" | "destination"
   | "total_package_qty" | "cbm" | "delivered_qty" | "tracking" | "invoiced_amount";
 
 const NUMERIC_FIELDS = new Set<EditableField>(["total_package_qty", "cbm", "delivered_qty", "invoiced_amount"]);
@@ -34,7 +34,7 @@ const DATE_FIELDS = new Set<EditableField>(["entry_date"]);
 
 const SEARCH_FIELDS: (keyof GrReportEntry)[] = [
   "cr_number", "shipper", "consignee", "doc_ref_number", "job_number",
-  "item_category", "items", "item_package", "pickup_point", "tracking",
+  "item_category", "items", "item_package", "pickup_point", "destination", "tracking",
 ];
 
 export function GrReportGrid({ data, canEdit, canUpload }: GrReportGridProps) {
@@ -291,7 +291,8 @@ export function GrReportGrid({ data, canEdit, canUpload }: GrReportGridProps) {
               <TableHead className="w-28">Item Package</TableHead>
               <TableHead className="w-28">Job Date</TableHead>
               <TableHead className="w-28">Tracking</TableHead>
-              <TableHead className="w-32">Pickup Point</TableHead>
+              <TableHead className="w-32">Zone</TableHead>
+              <TableHead className="w-32">Destination</TableHead>
               <TableHead className="w-12 text-center">F</TableHead>
               <TableHead className="w-12 text-center">D</TableHead>
               <TableHead className="w-12 text-center">I</TableHead>
@@ -302,7 +303,7 @@ export function GrReportGrid({ data, canEdit, canUpload }: GrReportGridProps) {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={20} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={21} className="text-center py-12 text-muted-foreground">
                   No GR Report entries yet — they&apos;re created automatically when a GCN is collected.
                 </TableCell>
               </TableRow>
@@ -326,6 +327,7 @@ export function GrReportGrid({ data, canEdit, canUpload }: GrReportGridProps) {
                   <TableCell className="text-sm text-muted-foreground px-1.5 py-1">{row.job_date ? row.job_date.slice(0, 10) : "—"}</TableCell>
                   <TableCell>{renderEditableCell(row, "tracking", row.tracking || "")}</TableCell>
                   <TableCell>{renderEditableCell(row, "pickup_point", row.pickup_point || "")}</TableCell>
+                  <TableCell>{renderEditableCell(row, "destination", row.destination || "")}</TableCell>
                   <TableCell className="text-center">{renderDocCell(row, DOC_SLOTS[0])}</TableCell>
                   <TableCell className="text-center">{renderDocCell(row, DOC_SLOTS[1])}</TableCell>
                   <TableCell className="text-center">{renderDocCell(row, DOC_SLOTS[2])}</TableCell>

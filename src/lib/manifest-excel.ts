@@ -24,6 +24,14 @@ export async function generateManifestExcel(
   titleCell.font = { bold: true };
   titleCell.alignment = { horizontal: "center" };
 
+  const metaParts = [`Sheet No: ${sheet.sheet_number}`];
+  if (sheet.job_order?.job_number) metaParts.push(`Job No: ${sheet.job_order.job_number}`);
+  ws.mergeCells(2, 1, 2, HEADERS.length);
+  const metaCell = ws.getCell(2, 1);
+  metaCell.value = metaParts.join("   |   ");
+  metaCell.font = { italic: true, size: 10 };
+  metaCell.alignment = { horizontal: "center" };
+
   const headerRow = ws.addRow(HEADERS);
   headerRow.font = { bold: true };
   headerRow.eachCell((cell) => {
@@ -48,8 +56,8 @@ export async function generateManifestExcel(
     ]);
   });
 
-  ws.mergeCells(items.length + 3, 1, items.length + 3, HEADERS.length);
-  const footerCell = ws.getCell(items.length + 3, 1);
+  ws.mergeCells(items.length + 4, 1, items.length + 4, HEADERS.length);
+  const footerCell = ws.getCell(items.length + 4, 1);
   footerCell.value = `${MANIFEST_ZONE_LABELS[sheet.zone]} - ${sheet.pallet_count} Pallets - ${sheet.cbm_total.toFixed(3)} CBM`;
   footerCell.font = { bold: true };
 

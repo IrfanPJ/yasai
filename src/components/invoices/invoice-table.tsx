@@ -6,6 +6,7 @@ import { formatDateTime, formatMoney } from "@/lib/utils";
 import type { Invoice } from "@/types";
 import { INVOICE_STATUS_LABELS, INVOICE_STATUS_COLORS } from "@/types";
 import { Receipt } from "lucide-react";
+import { effectiveJobNumber } from "@/lib/invoice-job-number";
 
 interface InvoiceTableProps {
   invoices: Invoice[];
@@ -45,11 +46,22 @@ export function InvoiceTable({ invoices }: InvoiceTableProps) {
               </td>
               <td className="px-4 py-3 font-medium">{inv.customer_name}</td>
               <td className="px-4 py-3 text-muted-foreground text-xs">
-                {inv.job_order_id ? (
-                  <Link href={`/jobs/${inv.job_order_id}`} className="hover:text-[#E67A32]">
-                    {(inv.job_order as { job_number?: string })?.job_number || "—"}
-                  </Link>
-                ) : "—"}
+                {(() => {
+                  const jobNo = effectiveJobNumber(inv);
+                  if (!jobNo) return "—";
+                  const label = jobNo.source === "manual" ? "Manual" : "Linked";
+                  return inv.job_order_id ? (
+                    <Link href={`/jobs/${inv.job_order_id}`} className="hover:text-[#E67A32] inline-flex items-center gap-1">
+                      {jobNo.value}
+                      <span className="text-[9px] uppercase tracking-wide text-muted-foreground/70">({label})</span>
+                    </Link>
+                  ) : (
+                    <span className="inline-flex items-center gap-1">
+                      {jobNo.value}
+                      <span className="text-[9px] uppercase tracking-wide text-muted-foreground/70">({label})</span>
+                    </span>
+                  );
+                })()}
               </td>
               <td className="px-4 py-3 text-right font-semibold">
                 {inv.currency} {formatMoney(inv.total_amount)}
