@@ -2,6 +2,9 @@
 
 All notable updates to YASAI Logistics, by date. Newest first.
 
+## 2026-10-05
+- Fixed the SAR (Alinma Bank) account number and IBAN on the Freight Invoice — both the printed PDF and the read-only preview in the invoice form had the wrong trailing digit and transposed IBAN check digits (`...42000`/`SA 410...` instead of the correct `...42001`/`SA 140...`), per the bank's own customer-info certificate
+
 ## 2026-09-30
 - Added this CHANGELOG.md, kept updated with every change going forward
 - Deleted `feature/gr-report` (local + GitHub) — fully merged into `feature/manifest`, which now carries both Manifest and GR Report

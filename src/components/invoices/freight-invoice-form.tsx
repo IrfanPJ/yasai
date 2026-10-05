@@ -409,8 +409,8 @@ export function FreightInvoiceForm({ invoice }: FreightInvoiceFormProps) {
         <CardContent className="p-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Our Bank Details (printed on invoice)</p>
           <div className="text-xs text-muted-foreground space-y-0.5 font-mono">
-            <p>A/c No: 6820 63417 42000</p>
-            <p>IBAN: SA 410 50000 6820 63417 42000</p>
+            <p>A/c No: 6820 63417 42001</p>
+            <p>IBAN: SA 140 50000 6820 63417 42001</p>
             <p>A/c Name: Altaawn Aldhhbyt Altjaryt Company</p>
             <p>Bank: Alinma Bank</p>
           </div>
