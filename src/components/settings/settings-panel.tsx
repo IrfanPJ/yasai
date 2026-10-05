@@ -300,9 +300,9 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
   const inactiveUsers = allUsers.filter((u) => !u.is_active);
 
   return (
-    <div className="max-w-4xl">
+    <div>
       <Tabs defaultValue="profile">
-        <TabsList className="mb-6">
+        <TabsList className="mb-6 w-full justify-start overflow-x-auto sm:w-auto">
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
             Profile
@@ -330,7 +330,7 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
         </TabsList>
 
         {/* ── Profile ── */}
-        <TabsContent value="profile" className="space-y-6">
+        <TabsContent value="profile" className="space-y-6 max-w-4xl">
           <Card className="border-none shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">Personal Information</CardTitle>
@@ -397,7 +397,7 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
         </TabsContent>
 
         {/* ── Appearance ── */}
-        <TabsContent value="appearance">
+        <TabsContent value="appearance" className="max-w-4xl">
           <Card className="border-none shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">Theme</CardTitle>
@@ -434,7 +434,7 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
         </TabsContent>
 
         {/* ── Company ── */}
-        <TabsContent value="company">
+        <TabsContent value="company" className="max-w-4xl">
           <Card className="border-none shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">Company Information</CardTitle>
@@ -475,7 +475,7 @@ export function SettingsPanel({ currentUser, allUsers }: SettingsPanelProps) {
         {isAdmin && (
           <TabsContent value="users" className="space-y-6">
             {/* Role Overview Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
               {(["admin", "operations", "warehouse", "warehouse_supervisor", "finance", "viewer"] as UserRole[]).map((role) => {
                 const RoleIcon = ROLE_ICONS[role];
                 const count = allUsers.filter((u) => u.role === role).length;

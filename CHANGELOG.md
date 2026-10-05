@@ -2,6 +2,11 @@
 
 All notable updates to YASAI Logistics, by date. Newest first.
 
+## 2026-10-05 (4)
+- Fixed Settings page layout: the whole page (including the Users & Roles and Warehouses tabs) was capped at `max-w-4xl`, which is right for the narrow Profile/Appearance/Company forms but left wide stat-card grids and the Users & Roles table needlessly cramped with a horizontal scrollbar and a large unused gap on wide screens. The width cap now only applies to the three narrow tabs; Users & Roles and Warehouses use the full available width
+- Role overview cards (6 roles) now lay out up to 6-per-row on large screens instead of always wrapping to 2 rows
+- Settings tab bar now scrolls horizontally instead of silently clipping tabs on narrow/mobile screens
+
 ## 2026-10-05 (3)
 - Fixed Freight Invoice job number precedence: a manually-typed job number now correctly overrides a linked Job Order's number wherever it's shown (PDF, invoice list, invoice detail) — it was backwards before, with the linked job always winning even when a manual number was explicitly entered
 - Invoice list and invoice detail page previously showed nothing for a manual-only job number (no linked Job Order) — now both display it, tagged "(Manual)" or "(Linked)" so the source is always clear
