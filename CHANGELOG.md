@@ -2,6 +2,9 @@
 
 All notable updates to YASAI Logistics, by date. Newest first.
 
+## 2026-10-06 (2)
+- First pass on app-wide animation/feel. Installed and registered `tailwindcss-animate` (was missing from tailwind.config.ts, so the fade/zoom/slide classes already written into Dialog, DropdownMenu, Select, and Sheet had never actually been running — those now animate open/close everywhere they're used). Added a subtle press-down feedback (scale 0.97) to every button app-wide via the shared Button component. Both are pure CSS, zero JS — shared bundle size unchanged (102 kB)
+
 ## 2026-10-06
 - GR Report table: the wide table's horizontal scrollbar was easy to miss, so added a visible "Scroll for more columns" hint with left/right arrow buttons (disabled at each end) above the table, in addition to normal scroll/swipe
 - Fixed those buttons doing nothing: the shared Table component renders its own internal scroll container, one level deeper than the div we'd wrapped it in, so our scroll commands were hitting the wrong element. Now targets the real one via the table ref
