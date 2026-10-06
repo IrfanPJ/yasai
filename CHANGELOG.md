@@ -2,6 +2,9 @@
 
 All notable updates to YASAI Logistics, by date. Newest first.
 
+## 2026-10-06 (3)
+- Added page transitions: every dashboard page now fades + slides in slightly (160ms) on navigation, via a `template.tsx` for the `(dashboard)` route group (templates re-mount on every navigation, unlike layout, which gives each page a fresh entrance animation) using Framer Motion. Kept deliberately short/subtle — this is an ops tool staff click through fast all day, not a marketing site. Verified with a clean before/after build comparison that this adds no measurable First Load JS cost (`/collections` identical at 225 B / 251 kB both with and without it)
+
 ## 2026-10-06 (2)
 - First pass on app-wide animation/feel. Installed and registered `tailwindcss-animate` (was missing from tailwind.config.ts, so the fade/zoom/slide classes already written into Dialog, DropdownMenu, Select, and Sheet had never actually been running — those now animate open/close everywhere they're used). Added a subtle press-down feedback (scale 0.97) to every button app-wide via the shared Button component. Both are pure CSS, zero JS — shared bundle size unchanged (102 kB)
 
