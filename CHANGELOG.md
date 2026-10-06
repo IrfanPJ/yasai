@@ -2,6 +2,10 @@
 
 All notable updates to YASAI Logistics, by date. Newest first.
 
+## 2026-10-06 (5)
+- Audited and corrected the live Mainland pending consolidation sheet (`CS-MAINLAND-2026-0004`) against the pallet-count fix below: 2 lines were storing stale pallet counts from before the fix (one showed 6 pallets for a 6-Carton GCN, one showed 2 pallets for a 1-Carton GCN). Corrected both to 0 and recalculated the sheet's total (27 → 19). Zero mismatches remain
+- Closed the gap that let this happen again: editing a GCN's packages (e.g. correcting Carton → Pallet) previously left any already-attached pending-sheet line stale, since nothing re-synced it. `PUT /api/collections/[id]` now calls `syncGcnOnPendingSheets()` after every save — it re-derives the line's pallet count/cbm from the edited GCN and recalculates the sheet's totals, for every pending sheet that GCN is attached to. Finalized (`status = "manifest"`) sheets are deliberately left untouched, matching the existing rule that their items can no longer be edited. Verified: carton→pallet edit syncs up, pallet→carton syncs back down, and editing a GCN after its sheet is finalized correctly leaves that line alone
+
 ## 2026-10-06 (4)
 - Fixed Manifest pallet count counting cartons/boxes/pieces as pallets: `derivePalletCount()` only ever checked the legacy `pallet_dimensions` array and a regex grabbing the first number in the free-text `num_packages` field, regardless of what unit that number belonged to — a GCN with "12 CTN" and no pallet dimensions was counted as 12 pallets on the consolidation sheet. Now uses `package_items` (the structured, per-line-typed source of truth) first: sums quantity only across lines where `package_type` is "pallet", so a carton-only GCN correctly comes out to 0. Falls back to the old guess only for GCNs with no `package_items` at all. Verified against real data: 12 CTN only → 0; 3 pallets + 20 cartons → 3
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { syncGcnOnPendingSheets } from "@/lib/manifest";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +62,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // If this GCN is still sitting on a pending consolidation sheet, keep that
+  // line's pallet count/cbm in sync with whatever was just corrected here —
+  // see syncGcnOnPendingSheets for why this doesn't touch finalized manifests.
+  try {
+    await syncGcnOnPendingSheets(serviceClient, data, user.id);
+  } catch (syncErr) {
+    console.error("Manifest sheet sync failed:", syncErr);
+  }
 
   // Log activity
   await serviceClient.from("activity_logs").insert({

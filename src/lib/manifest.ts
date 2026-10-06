@@ -99,6 +99,82 @@ interface SheetRow {
   item_count: number;
 }
 
+/**
+ * Recomputes a sheet's aggregate pallet_count/cbm_total/item_count from its
+ * current items — the one place "what does this sheet add up to" is
+ * calculated, so every path that can change an item's pallet_count/cbm
+ * (direct edit, GCN sync, restore, requeue) ends up at the same total.
+ */
+export async function recalcSheetTotals(serviceClient: ServiceClient, sheetId: string): Promise<void> {
+  const { data: items } = await serviceClient
+    .from("consolidation_sheet_items")
+    .select("pallet_count, cbm")
+    .eq("sheet_id", sheetId);
+
+  const palletCount = (items || []).reduce((s: number, it: { pallet_count: number }) => s + (it.pallet_count || 0), 0);
+  const cbmTotal = (items || []).reduce((s: number, it: { cbm: number }) => s + (it.cbm || 0), 0);
+  await serviceClient
+    .from("consolidation_sheets")
+    .update({ pallet_count: palletCount, cbm_total: cbmTotal, item_count: (items || []).length })
+    .eq("id", sheetId);
+}
+
+/**
+ * Called after a GCN's packages/volume are edited. If that GCN is currently
+ * attached to any still-pending consolidation sheet, re-derives its pallet
+ * count (and cbm) from the updated data and keeps the sheet's line + totals
+ * in sync — so correcting a GCN (e.g. "carton" fixed to "pallet", or vice
+ * versa) doesn't leave a stale, now-wrong line sitting on the Manifest until
+ * someone happens to notice and fix it there too. Sheets already converted
+ * to a manifest are left untouched, same as the existing rule that their
+ * items can no longer be edited at all.
+ */
+export async function syncGcnOnPendingSheets(
+  serviceClient: ServiceClient,
+  gcn: {
+    id: string;
+    pallet_dimensions?: unknown[] | null;
+    num_packages?: string | null;
+    package_items?: PackageLineItem[] | null;
+    volume_cbm?: number | null;
+  },
+  userId: string
+): Promise<void> {
+  const { data: items } = await serviceClient
+    .from("consolidation_sheet_items")
+    .select("id, sheet_id, pallet_count, cbm, sheet:consolidation_sheets(status)")
+    .eq("gcn_id", gcn.id);
+
+  const pending = (items || []).filter(
+    (it) => (it.sheet as unknown as { status: string } | null)?.status === "pending"
+  );
+  if (pending.length === 0) return;
+
+  const newPalletCount = derivePalletCount(gcn);
+  const newCbm = gcn.volume_cbm ?? 0;
+
+  const sheetIdsToRecalc = new Set<string>();
+  for (const item of pending) {
+    if (item.pallet_count === newPalletCount && item.cbm === newCbm) continue;
+    await serviceClient
+      .from("consolidation_sheet_items")
+      .update({ pallet_count: newPalletCount, cbm: newCbm })
+      .eq("id", item.id);
+    sheetIdsToRecalc.add(item.sheet_id);
+  }
+
+  for (const sheetId of sheetIdsToRecalc) {
+    await recalcSheetTotals(serviceClient, sheetId);
+    await serviceClient.from("activity_logs").insert({
+      user_id: userId,
+      action: "MANIFEST_ITEM_SYNCED_FROM_GCN",
+      entity_type: "consolidation_sheet_items",
+      entity_id: gcn.id,
+      details: { sheet_id: sheetId, pallet_count: newPalletCount, cbm: newCbm },
+    });
+  }
+}
+
 async function findOpenSheet(serviceClient: ServiceClient, zone: string): Promise<SheetRow | null> {
   const { data } = await serviceClient
     .from("consolidation_sheets")
