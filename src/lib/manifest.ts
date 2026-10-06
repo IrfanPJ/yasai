@@ -1,11 +1,25 @@
 import type { createServiceClient } from "@/lib/supabase/server";
+import type { PackageLineItem } from "@/types";
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 
+// Pallet count for the Manifest/consolidation sheet — only actual pallets
+// count, never cartons/boxes/pieces/etc. package_items is the structured,
+// per-line-typed source of truth and takes priority: sum quantity only
+// across lines where package_type is "pallet" (a carton-only GCN correctly
+// comes out to 0, not the carton count). Only GCNs with no package_items at
+// all (pre-dating that field) fall back to the old pallet_dimensions/
+// num_packages guess, which can't tell package types apart.
 function derivePalletCount(gcn: {
   pallet_dimensions?: unknown[] | null;
   num_packages?: string | null;
+  package_items?: PackageLineItem[] | null;
 }): number {
+  if (gcn.package_items && gcn.package_items.length > 0) {
+    return gcn.package_items
+      .filter((line) => line.package_type === "pallet")
+      .reduce((sum, line) => sum + (Number(line.quantity) || 0), 0);
+  }
   if (gcn.pallet_dimensions && gcn.pallet_dimensions.length > 0) {
     return gcn.pallet_dimensions.length;
   }
@@ -26,6 +40,7 @@ export async function attachGcnToConsolidationSheet(
     origin_zone?: string | null;
     pallet_dimensions?: unknown[] | null;
     num_packages?: string | null;
+    package_items?: PackageLineItem[] | null;
     volume_cbm?: number | null;
   },
   userId: string

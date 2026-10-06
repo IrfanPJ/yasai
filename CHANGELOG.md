@@ -2,6 +2,9 @@
 
 All notable updates to YASAI Logistics, by date. Newest first.
 
+## 2026-10-06 (4)
+- Fixed Manifest pallet count counting cartons/boxes/pieces as pallets: `derivePalletCount()` only ever checked the legacy `pallet_dimensions` array and a regex grabbing the first number in the free-text `num_packages` field, regardless of what unit that number belonged to — a GCN with "12 CTN" and no pallet dimensions was counted as 12 pallets on the consolidation sheet. Now uses `package_items` (the structured, per-line-typed source of truth) first: sums quantity only across lines where `package_type` is "pallet", so a carton-only GCN correctly comes out to 0. Falls back to the old guess only for GCNs with no `package_items` at all. Verified against real data: 12 CTN only → 0; 3 pallets + 20 cartons → 3
+
 ## 2026-10-06 (3)
 - Added page transitions: every dashboard page now fades + slides in slightly (160ms) on navigation, via a `template.tsx` for the `(dashboard)` route group (templates re-mount on every navigation, unlike layout, which gives each page a fresh entrance animation) using Framer Motion. Kept deliberately short/subtle — this is an ops tool staff click through fast all day, not a marketing site. Verified with a clean before/after build comparison that this adds no measurable First Load JS cost (`/collections` identical at 225 B / 251 kB both with and without it)
 
