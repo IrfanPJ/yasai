@@ -2,6 +2,9 @@
 
 All notable updates to YASAI Logistics, by date. Newest first.
 
+## 2026-10-06 (4)
+- Added skeleton loading states across the app. The app had zero `loading.tsx` files anywhere — every page is a Server Component that fetches data before rendering, so navigation just sat on the old page with no feedback until the new one was fully ready, which reads as a freeze on slower connections or heavier queries. Added 24 `loading.tsx` files (every list page and every record-detail page: Collections, Invoices, Job Orders, Waybills, Manifest + history, GR Report, Records, Audit Logs, Settings, Dashboard, and all of Finance) using 3 new shared skeleton components (`TablePageSkeleton`, `DetailPageSkeleton`, `StatOverviewSkeleton`). List pages reuse the real static `<Header>` text (zero layout shift); detail pages use a skeleton header bar since the record's own title isn't known until the fetch resolves. Deliberately skipped create/edit form pages — mostly static form shells with little to gain. Confirmed clean build with no bundle-size change
+
 ## 2026-10-06 (3)
 - Added page transitions: every dashboard page now fades + slides in slightly (160ms) on navigation, via a `template.tsx` for the `(dashboard)` route group (templates re-mount on every navigation, unlike layout, which gives each page a fresh entrance animation) using Framer Motion. Kept deliberately short/subtle — this is an ops tool staff click through fast all day, not a marketing site. Verified with a clean before/after build comparison that this adds no measurable First Load JS cost (`/collections` identical at 225 B / 251 kB both with and without it)
 
