@@ -49,14 +49,20 @@ export function GrReportGrid({ data, canEdit, canUpload }: GrReportGridProps) {
   const [toDate, setToDate] = useState("");
 
   // Horizontal scroll affordance for the wide table — the browser's own
-  // scrollbar is easy to miss, so we also show arrow buttons + a hint.
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  // scrollbar is easy to miss, so we also show arrow buttons + a hint, and
+  // support click-and-drag panning with the mouse.
+  // The <Table> component renders its own internal scrolling wrapper div
+  // around the <table> element — that's the real scroll container, not
+  // whatever div we'd wrap it in ourselves — so we get to it via the
+  // forwarded <table> ref's parentElement instead of adding another layer.
+  const tableElRef = useRef<HTMLTableElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   useEffect(() => {
-    const el = scrollRef.current;
+    const el = tableElRef.current?.parentElement;
     if (!el) return;
+
     const updateScrollState = () => {
       setCanScrollLeft(el.scrollLeft > 4);
       setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
@@ -64,14 +70,58 @@ export function GrReportGrid({ data, canEdit, canUpload }: GrReportGridProps) {
     updateScrollState();
     el.addEventListener("scroll", updateScrollState, { passive: true });
     window.addEventListener("resize", updateScrollState);
+
+    // Click-and-drag panning (mouse only — touch already scrolls natively).
+    let dragging = false;
+    let pointerDown = false;
+    let startX = 0;
+    let startScrollLeft = 0;
+    const DRAG_THRESHOLD = 5;
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse" || e.button !== 0) return;
+      pointerDown = true;
+      dragging = false;
+      startX = e.clientX;
+      startScrollLeft = el.scrollLeft;
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (!pointerDown) return;
+      const dx = e.clientX - startX;
+      if (!dragging && Math.abs(dx) > DRAG_THRESHOLD) {
+        dragging = true;
+        el.classList.add("cursor-grabbing");
+        el.classList.remove("cursor-grab");
+      }
+      if (dragging) {
+        e.preventDefault();
+        el.scrollLeft = startScrollLeft - dx;
+      }
+    };
+    const onPointerUp = () => {
+      pointerDown = false;
+      dragging = false;
+      el.classList.remove("cursor-grabbing");
+      el.classList.add("cursor-grab");
+    };
+
+    el.classList.add("cursor-grab");
+    el.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+
     return () => {
       el.removeEventListener("scroll", updateScrollState);
       window.removeEventListener("resize", updateScrollState);
+      el.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      el.classList.remove("cursor-grab", "cursor-grabbing");
     };
   }, []);
 
   function scrollTable(direction: -1 | 1) {
-    scrollRef.current?.scrollBy({ left: direction * 500, behavior: "smooth" });
+    tableElRef.current?.parentElement?.scrollBy({ left: direction * 500, behavior: "smooth" });
   }
 
   function exportUrl(kind: "excel" | "pdf") {
@@ -328,8 +378,7 @@ export function GrReportGrid({ data, canEdit, canUpload }: GrReportGridProps) {
       </div>
 
       <CardContent className="p-0">
-        <div ref={scrollRef} className="overflow-x-auto">
-        <Table className="min-w-[1900px]">
+        <Table ref={tableElRef} className="min-w-[1900px]">
           <TableHeader>
             <TableRow>
               <TableHead className="w-28">Date</TableHead>
@@ -393,7 +442,6 @@ export function GrReportGrid({ data, canEdit, canUpload }: GrReportGridProps) {
             )}
           </TableBody>
         </Table>
-        </div>
       </CardContent>
     </Card>
   );

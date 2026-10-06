@@ -4,6 +4,8 @@ All notable updates to YASAI Logistics, by date. Newest first.
 
 ## 2026-10-06
 - GR Report table: the wide table's horizontal scrollbar was easy to miss, so added a visible "Scroll for more columns" hint with left/right arrow buttons (disabled at each end) above the table, in addition to normal scroll/swipe
+- Fixed those buttons doing nothing: the shared Table component renders its own internal scroll container, one level deeper than the div we'd wrapped it in, so our scroll commands were hitting the wrong element. Now targets the real one via the table ref
+- Added click-and-drag panning on the GR Report table (mouse only — touch already scrolls natively): grab anywhere and drag to pan horizontally, cursor shows a grab/grabbing hand
 
 ## 2026-10-05 (5)
 - **Fixed a real bug**: converting a Manifest sheet to a Job Order never filled in the GR Report's Job#/Job Date for the GCNs it linked — only the separate "link a single GCN to a job" action did that. Since Manifest conversion is the main way jobs get created, this had been silently leaving GR Report job numbers blank for every bulk-converted sheet. `convertSheetToManifest()` now fills them in the same way the single-link route does
