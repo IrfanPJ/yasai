@@ -2,6 +2,9 @@
 
 All notable updates to YASAI Logistics, by date. Newest first.
 
+## 2026-10-06
+- GR Report table: the wide table's horizontal scrollbar was easy to miss, so added a visible "Scroll for more columns" hint with left/right arrow buttons (disabled at each end) above the table, in addition to normal scroll/swipe
+
 ## 2026-10-05 (5)
 - **Fixed a real bug**: converting a Manifest sheet to a Job Order never filled in the GR Report's Job#/Job Date for the GCNs it linked — only the separate "link a single GCN to a job" action did that. Since Manifest conversion is the main way jobs get created, this had been silently leaving GR Report job numbers blank for every bulk-converted sheet. `convertSheetToManifest()` now fills them in the same way the single-link route does
 - Backfilled production GR Report: Zone filled on 48 rows (from each entry's GCN's `origin_zone`), Destination filled on 177 rows. Job#/Job Date backfill found 0 rows needing it — the previously-converted manifests that would've needed it were since deleted (their `job_order_gcns` links went with them), so there's nothing currently broken, just the forward-fix

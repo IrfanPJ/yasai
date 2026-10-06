@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Search, Check, X, Upload, FileSpreadsheet, FileText, Download } from "lucide-react";
+import { Search, Check, X, Upload, FileSpreadsheet, FileText, Download, ChevronLeft, ChevronRight, ArrowLeftRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,32 @@ export function GrReportGrid({ data, canEdit, canUpload }: GrReportGridProps) {
   const pendingUpload = useRef<{ rowId: string; docType: GrReportDocType } | null>(null);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+
+  // Horizontal scroll affordance for the wide table — the browser's own
+  // scrollbar is easy to miss, so we also show arrow buttons + a hint.
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const updateScrollState = () => {
+      setCanScrollLeft(el.scrollLeft > 4);
+      setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    };
+    updateScrollState();
+    el.addEventListener("scroll", updateScrollState, { passive: true });
+    window.addEventListener("resize", updateScrollState);
+    return () => {
+      el.removeEventListener("scroll", updateScrollState);
+      window.removeEventListener("resize", updateScrollState);
+    };
+  }, []);
+
+  function scrollTable(direction: -1 | 1) {
+    scrollRef.current?.scrollBy({ left: direction * 500, behavior: "smooth" });
+  }
 
   function exportUrl(kind: "excel" | "pdf") {
     const params = new URLSearchParams();
@@ -268,12 +294,41 @@ export function GrReportGrid({ data, canEdit, canUpload }: GrReportGridProps) {
           </Button>
         </div>
 
-        <span className="text-xs text-muted-foreground ml-auto">
-          {filtered.length} of {rows.length} entries
-        </span>
+        <div className="ml-auto flex items-center gap-3">
+          <div className="flex items-center gap-1.5 rounded-md border bg-muted/40 px-2 py-1">
+            <ArrowLeftRight className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground hidden sm:inline">Scroll for more columns</span>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6"
+              onClick={() => scrollTable(-1)}
+              disabled={!canScrollLeft}
+              aria-label="Scroll table left"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6"
+              onClick={() => scrollTable(1)}
+              disabled={!canScrollRight}
+              aria-label="Scroll table right"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {filtered.length} of {rows.length} entries
+          </span>
+        </div>
       </div>
 
-      <CardContent className="p-0 overflow-x-auto">
+      <CardContent className="p-0">
+        <div ref={scrollRef} className="overflow-x-auto">
         <Table className="min-w-[1900px]">
           <TableHeader>
             <TableRow>
@@ -338,6 +393,7 @@ export function GrReportGrid({ data, canEdit, canUpload }: GrReportGridProps) {
             )}
           </TableBody>
         </Table>
+        </div>
       </CardContent>
     </Card>
   );
