@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime, formatMoney } from "@/lib/utils";
 import type { Invoice } from "@/types";
@@ -13,6 +14,8 @@ interface InvoiceTableProps {
 }
 
 export function InvoiceTable({ invoices }: InvoiceTableProps) {
+  const router = useRouter();
+
   if (invoices.length === 0) {
     return (
       <div className="text-center py-16 text-muted-foreground">
@@ -38,14 +41,18 @@ export function InvoiceTable({ invoices }: InvoiceTableProps) {
         </thead>
         <tbody className="divide-y">
           {invoices.map((inv) => (
-            <tr key={inv.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors">
+            <tr
+              key={inv.id}
+              className="cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors"
+              onClick={() => router.push(`/invoices/${inv.id}`)}
+            >
               <td className="px-4 py-3">
-                <Link href={`/invoices/${inv.id}`} className="font-bold text-[#071A3A] dark:text-white hover:text-[#E67A32] transition-colors">
+                <Link href={`/invoices/${inv.id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-[#071A3A] dark:text-white hover:text-[#E67A32] transition-colors">
                   {inv.invoice_number}
                 </Link>
               </td>
               <td className="px-4 py-3 font-medium">{inv.customer_name}</td>
-              <td className="px-4 py-3 text-muted-foreground text-xs">
+              <td className="px-4 py-3 text-muted-foreground text-xs" onClick={(e) => e.stopPropagation()}>
                 {(() => {
                   const jobNo = effectiveJobNumber(inv);
                   if (!jobNo) return "—";

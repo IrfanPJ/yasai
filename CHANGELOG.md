@@ -2,6 +2,9 @@
 
 All notable updates to YASAI Logistics, by date. Newest first.
 
+## 2026-10-08
+- Made whole table rows clickable across every list/detail-link table (Collections, Fund Collections, Fund Transfers, Supplier Payments, Waybills, Invoices, Job Orders) instead of only the record-number text — clicking anywhere on a row now opens its detail page, while secondary links/buttons within the row (the record-number link itself, job-order links, delete buttons) still work independently via `stopPropagation`. Deliberately left untouched: inline-editable grids (GR Report, Manifest sheet line items, Settings users/warehouses tables) where row-click would conflict with in-cell editing, and tables with no detail page to open
+
 ## 2026-10-06 (5)
 - Audited and corrected the live Mainland pending consolidation sheet (`CS-MAINLAND-2026-0004`) against the pallet-count fix below: 2 lines were storing stale pallet counts from before the fix (one showed 6 pallets for a 6-Carton GCN, one showed 2 pallets for a 1-Carton GCN). Corrected both to 0 and recalculated the sheet's total (27 → 19). Zero mismatches remain
 - Closed the gap that let this happen again: editing a GCN's packages (e.g. correcting Carton → Pallet) previously left any already-attached pending-sheet line stale, since nothing re-synced it. `PUT /api/collections/[id]` now calls `syncGcnOnPendingSheets()` after every save — it re-derives the line's pallet count/cbm from the edited GCN and recalculates the sheet's totals, for every pending sheet that GCN is attached to. Finalized (`status = "manifest"`) sheets are deliberately left untouched, matching the existing rule that their items can no longer be edited. Verified: carton→pallet edit syncs up, pallet→carton syncs back down, and editing a GCN after its sheet is finalized correctly leaves that line alone

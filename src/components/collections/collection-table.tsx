@@ -294,10 +294,15 @@ export function CollectionsTable({
                 </TableRow>
               ) : (
                 filtered.map((item) => (
-                  <TableRow key={item.id} className="group">
+                  <TableRow
+                    key={item.id}
+                    className="group cursor-pointer"
+                    onClick={() => router.push(`/collections/${item.id}`)}
+                  >
                     <TableCell>
                       <Link
                         href={`/collections/${item.id}`}
+                        onClick={(e) => e.stopPropagation()}
                         className="font-mono text-xs font-semibold text-[#071A3A] dark:text-[#E67A32] hover:underline"
                       >
                         {item.collection_number}
@@ -328,7 +333,7 @@ export function CollectionsTable({
                     <TableCell className="text-xs text-muted-foreground">
                       {formatDate(item.created_at)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0 sm:opacity-0 sm:group-hover:opacity-100">

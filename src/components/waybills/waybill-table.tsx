@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Search, FileCheck2, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ const TRANSPORT_COLORS: Record<WaybillTransportMode, string> = {
 interface Props { data: Waybill[] }
 
 export function WaybillTable({ data }: Props) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
 
   const filtered = data.filter((w) => {
@@ -72,7 +74,11 @@ export function WaybillTable({ data }: Props) {
             </TableHeader>
             <TableBody>
               {filtered.map((w) => (
-                <TableRow key={w.id} className="hover:bg-muted/30">
+                <TableRow
+                  key={w.id}
+                  className="cursor-pointer hover:bg-muted/30"
+                  onClick={() => router.push(`/waybills/${w.id}`)}
+                >
                   <TableCell>
                     <span className="font-mono text-sm font-semibold text-[#E67A32]">
                       {w.waybill_number}
@@ -97,7 +103,7 @@ export function WaybillTable({ data }: Props) {
                       : "—"}
                   </TableCell>
                   <TableCell className="text-sm font-mono">{w.job_number || "—"}</TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <Link
                       href={`/waybills/${w.id}`}
                       className="flex items-center gap-1 text-xs text-[#071A3A] dark:text-white hover:text-[#E67A32] font-medium"

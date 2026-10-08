@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ function fmtDate(d: string) {
 interface Props { transfers: FundTransfer[] }
 
 export function FundTransferTable({ transfers }: Props) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
@@ -100,9 +102,13 @@ export function FundTransferTable({ transfers }: Props) {
             {filtered.length === 0 ? (
               <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No transfers found</TableCell></TableRow>
             ) : filtered.map(t => (
-              <TableRow key={t.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-900/30">
+              <TableRow
+                key={t.id}
+                className="cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-900/30"
+                onClick={() => router.push(`/finance/transfers/${t.id}`)}
+              >
                 <TableCell>
-                  <Link href={`/finance/transfers/${t.id}`} className="font-mono font-semibold text-[#E67A32] hover:underline">
+                  <Link href={`/finance/transfers/${t.id}`} onClick={(e) => e.stopPropagation()} className="font-mono font-semibold text-[#E67A32] hover:underline">
                     {t.transfer_number}
                   </Link>
                 </TableCell>

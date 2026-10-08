@@ -75,9 +75,13 @@ export function JobOrderTable({ jobs, userRole }: JobOrderTableProps) {
               const capPct = Math.max(weightPct, cbmPct);
 
               return (
-                <tr key={job.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors">
+                <tr
+                  key={job.id}
+                  className="cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors"
+                  onClick={() => router.push(`/jobs/${job.id}`)}
+                >
                   <td className="px-4 py-3">
-                    <Link href={`/jobs/${job.id}`} className="font-bold text-[#071A3A] dark:text-white hover:text-[#E67A32] transition-colors">
+                    <Link href={`/jobs/${job.id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-[#071A3A] dark:text-white hover:text-[#E67A32] transition-colors">
                       {job.job_number}
                     </Link>
                   </td>
@@ -113,7 +117,7 @@ export function JobOrderTable({ jobs, userRole }: JobOrderTableProps) {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">{formatDateTime(job.created_at)}</td>
                   {canDelete && (
-                    <td className="px-2 py-3">
+                    <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                       {job.status === "draft" && (
                         <button
                           onClick={() => setPendingDelete(job)}
